@@ -1,1 +1,39 @@
+# Jetbrains junk
 .idea
+
+# Temporary files
+*.tmp
+*~
+*.bak
+*.swp
+*.swo
+*.log
+*.out
+*.err
+
+# Editor-specific files (e.g., Vim, Emacs)
+.DS_Store
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts or generated files
+# If your scripts generate specific output files, add them here.
+# For example:
+# my_script_output.txt
+
+# Sensitive data or configuration files that should not be committed
+# If your scripts use local configuration files or store sensitive data,
+# add them here to prevent accidental commitment.
+# For example:
+# .env
+# config.local.sh
+# credentials.txt
+
+# Executable permissions (if you don't want to track changes in permissions)
+# If your scripts are intended to be executable and you don't want Git to
+# track changes in their executable bit, you can ignore the permission changes.
+# However, this is generally not recommended for scripts that need to be executable
+# across different environments.
+# *.sh mode
