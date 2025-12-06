@@ -10,12 +10,16 @@
 #   -V, --version         Show version information.
 #   -s, --supervised      Require confirmation before running tools (default).
 #   -u, --unsupervised    Run tools without confirmations.
-#   -m, --model PATH      Path to llama.cpp model (default: $DO_MODEL_PATH or ./models/llama.gguf).
+#   -m, --model VALUE     HF repo[:file] for llama.cpp download (default: $DO_MODEL or Qwen/Qwen3-1.5B-Instruct-GGUF:qwen3-1.5b-instruct-q4_k_m.gguf).
+#       --model-branch BRANCH  HF branch or tag for the model download.
+#       --model-cache DIR      Directory that stores downloaded models (default: ~/.do/models).
 #   -v, --verbose         Increase log verbosity (JSON logs are always structured).
 #   -q, --quiet           Silence informational logs.
 #
 # Environment:
-#   DO_MODEL_PATH   Optional override for the model path.
+#   DO_MODEL        HF repo[:file] identifier for the llama.cpp model.
+#   DO_MODEL_BRANCH HF branch or tag for the model download.
+#   DO_MODEL_CACHE  Cache directory where llama.cpp stores downloaded models.
 #   DO_SUPERVISED   Set to "false" to default to unsupervised mode.
 #   DO_VERBOSITY    0 (quiet), 1 (info), 2 (debug). Overrides -v/-q when set.
 #   LLAMA_BIN       llama.cpp binary (default: llama).
@@ -32,7 +36,11 @@ set -euo pipefail
 
 VERSION="0.1.0"
 LLAMA_BIN=${LLAMA_BIN:-llama}
-MODEL_PATH=${DO_MODEL_PATH:-"./models/llama.gguf"}
+DEFAULT_MODEL_FILE="qwen3-1.5b-instruct-q4_k_m.gguf"
+MODEL_SPEC=${DO_MODEL:-"Qwen/Qwen3-1.5B-Instruct-GGUF:${DEFAULT_MODEL_FILE}"}
+MODEL_BRANCH=${DO_MODEL_BRANCH:-main}
+MODEL_CACHE=${DO_MODEL_CACHE:-"${HOME}/.do/models"}
+MODEL_PATH=""
 SUPERVISED=${DO_SUPERVISED:-true}
 VERBOSITY=${DO_VERBOSITY:-1}
 NOTES_DIR="${HOME}/.do"
@@ -90,7 +98,9 @@ Options:
   -V, --version         Show version information.
   -s, --supervised      Require confirmation before running tools (default).
   -u, --unsupervised    Run tools without confirmations.
-  -m, --model PATH      Path to llama.cpp model (default: $DO_MODEL_PATH or ./models/llama.gguf).
+  -m, --model VALUE     HF repo[:file] for llama.cpp (default: $DO_MODEL or Qwen/Qwen3-1.5B-Instruct-GGUF:qwen3-1.5b-instruct-q4_k_m.gguf).
+      --model-branch BRANCH  HF branch or tag (default: $DO_MODEL_BRANCH or main).
+      --model-cache DIR      Cache directory for GGUF downloads (default: $DO_MODEL_CACHE or ~/.do/models).
   -v, --verbose         Increase log verbosity (JSON logs are always structured).
   -q, --quiet           Silence informational logs.
 
@@ -102,6 +112,25 @@ USAGE
 
 show_version() {
 	printf 'do assistant %s\n' "${VERSION}"
+}
+
+parse_model_spec() {
+	# Arguments:
+	#   $1 - model spec repo[:file]
+	#   $2 - default file fallback
+	local spec default_file repo file
+	spec="$1"
+	default_file="$2"
+
+	if [[ "${spec}" == *:* ]]; then
+		repo="${spec%%:*}"
+		file="${spec#*:}"
+	else
+		repo="${spec}"
+		file="${default_file}"
+	fi
+
+	printf '%s\n%s\n' "${repo}" "${file}"
 }
 
 normalize_supervised_flag() {
@@ -117,6 +146,20 @@ normalize_supervised_flag() {
 		SUPERVISED=true
 		;;
 	esac
+}
+
+resolve_model_path() {
+	# Derives the cached GGUF path from the HF model spec and validates presence.
+	local model_parts model_repo model_file
+	mapfile -t model_parts < <(parse_model_spec "${MODEL_SPEC}" "${DEFAULT_MODEL_FILE}")
+	model_repo="${model_parts[0]}"
+	model_file="${model_parts[1]}"
+	MODEL_PATH="${MODEL_CACHE%/}/${model_file}"
+
+	if [[ ! -f "${MODEL_PATH}" ]]; then
+		log "ERROR" "Model is missing" "Download via scripts/install --model ${model_repo}:${model_file} --model-branch ${MODEL_BRANCH} --model-cache ${MODEL_CACHE}"
+		exit 1
+	fi
 }
 
 parse_args() {
@@ -143,10 +186,26 @@ parse_args() {
 			;;
 		-m | --model)
 			if [[ $# -lt 2 ]]; then
-				log "ERROR" "--model requires a path"
+				log "ERROR" "--model requires an HF repo[:file] value"
 				exit 1
 			fi
-			MODEL_PATH="$2"
+			MODEL_SPEC="$2"
+			shift 2
+			;;
+		--model-branch)
+			if [[ $# -lt 2 ]]; then
+				log "ERROR" "--model-branch requires a value"
+				exit 1
+			fi
+			MODEL_BRANCH="$2"
+			shift 2
+			;;
+		--model-cache)
+			if [[ $# -lt 2 ]]; then
+				log "ERROR" "--model-cache requires a directory"
+				exit 1
+			fi
+			MODEL_CACHE="$2"
 			shift 2
 			;;
 		-v | --verbose)
@@ -186,6 +245,7 @@ parse_args() {
 
 init_environment() {
 	normalize_supervised_flag
+	resolve_model_path
 	if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
 		IS_MACOS=true
 	fi
