@@ -84,6 +84,18 @@ justifications) in one call; otherwise a deterministic keyword heuristic is
 used. The resulting ranking is reused for the user-facing suggestion prompt and
 execution ordering.
 
+## Code layout
+
+The Bash entrypoint is decomposed into focused modules to simplify maintenance
+and testing:
+
+- `src/main.sh`: wiring and high-level orchestration.
+- `src/cli.sh`: help/version output and argument parsing.
+- `src/config.sh`: configuration loading, normalization, and environment setup.
+- `src/tools.sh`: tool registry plus handler implementations.
+- `src/planner.sh`: ranking, planning, and execution flow.
+- `src/logging.sh`: structured logging helpers shared across modules.
+
 ## Usage examples
 
 Prompted run (default):
@@ -106,11 +118,9 @@ Use `--help` to view all options. Pass `--verbose` for debug-level logs or
 Run the formatting and lint targets before executing the Bats suite:
 
 ```bash
-shfmt -w src/main.sh tests/test_all.sh tests/test_main.bats
-shellcheck src/main.sh tests/test_all.sh tests/test_main.bats
-shfmt -w scripts/install tests/test_install.bats
-shellcheck scripts/install tests/test_install.bats
-bats tests/test_all.sh tests/test_install.bats
+shfmt -w src/*.sh tests/*.bats tests/test_all.sh scripts/install
+shellcheck src/*.sh tests/*.bats tests/test_all.sh scripts/install
+bats tests/test_all.sh tests/test_install.bats tests/test_main.bats tests/test_modules.bats
 ```
 
 The Bats suite covers CLI help/version output, confirmation prompts, deterministic
