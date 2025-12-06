@@ -15,10 +15,12 @@
 #   -q, --quiet           Silence informational logs.
 #
 # Environment:
-#   DO_MODEL_PATH   Optional override for the model path.
-#   DO_SUPERVISED   Set to "false" to default to unsupervised mode.
-#   DO_VERBOSITY    0 (quiet), 1 (info), 2 (debug). Overrides -v/-q when set.
-#   LLAMA_BIN       llama.cpp binary (default: llama).
+#   DO_MODEL_PATH      Optional override for the model path.
+#   DO_SUPERVISED      Set to "false" to default to unsupervised mode.
+#   DO_VERBOSITY       0 (quiet), 1 (info), 2 (debug). Overrides -v/-q when set.
+#   DO_LOG_VERBOSITY   Verbosity for persisted logs (default: 1).
+#   DO_LOG_DIR         Directory for persisted transcripts (default: ~/.do/logs).
+#   LLAMA_BIN          llama.cpp binary (default: llama).
 #
 # Dependencies:
 #   - bash 5+
@@ -35,7 +37,10 @@ LLAMA_BIN=${LLAMA_BIN:-llama}
 MODEL_PATH=${DO_MODEL_PATH:-"./models/llama.gguf"}
 SUPERVISED=${DO_SUPERVISED:-true}
 VERBOSITY=${DO_VERBOSITY:-1}
+LOG_VERBOSITY=${DO_LOG_VERBOSITY:-1}
 NOTES_DIR="${HOME}/.do"
+LOG_DIR="${DO_LOG_DIR:-"${NOTES_DIR}/logs"}"
+LOG_FILE=""
 LLAMA_AVAILABLE=false
 IS_MACOS=false
 
@@ -49,35 +54,57 @@ declare -A TOOL_SAFETY=()
 declare -A TOOL_HANDLER=()
 TOOLS=()
 
+log_level_to_int() {
+	# Arguments:
+	#   $1 - level (string)
+	# Returns: integer severity for comparison.
+	case "$1" in
+	DEBUG)
+		echo 2
+		;;
+	INFO)
+		echo 1
+		;;
+	WARN | ERROR)
+		echo 0
+		;;
+	*)
+		echo 1
+		;;
+	esac
+}
+
 log() {
 	# Arguments:
 	#   $1 - level (string)
 	#   $2 - message (string)
 	#   $3 - detail (string, optional)
-	local level message detail timestamp should_emit
+	local level message detail timestamp stdout_emit file_emit payload severity
 	level="$1"
 	message="$2"
 	detail=${3:-""}
 	timestamp="$(date -Iseconds)"
-	should_emit=1
+	payload=$(printf '{"time":"%s","level":"%s","message":"%s","detail":"%s"}\n' \
+		"${timestamp}" "${level}" "${message}" "${detail}")
 
-	case "${level}" in
-	DEBUG)
-		[[ ${VERBOSITY} -lt 2 ]] && should_emit=0
-		;;
-	INFO)
-		[[ ${VERBOSITY} -lt 1 ]] && should_emit=0
-		;;
-	ERROR | WARN) ;;
-	*)
-		level="INFO"
-		[[ ${VERBOSITY} -lt 1 ]] && should_emit=0
-		;;
-	esac
+	stdout_emit=1
+	file_emit=1
+	severity=$(log_level_to_int "${level}")
 
-	if [[ ${should_emit} -eq 1 ]]; then
-		printf '{"time":"%s","level":"%s","message":"%s","detail":"%s"}\n' \
-			"${timestamp}" "${level}" "${message}" "${detail}"
+	if [[ ${severity} -gt ${VERBOSITY} ]]; then
+		stdout_emit=0
+	fi
+
+	if [[ ${severity} -gt ${LOG_VERBOSITY} ]]; then
+		file_emit=0
+	fi
+
+	if [[ ${stdout_emit} -eq 1 ]]; then
+		printf '%s' "${payload}"
+	fi
+
+	if [[ -n "${LOG_FILE}" && ${file_emit} -eq 1 ]]; then
+		printf '%s' "${payload}" >>"${LOG_FILE}"
 	fi
 }
 
@@ -196,7 +223,9 @@ init_environment() {
 		log "WARN" "llama.cpp binary not found; using heuristic fallback" "${LLAMA_BIN}"
 	fi
 
-	mkdir -p "${NOTES_DIR}"
+	mkdir -p "${NOTES_DIR}" "${LOG_DIR}"
+	LOG_FILE="${LOG_DIR}/$(date -Iseconds | tr ':' '-').log"
+	log "INFO" "Logging initialized" "${LOG_FILE}"
 }
 
 register_tool() {
@@ -380,20 +409,66 @@ generate_tool_prompt() {
 	printf '%s\n' "${prompt%,}"
 }
 
-confirm_tool() {
-	local tool_name
-	tool_name="$1"
-	if [[ "${SUPERVISED}" != true ]]; then
-		return 0
-	fi
+prompt_tool_approvals() {
+	# Arguments:
+	#   All arguments are tool names in ranked order.
+	local proposals choice idx selected raw_indices token tool_name valid
+	proposals=("$@")
 
-	printf 'Execute tool "%s"? [y/N]: ' "${tool_name}" >&2
-	read -r reply
-	if [[ "${reply}" != "y" && "${reply}" != "Y" ]]; then
-		log "WARN" "Tool execution declined" "${tool_name}"
-		return 1
-	fi
-	return 0
+	printf 'Proposed tool calls:\n' >&2
+	for idx in "${!proposals[@]}"; do
+		tool_name="${proposals[$idx]}"
+		printf '  %d) %s - %s (cmd: %s)\n' $((idx + 1)) "${tool_name}" "${TOOL_DESCRIPTION[${tool_name}]}" "${TOOL_COMMAND[${tool_name}]}" >&2
+		(
+			log "INFO" "Tool proposal" "index=$((idx + 1));name=${tool_name};command=${TOOL_COMMAND[${tool_name}]}"
+		) >/dev/null
+	done
+
+	while true; do
+		printf 'Approve tools? Enter "all" to run all, comma-separated indices, or "skip" to run none: ' >&2
+		read -r choice
+
+		case "${choice}" in
+		all | ALL | "")
+			selected=($(printf '%s\n' "${proposals[@]}"))
+			log "INFO" "Approval selection" "all" >/dev/null
+			break
+			;;
+		skip | SKIP)
+			selected=()
+			log "INFO" "Approval selection" "skip" >/dev/null
+			break
+			;;
+		*)
+			selected=()
+			IFS=',' read -ra raw_indices <<<"${choice}"
+			valid=true
+			for token in "${raw_indices[@]}"; do
+				if [[ -z "${token}" || ! "${token}" =~ ^[0-9]+$ ]]; then
+					valid=false
+					break
+				fi
+
+				idx=$((token - 1))
+				if [[ ${idx} -lt 0 || ${idx} -ge ${#proposals[@]} ]]; then
+					valid=false
+					break
+				fi
+
+				selected+=("${proposals[${idx}]}")
+			done
+
+			if [[ "${valid}" == true ]]; then
+				log "INFO" "Approval selection" "indices=${choice}" >/dev/null
+				break
+			fi
+
+			printf 'Invalid selection. Try again.\n' >&2
+			;;
+		esac
+	done
+
+	printf '%s\n' "${selected[@]}"
 }
 
 execute_tool() {
@@ -405,11 +480,9 @@ execute_tool() {
 		return 1
 	fi
 
-	if ! confirm_tool "${tool_name}"; then
-		return 1
-	fi
-
+	log "INFO" "Executing tool" "${tool_name}"
 	TOOL_QUERY="${USER_QUERY}" ${handler}
+	log "INFO" "Completed tool" "${tool_name}"
 }
 
 collect_plan() {
@@ -425,20 +498,44 @@ collect_plan() {
 }
 
 planner_executor_loop() {
-	local plan ranked entry tool summary
+	local plan ranked entry summary tool
+	local approved_tools=() proposed_tools
 	ranked="$(rank_tools "${USER_QUERY}")"
 	plan="$(collect_plan)"
 	log "INFO" "Generated plan" "${plan}"
 
+	mapfile -t proposed_tools < <(printf '%s\n' "${ranked}" | awk -F':' '{print $2}')
+
+	if [[ "${SUPERVISED}" == true ]]; then
+		local original_verbosity
+		original_verbosity=${VERBOSITY}
+		VERBOSITY=-1
+		mapfile -t approved_tools < <(prompt_tool_approvals "${proposed_tools[@]}")
+		VERBOSITY=${original_verbosity}
+	else
+		approved_tools=($(printf '%s\n' "${proposed_tools[@]}"))
+		log "INFO" "Unsupervised execution" "${approved_tools[*]}"
+		for entry in ${ranked}; do
+			tool="${entry##*:}"
+			log "INFO" "Tool proposal" "name=${tool};command=${TOOL_COMMAND[${tool}]}"
+		done
+	fi
+
 	summary=""
-	while IFS= read -r entry; do
-		tool="${entry##*:}"
+	for tool in "${approved_tools[@]}"; do
+		if [[ -z "${tool}" ]]; then
+			continue
+		fi
 		if execute_tool "${tool}"; then
 			summary+=$(printf '[%s executed] ' "${tool}")
 		else
 			summary+=$(printf '[%s skipped] ' "${tool}")
 		fi
-	done <<<"${ranked}"
+	done
+
+	if [[ -z "${summary}" ]]; then
+		summary="[no tools executed]"
+	fi
 
 	log "INFO" "Execution summary" "${summary}"
 	printf '%s\n' "${summary}"

@@ -51,6 +51,10 @@ Environment variables control runtime behavior and can be stored in an env file
 - `DO_SUPERVISED`: `true`/`false` to toggle confirmation prompts (default:
   `true`).
 - `DO_VERBOSITY`: `0` (quiet), `1` (info), `2` (debug). Overrides `-v`/`-q`.
+- `DO_LOG_DIR`: Directory where transcripts are persisted (default:
+  `~/.do/logs`).
+- `DO_LOG_VERBOSITY`: `0` (errors only), `1` (info, default), `2` (debug) for
+  the persisted JSONL logs.
 - `LLAMA_BIN`: llama.cpp binary to use (default: `llama`; can point to the mock
   `tests/fixtures/mock_llama.sh` during testing).
 
@@ -58,14 +62,19 @@ The included `tests/fixtures/sample.env` demonstrates a debug-friendly,
 unsupervised configuration that prefers the notes tool for reminder queries.
 Running with that config and a reminder request will emit a tool prompt where
 `notes` is scored highest, followed by a summary beginning with
-`[notes executed]`.
+`[notes executed]`. Each run also writes a transcript to `~/.do/logs` (or
+`DO_LOG_DIR`), capturing the ranked proposals, approvals, and execution
+outcomes with the configured `DO_LOG_VERBOSITY`.
 
 ## Modes
 
-- **Supervised** (default): prompts before executing each tool. Declining a tool
-  logs a skip and continues through the ranked list.
+- **Supervised** (default): shows a numbered proposal list and prompts once per
+  plan. Choose `all` to run every proposed tool, provide comma-separated
+  indices (for example `1,3`), or `skip` to run none. A persisted transcript
+  records the proposal list, selection, and results.
 - **Unsupervised**: executes ranked tools without prompts; enable with
-  `--unsupervised` or `DO_SUPERVISED=false`.
+  `--unsupervised` or `DO_SUPERVISED=false`. Proposals and execution summaries
+  are still logged to the transcript directory.
 
 ## Tooling registry
 
@@ -105,6 +114,14 @@ set +a
 
 Use `--help` to view all options. Pass `--verbose` for debug-level logs or
 `--quiet` to silence informational messages.
+
+### Logging
+
+All runs write structured JSON logs to `~/.do/logs` (overridable via
+`DO_LOG_DIR`). The console verbosity follows `-v`/`-q` or `DO_VERBOSITY`, while
+persisted logs follow `DO_LOG_VERBOSITY`. Each entry includes the timestamp,
+level, message, and detail (such as tool proposals, approval selections, and
+execution summaries).
 
 ## Testing and linting
 

@@ -32,10 +32,10 @@ setup() {
 }
 
 @test "prompts in supervised mode and respects decline" {
-	run env DO_SUPERVISED=true DO_VERBOSITY=1 bash -c 'printf "n\n" | ./src/main.sh --supervised -- "list files"'
+	run env DO_SUPERVISED=true DO_VERBOSITY=1 bash -c 'printf "skip\n" | ./src/main.sh --supervised -- "list files"'
 	[ "$status" -eq 0 ]
-	[[ "$output" == *'Execute tool "os_nav"? [y/N]:'* ]]
-	[[ "$output" == *"[os_nav skipped]"* ]]
+	[[ "$output" == *"Proposed tool calls:"* ]]
+	[[ "$output" == *"[no tools executed]"* ]]
 }
 
 @test "uses mock llama.cpp scoring to rank notes highest" {
