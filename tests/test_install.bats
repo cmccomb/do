@@ -4,8 +4,8 @@
 #
 # Environment variables:
 #   DO_INSTALLER_ASSUME_OFFLINE (bool): force offline mode to skip network calls.
-#   DO_MODEL_PATH (string): destination for model download; tests override with a
-#       temporary file to avoid network access.
+#   DO_MODEL (string): HF repo[:file] identifier for the model download.
+#   DO_MODEL_CACHE (string): directory where models are cached.
 #   DO_LINK_DIR (string): directory for the generated CLI symlink.
 #
 # Dependencies:
@@ -19,14 +19,15 @@ setup() {
 	TEST_ROOT="${BATS_TMPDIR}/do-install"
 	mkdir -p "${TEST_ROOT}"
 	export DO_INSTALLER_ASSUME_OFFLINE=true
-	export DO_MODEL_PATH="${TEST_ROOT}/models/qwen3-1.5b-instruct-q4_k_m.gguf"
+	export DO_MODEL="example/repo:demo.gguf"
+	export DO_MODEL_CACHE="${TEST_ROOT}/models"
 	export DO_LINK_DIR="${TEST_ROOT}/bin"
-	mkdir -p "${DO_LINK_DIR}" "$(dirname "${DO_MODEL_PATH}")"
-	printf "stub" >"${DO_MODEL_PATH}"
+	mkdir -p "${DO_LINK_DIR}" "${DO_MODEL_CACHE}"
+	printf "existing-model" >"${DO_MODEL_CACHE}/demo.gguf"
 }
 
 teardown() {
-	rm -rf "${TEST_ROOT}"
+	rm -rf "${TEST_ROOT}" "${LLAMA_CALL_LOG:-}" 2>/dev/null || true
 }
 
 @test "shows installer help" {
@@ -45,13 +46,13 @@ teardown() {
 	local mock_path="${TEST_ROOT}/mock-bin"
 	mkdir -p "${mock_path}" "${TEST_ROOT}/prefix"
 
-	cat >"${mock_path}/uname" <<'EOF'
+	cat >"${mock_path}/uname" <<'EOM_UNAME'
 #!/usr/bin/env bash
 echo "Darwin"
-EOF
+EOM_UNAME
 	chmod +x "${mock_path}/uname"
 
-	cat >"${mock_path}/brew" <<'EOF'
+	cat >"${mock_path}/brew" <<'EOM_BREW'
 #!/usr/bin/env bash
 if [ "$1" = "list" ]; then
         exit 0
@@ -60,7 +61,7 @@ if [ "$1" = "install" ]; then
         exit 0
 fi
 command -v "$1" >/dev/null 2>&1
-EOF
+EOM_BREW
 	chmod +x "${mock_path}/brew"
 
 	run env PATH="${mock_path}:${PATH}" ./scripts/install --prefix "${TEST_ROOT}/prefix"
@@ -71,18 +72,82 @@ EOF
 	[[ "$output" == *"installer completed (install)"* ]]
 }
 
+@test "offline mode skips llama download when cache present" {
+	local mock_path="${TEST_ROOT}/mock-bin"
+	mkdir -p "${mock_path}" "${TEST_ROOT}/prefix"
+
+	cat >"${mock_path}/uname" <<'EOM_UNAME'
+#!/usr/bin/env bash
+echo "Darwin"
+EOM_UNAME
+	chmod +x "${mock_path}/uname"
+
+	cat >"${mock_path}/brew" <<'EOM_BREW'
+#!/usr/bin/env bash
+if [ "$1" = "list" ]; then
+        exit 0
+fi
+if [ "$1" = "install" ]; then
+        exit 0
+fi
+command -v "$1" >/dev/null 2>&1
+EOM_BREW
+	chmod +x "${mock_path}/brew"
+
+	run env PATH="${mock_path}:${PATH}" ./scripts/install --prefix "${TEST_ROOT}/prefix" --model-cache "${DO_MODEL_CACHE}"
+	[ "$status" -eq 0 ]
+	grep -q "existing-model" "${DO_MODEL_CACHE}/demo.gguf"
+}
+
+@test "downloads model via llama cpp when online" {
+	local mock_path="${TEST_ROOT}/mock-bin"
+	local log_path="${TEST_ROOT}/llama.log"
+	mkdir -p "${mock_path}" "${TEST_ROOT}/prefix"
+	rm -f "${DO_MODEL_CACHE}/demo.gguf"
+	export DO_INSTALLER_ASSUME_OFFLINE=false
+	export LLAMA_CALL_LOG="${log_path}"
+
+	cp tests/fixtures/mock_llama_download.sh "${mock_path}/llama"
+	cp tests/fixtures/mock_curl.sh "${mock_path}/curl"
+
+	cat >"${mock_path}/uname" <<'EOM_UNAME'
+#!/usr/bin/env bash
+echo "Darwin"
+EOM_UNAME
+	chmod +x "${mock_path}/uname"
+
+	cat >"${mock_path}/brew" <<'EOM_BREW'
+#!/usr/bin/env bash
+if [ "$1" = "list" ]; then
+        exit 0
+fi
+if [ "$1" = "install" ]; then
+        exit 0
+fi
+command -v "$1" >/dev/null 2>&1
+EOM_BREW
+	chmod +x "${mock_path}/brew"
+	chmod +x "${mock_path}/llama" "${mock_path}/curl"
+
+	run env PATH="${mock_path}:${PATH}" ./scripts/install --prefix "${TEST_ROOT}/prefix" --model "example/repo:demo.gguf" --model-branch main
+	[ "$status" -eq 0 ]
+	[ -f "${DO_MODEL_CACHE}/demo.gguf" ]
+	grep -q "stub-model-body" "${DO_MODEL_CACHE}/demo.gguf"
+	grep -q "example/repo demo.gguf main ${DO_MODEL_CACHE}/demo.gguf" "${log_path}"
+}
+
 @test "uninstall removes prefix and symlink" {
 	local mock_path="${TEST_ROOT}/mock-bin"
 	mkdir -p "${mock_path}" "${TEST_ROOT}/prefix" "${DO_LINK_DIR}"
-	cat >"${mock_path}/uname" <<'EOF'
+	cat >"${mock_path}/uname" <<'EOM_UNAME'
 #!/usr/bin/env bash
 echo "Darwin"
-EOF
+EOM_UNAME
 	chmod +x "${mock_path}/uname"
-	cat >"${mock_path}/brew" <<'EOF'
+	cat >"${mock_path}/brew" <<'EOM_BREW'
 #!/usr/bin/env bash
 exit 0
-EOF
+EOM_BREW
 	chmod +x "${mock_path}/brew"
 
 	cp -R src/. "${TEST_ROOT}/prefix/"

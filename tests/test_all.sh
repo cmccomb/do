@@ -17,6 +17,10 @@
 setup() {
 	export DO_VERBOSITY=0
 	export DO_SUPERVISED=false
+	export DO_MODEL="example/repo:demo.gguf"
+	export DO_MODEL_CACHE="${BATS_TMPDIR}/do-models"
+	mkdir -p "${DO_MODEL_CACHE}"
+	printf "stub-model-body" >"${DO_MODEL_CACHE}/demo.gguf"
 }
 
 @test "shows CLI help" {
@@ -42,7 +46,8 @@ setup() {
 	run env DO_SUPERVISED=false \
 		DO_VERBOSITY=0 \
 		LLAMA_BIN="$(pwd)/tests/fixtures/mock_llama.sh" \
-		DO_MODEL_PATH="$(pwd)/tests/fixtures/mock-model.gguf" \
+		DO_MODEL="example/repo:demo.gguf" \
+		DO_MODEL_CACHE="${DO_MODEL_CACHE}" \
 		./src/main.sh -- "save reminder"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"notes(score=5"* ]]
