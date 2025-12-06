@@ -111,33 +111,33 @@ USAGE
 }
 
 show_version() {
-        printf 'do assistant %s\n' "${VERSION}"
+	printf 'do assistant %s\n' "${VERSION}"
 }
 
 parse_model_spec() {
-        # Arguments:
-        #   $1 - model spec repo[:file]
-        #   $2 - default file fallback
-        local spec default_file repo file
-        spec="$1"
-        default_file="$2"
+	# Arguments:
+	#   $1 - model spec repo[:file]
+	#   $2 - default file fallback
+	local spec default_file repo file
+	spec="$1"
+	default_file="$2"
 
-        if [[ "${spec}" == *:* ]]; then
-                repo="${spec%%:*}"
-                file="${spec#*:}"
-        else
-                repo="${spec}"
-                file="${default_file}"
-        fi
+	if [[ "${spec}" == *:* ]]; then
+		repo="${spec%%:*}"
+		file="${spec#*:}"
+	else
+		repo="${spec}"
+		file="${default_file}"
+	fi
 
-        printf '%s\n%s\n' "${repo}" "${file}"
+	printf '%s\n%s\n' "${repo}" "${file}"
 }
 
 normalize_supervised_flag() {
-        case "${SUPERVISED}" in
-        true | True | TRUE | 1)
-                SUPERVISED=true
-                ;;
+	case "${SUPERVISED}" in
+	true | True | TRUE | 1)
+		SUPERVISED=true
+		;;
 	false | False | FALSE | 0)
 		SUPERVISED=false
 		;;
@@ -145,21 +145,21 @@ normalize_supervised_flag() {
 		log "WARN" "Invalid DO_SUPERVISED value; defaulting to supervised" "${SUPERVISED}"
 		SUPERVISED=true
 		;;
-        esac
+	esac
 }
 
 resolve_model_path() {
-        # Derives the cached GGUF path from the HF model spec and validates presence.
-        local model_parts model_repo model_file
-        mapfile -t model_parts < <(parse_model_spec "${MODEL_SPEC}" "${DEFAULT_MODEL_FILE}")
-        model_repo="${model_parts[0]}"
-        model_file="${model_parts[1]}"
-        MODEL_PATH="${MODEL_CACHE%/}/${model_file}"
+	# Derives the cached GGUF path from the HF model spec and validates presence.
+	local model_parts model_repo model_file
+	mapfile -t model_parts < <(parse_model_spec "${MODEL_SPEC}" "${DEFAULT_MODEL_FILE}")
+	model_repo="${model_parts[0]}"
+	model_file="${model_parts[1]}"
+	MODEL_PATH="${MODEL_CACHE%/}/${model_file}"
 
-        if [[ ! -f "${MODEL_PATH}" ]]; then
-                log "ERROR" "Model is missing" "Download via scripts/install --model ${model_repo}:${model_file} --model-branch ${MODEL_BRANCH} --model-cache ${MODEL_CACHE}"
-                exit 1
-        fi
+	if [[ ! -f "${MODEL_PATH}" ]]; then
+		log "ERROR" "Model is missing" "Download via scripts/install --model ${model_repo}:${model_file} --model-branch ${MODEL_BRANCH} --model-cache ${MODEL_CACHE}"
+		exit 1
+	fi
 }
 
 parse_args() {
@@ -176,38 +176,38 @@ parse_args() {
 			show_version
 			exit 0
 			;;
-                -s | --supervised)
-                        SUPERVISED=true
-                        shift
-                        ;;
-                -u | --unsupervised)
-                        SUPERVISED=false
-                        shift
-                        ;;
-                -m | --model)
-                        if [[ $# -lt 2 ]]; then
-                                log "ERROR" "--model requires an HF repo[:file] value"
-                                exit 1
-                        fi
-                        MODEL_SPEC="$2"
-                        shift 2
-                        ;;
-                --model-branch)
-                        if [[ $# -lt 2 ]]; then
-                                log "ERROR" "--model-branch requires a value"
-                                exit 1
-                        fi
-                        MODEL_BRANCH="$2"
-                        shift 2
-                        ;;
-                --model-cache)
-                        if [[ $# -lt 2 ]]; then
-                                log "ERROR" "--model-cache requires a directory"
-                                exit 1
-                        fi
-                        MODEL_CACHE="$2"
-                        shift 2
-                        ;;
+		-s | --supervised)
+			SUPERVISED=true
+			shift
+			;;
+		-u | --unsupervised)
+			SUPERVISED=false
+			shift
+			;;
+		-m | --model)
+			if [[ $# -lt 2 ]]; then
+				log "ERROR" "--model requires an HF repo[:file] value"
+				exit 1
+			fi
+			MODEL_SPEC="$2"
+			shift 2
+			;;
+		--model-branch)
+			if [[ $# -lt 2 ]]; then
+				log "ERROR" "--model-branch requires a value"
+				exit 1
+			fi
+			MODEL_BRANCH="$2"
+			shift 2
+			;;
+		--model-cache)
+			if [[ $# -lt 2 ]]; then
+				log "ERROR" "--model-cache requires a directory"
+				exit 1
+			fi
+			MODEL_CACHE="$2"
+			shift 2
+			;;
 		-v | --verbose)
 			VERBOSITY=2
 			shift
@@ -244,11 +244,11 @@ parse_args() {
 }
 
 init_environment() {
-        normalize_supervised_flag
-        resolve_model_path
-        if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
-                IS_MACOS=true
-        fi
+	normalize_supervised_flag
+	resolve_model_path
+	if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
+		IS_MACOS=true
+	fi
 
 	if command -v "${LLAMA_BIN}" >/dev/null 2>&1; then
 		LLAMA_AVAILABLE=true
