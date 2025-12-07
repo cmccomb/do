@@ -89,87 +89,150 @@ parse_llama_ranking() {
 }
 
 filter_ranked_tools() {
-	local ranked entry score filtered
-	ranked="$1"
-	filtered=()
-	while IFS= read -r entry; do
-		[[ -z "${entry}" ]] && continue
-		score="${entry%%:*}"
-		if ((score >= MIN_TOOL_SCORE)); then
-			filtered+=("${entry}")
-		fi
-	done <<<"${ranked}"
+        local ranked entry score filtered
+        ranked="$1"
+        filtered=()
+        while IFS= read -r entry; do
+                [[ -z "${entry}" ]] && continue
+                score="${entry%%:*}"
+                if ((score >= MIN_TOOL_SCORE)); then
+                        filtered+=("${entry}")
+                fi
+        done <<<"${ranked}"
 
-	printf '%s\n' "${filtered[@]}"
+        if [[ ${#filtered[@]} -eq 0 && -n "${ranked}" ]]; then
+                filtered+=("${ranked%%$'\n'*}")
+        fi
+
+        printf '%s\n' "${filtered[@]}"
+}
+
+structured_tool_relevance() {
+        # Arguments:
+        #   $1 - user query (string)
+        local user_query grammar tool_alternatives prompt raw
+        user_query="$1"
+
+        if [[ "${LLAMA_AVAILABLE}" != true ]]; then
+                return 0
+        fi
+
+        tool_alternatives=""
+        for tool in "${TOOLS[@]}"; do
+                tool_alternatives+=$(printf '"%s" | ' "${tool}")
+        done
+        tool_alternatives="${tool_alternatives% | }"
+
+        read -r -d '' grammar <<GRAM || true
+root ::= "[" entries? "]"
+entries ::= item ("," item)*
+item ::= "{\\\"tool\\\":" tool_name ",\\\"relevant\\\":" bool "}"
+tool_name ::= ${tool_alternatives}
+bool ::= "true" | "false"
+GRAM
+
+        prompt="Identify which tools are relevant to the user request with true/false flags."
+        prompt+=" User request: ${user_query}"
+
+        raw="$(${LLAMA_BIN} \
+                --hf-repo "${MODEL_REPO}" \
+                --hf-file "${MODEL_FILE}" \
+                --hf-branch "${MODEL_BRANCH}" \
+                --grammar "${grammar}" \
+                -p "${prompt}" 2>/dev/null || true)"
+
+        jq -r '.[] | select(.relevant == true and .tool != null) | "5:\(.tool)"' <<<"${raw}" 2>/dev/null || true
 }
 
 heuristic_rank_tools() {
-	local user_query tool score lower_query has_shell_command has_backtick
-	user_query="$1"
-	lower_query=${user_query,,}
-	has_backtick=false
-	has_shell_command=false
-	local scores threshold
-	scores=()
-	threshold=3
+        local user_query tool score lower_query has_shell_command has_backtick
+        user_query="$1"
+        lower_query=${user_query,,}
+        has_backtick=false
+        has_shell_command=false
+        local threshold
+        threshold=2
 
-	if [[ "${user_query}" =~ \`[^\`]+\` ]]; then
-		has_backtick=true
-	fi
+        declare -A best_scores=()
 
-	if [[ "${lower_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
-		has_shell_command=true
-	fi
+        if [[ "${user_query}" =~ \`[^\`]+\` ]]; then
+                has_backtick=true
+        fi
 
-	for tool in "${TOOLS[@]}"; do
-		score=0
+        if [[ "${lower_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
+                has_shell_command=true
+        fi
 
-		case "${tool}" in
+        while IFS= read -r entry; do
+                [[ -z "${entry}" ]] && continue
+                score="${entry%%:*}"
+                tool="${entry##*:}"
+                if [[ -z "${best_scores[${tool}]:-}" || ${score} -gt ${best_scores[${tool}]} ]]; then
+                        best_scores[${tool}]="${score}"
+                fi
+        done < <(structured_tool_relevance "${user_query}" || true)
+
+        for tool in "${TOOLS[@]}"; do
+                score=0
+
+                case "${tool}" in
                 terminal)
                         if [[ "${has_backtick}" == true || "${has_shell_command}" == true ]]; then
                                 score=5
-                        elif [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* || "${lower_query}" == *"grep"* || "${lower_query}" == *"find "* || "${lower_query}" == *"search files"* ]]; then
+                        elif [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* || "${lower_query}" == *"grep"* || "${lower_query}" == *"find "* || "${lower_query}" == *"search files"* || "${lower_query}" == *"look around"* || "${lower_query}" == *"what's here"* || "${lower_query}" == *"folder"* ]]; then
+                                score=4
+                        elif [[ "${lower_query}" == *"file"* ]]; then
                                 score=3
                         fi
                         ;;
-		reminders_create)
-			if [[ "${lower_query}" == *"remind me"* || "${lower_query}" == *"set a reminder"* || "${lower_query}" == *"add a reminder"* ]]; then
-				score=5
-			fi
-			;;
-		reminders_list)
-			if [[ "${lower_query}" == *"show reminders"* || "${lower_query}" == *"list reminders"* ]]; then
-				score=4
-			fi
-			;;
-		*)
-			if [[ "${lower_query}" == *"note"* || "${lower_query}" == *"notes"* ]]; then
-				case "${tool}" in
-				notes_create)
-					score=5
-					;;
-				notes_append | notes_search | notes_read | notes_list)
-					score=4
-					;;
-				esac
-			fi
+                reminders_create)
+                        if [[ "${lower_query}" == *"remind me"* || "${lower_query}" == *"set a reminder"* || "${lower_query}" == *"add a reminder"* || "${lower_query}" == *"remember to"* ]]; then
+                                score=5
+                        elif [[ "${lower_query}" == *"reminder"* ]]; then
+                                score=3
+                        fi
+                        ;;
+                reminders_list)
+                        if [[ "${lower_query}" == *"show reminders"* || "${lower_query}" == *"list reminders"* || "${lower_query}" == *"what reminders"* ]]; then
+                                score=4
+                        fi
+                        ;;
+                *)
+                        if [[ "${lower_query}" == *"note"* || "${lower_query}" == *"notes"* || "${lower_query}" == *"write this down"* || "${lower_query}" == *"jot"* || "${lower_query}" == *"save this"* ]]; then
+                                case "${tool}" in
+                                notes_create)
+                                        score=5
+                                        ;;
+                                notes_append | notes_search | notes_read | notes_list)
+                                        score=4
+                                        ;;
+                                esac
+                        fi
 
-			if [[ "${lower_query}" == *"${tool,,}"* ]]; then
-				((score < 4)) && score=4
-			fi
-			;;
-		esac
+                        if [[ "${lower_query}" == *"${tool,,}"* ]]; then
+                                ((score < 4)) && score=4
+                        fi
+                        ;;
+                esac
 
-		if [[ ${score} -ge ${threshold} ]]; then
-			scores+=("${score}:${tool}")
-		fi
-	done
+                if [[ ${score} -gt ${best_scores[${tool}]:-0} ]]; then
+                        best_scores[${tool}]="${score}"
+                fi
+        done
 
-	if [[ ${#scores[@]} -eq 0 ]]; then
-		return 0
-	fi
+        local results
+        results=()
+        for tool in "${!best_scores[@]}"; do
+                if ((best_scores[${tool}] >= threshold)); then
+                        results+=("${best_scores[${tool}]}:${tool}")
+                fi
+        done
 
-	printf '%s\n' "${scores[@]}" | sort -r -n -t ':' -k1,1 | head -n 3
+        if [[ ${#results[@]} -eq 0 ]]; then
+                return 0
+        fi
+
+        printf '%s\n' "${results[@]}" | sort -r -n -t ':' -k1,1 | head -n 3
 }
 
 rank_tools() {
