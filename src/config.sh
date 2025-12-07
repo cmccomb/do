@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 #
-# Configuration helpers for the do assistant CLI.
+# Configuration helpers for the okso assistant CLI.
 #
 # Usage:
 #   source "${BASH_SOURCE[0]%/config.sh}/config.sh"
@@ -10,12 +10,10 @@
 #   CONFIG_FILE (string): config path; default resolved in detect_config_file.
 #   MODEL_SPEC (string): HF repo[:file] spec; may be overridden by DO_MODEL.
 #   MODEL_BRANCH (string): HF branch; may be overridden by DO_MODEL_BRANCH.
-#   MODEL_CACHE (string): GGUF cache directory; may be overridden by DO_MODEL_CACHE.
 #   APPROVE_ALL (bool): skip prompts when true.
 #   FORCE_CONFIRM (bool): always prompt when true.
 #   VERBOSITY (int): logging verbosity.
 #   DEFAULT_MODEL_FILE (string): fallback file name for parsing model spec.
-#   MODEL_PATH (string): populated during resolve_model_path.
 #
 # Dependencies:
 #   - bash 5+
@@ -58,10 +56,9 @@ load_config() {
 
 	MODEL_SPEC=${MODEL_SPEC:-"Qwen/Qwen3-1.5B-Instruct-GGUF:${DEFAULT_MODEL_FILE}"}
 	MODEL_BRANCH=${MODEL_BRANCH:-main}
-	MODEL_CACHE=${MODEL_CACHE:-"${HOME}/.do/models"}
-	VERBOSITY=${VERBOSITY:-1}
-	APPROVE_ALL=${APPROVE_ALL:-false}
-	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
+        VERBOSITY=${VERBOSITY:-1}
+        APPROVE_ALL=${APPROVE_ALL:-false}
+        FORCE_CONFIRM=${FORCE_CONFIRM:-false}
 
 	if [[ -n "${DO_MODEL:-}" ]]; then
 		MODEL_SPEC="${DO_MODEL}"
@@ -69,12 +66,9 @@ load_config() {
 	if [[ -n "${DO_MODEL_BRANCH:-}" ]]; then
 		MODEL_BRANCH="${DO_MODEL_BRANCH}"
 	fi
-	if [[ -n "${DO_MODEL_CACHE:-}" ]]; then
-		MODEL_CACHE="${DO_MODEL_CACHE}"
-	fi
-	if [[ -n "${DO_SUPERVISED:-}" ]]; then
-		case "${DO_SUPERVISED}" in
-		false | False | FALSE | 0)
+        if [[ -n "${DO_SUPERVISED:-}" ]]; then
+                case "${DO_SUPERVISED}" in
+                false | False | FALSE | 0)
 			APPROVE_ALL=true
 			;;
 		*)
@@ -88,16 +82,15 @@ load_config() {
 }
 
 write_config_file() {
-	mkdir -p "$(dirname "${CONFIG_FILE}")"
-	cat >"${CONFIG_FILE}" <<EOF_CONFIG
+        mkdir -p "$(dirname "${CONFIG_FILE}")"
+        cat >"${CONFIG_FILE}" <<EOF_CONFIG
 MODEL_SPEC="${MODEL_SPEC}"
 MODEL_BRANCH="${MODEL_BRANCH}"
-MODEL_CACHE="${MODEL_CACHE}"
 VERBOSITY=${VERBOSITY}
 APPROVE_ALL=${APPROVE_ALL}
 FORCE_CONFIRM=${FORCE_CONFIRM}
 EOF_CONFIG
-	printf 'Wrote config to %s\n' "${CONFIG_FILE}"
+        printf 'Wrote config to %s\n' "${CONFIG_FILE}"
 }
 
 parse_model_spec() {
@@ -147,26 +140,20 @@ normalize_approval_flags() {
 	esac
 }
 
-resolve_model_path() {
-	# Derives the cached GGUF path from the HF model spec and validates presence.
-	local model_parts model_repo model_file
-	mapfile -t model_parts < <(parse_model_spec "${MODEL_SPEC}" "${DEFAULT_MODEL_FILE}")
-	model_repo="${model_parts[0]}"
-	model_file="${model_parts[1]}"
-	MODEL_PATH="${MODEL_CACHE%/}/${model_file}"
-
-	if [[ ! -f "${MODEL_PATH}" ]]; then
-		log "ERROR" "Model is missing" "Download via scripts/install --model ${model_repo}:${model_file} --model-branch ${MODEL_BRANCH} --model-cache ${MODEL_CACHE}"
-		exit 1
-	fi
+hydrate_model_spec() {
+        # Normalizes MODEL_SPEC into repo and file components for llama.cpp calls.
+        local model_parts
+        mapfile -t model_parts < <(parse_model_spec "${MODEL_SPEC}" "${DEFAULT_MODEL_FILE}")
+        MODEL_REPO="${model_parts[0]}"
+        MODEL_FILE="${model_parts[1]}"
 }
 
 init_environment() {
-	normalize_approval_flags
-	resolve_model_path
-	if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
-		# shellcheck disable=SC2034
-		IS_MACOS=true
+        normalize_approval_flags
+        hydrate_model_spec
+        if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
+                # shellcheck disable=SC2034
+                IS_MACOS=true
 	fi
 
 	if command -v "${LLAMA_BIN}" >/dev/null 2>&1; then
