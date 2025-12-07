@@ -41,6 +41,7 @@
 
 set -euo pipefail
 
+# Defaults
 APP_NAME="do"
 DEFAULT_PREFIX="/usr/local/do"
 DO_LINK_DIR="${DO_LINK_DIR:-/usr/local/bin}"
