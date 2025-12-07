@@ -1,4 +1,9 @@
-# do Assistant Entrypoint
+[![Run Tests](https://github.com/cmccomb/do/actions/workflows/run_tests.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/run_tests.yml)
+[![Installation](https://github.com/cmccomb/do/actions/workflows/installation.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/installation.yml)
+[![Deploy Installer](https://github.com/cmccomb/do/actions/workflows/deploy_installer.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/deploy_installer.yml)
+
+
+# There is no try, just `do`
 
 A lightweight MCP-inspired planner that wraps a local `llama.cpp` binary, ranks
 registered tools via ToolRAG, and executes them with explicit approval controls
