@@ -39,6 +39,7 @@
                 unset TESTING_PASSTHROUGH
                 MODEL_SPEC="demo/repo:demo.gguf"
                 DEFAULT_MODEL_FILE="demo.gguf"
+                LLAMA_BIN="/bin/true"
                 APPROVE_ALL=false
                 FORCE_CONFIRM=false
                 NOTES_DIR="$(mktemp -d)"
