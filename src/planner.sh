@@ -117,7 +117,7 @@ rank_tools() {
 	fi
 
 	structured_tool_relevance "${user_query}"
-  return $?
+	return $?
 }
 
 derive_tool_query() {
