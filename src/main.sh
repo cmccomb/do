@@ -119,7 +119,8 @@ main() {
 
 	if [[ -z "${ranked_tools}" ]]; then
 		emit_plan_json "${plan_entries}"
-		respond "${USER_QUERY}" ""
+		log "WARN" "No tools selected; responding directly" "${USER_QUERY}"
+		printf '%s\n' "$(respond_text "${USER_QUERY}" "${plan_entries}")"
 		return 0
 	fi
 

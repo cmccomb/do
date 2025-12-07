@@ -63,6 +63,20 @@ EOF
 	[[ "$output" != *"executed"* ]]
 }
 
+@test "conversational phrasing suggests terminal tool" {
+	run ./src/main.sh --config "${CONFIG_FILE}" --yes -- "could you take a quick look at the files in this folder?"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Suggested tools"* ]]
+	[[ "$output" == *"terminal"* ]]
+}
+
+@test "direct responses log fallback when no tools apply" {
+	run ./src/main.sh --config "${CONFIG_FILE}" --yes -- "just chat with me"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"No tools selected; responding directly"* ]]
+	[[ "$output" == *"Responding directly to: just chat with me"* ]]
+}
+
 @test "reminder intent builds reminder plan" {
 	run ./src/main.sh --config "${CONFIG_FILE}" --plan-only -- "remind me to submit grades tomorrow"
 	[ "$status" -eq 0 ]
