@@ -51,14 +51,12 @@ APP_NAME="do"
 DEFAULT_PREFIX="/usr/local/do"
 DO_LINK_DIR="${DO_LINK_DIR:-/usr/local/bin}"
 DEFAULT_LINK_PATH="${DO_LINK_DIR}/${APP_NAME}"
-DEFAULT_MODEL_CACHE="${DO_MODEL_CACHE:-${HOME}/.do/models}"
-DEFAULT_MODEL_FILE="qwen3-1.5b-instruct-q4_k_m.gguf"
-DEFAULT_MODEL_SPEC="${DO_MODEL:-Qwen/Qwen3-1.5B-Instruct-GGUF:${DEFAULT_MODEL_FILE}}"
-DEFAULT_MODEL_BRANCH="${DO_MODEL_BRANCH:-main}"
+DEFAULT_MODEL_FILE="Qwen_Qwen3-1.7B-Q4_K_M.gguf"
+DEFAULT_MODEL_REPO="bartowski/Qwen_Qwen3-1.7B-GGUF"
 DEFAULT_INSTALLER_BASE_URL="https://cmccomb.github.io/do"
 INSTALLER_BASE_URL="${DO_INSTALLER_BASE_URL:-${DEFAULT_INSTALLER_BASE_URL}}"
 DEFAULT_PROJECT_ARCHIVE_URL="${DO_PROJECT_ARCHIVE_URL:-${INSTALLER_BASE_URL%/}/do.tar.gz}"
-LLAMA_BIN="${llama-cli}"
+LLAMA_BIN="llama-cli"
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]-${0-}}"
 if [ -z "${SCRIPT_SOURCE}" ] || [ "${SCRIPT_SOURCE}" = "-" ] || [ ! -f "${SCRIPT_SOURCE}" ]; then
@@ -191,24 +189,6 @@ prepare_source_payload() {
 	SOURCE_PAYLOAD_DIR=$(derive_source_root "${TEMP_ARCHIVE_DIR}")
 }
 
-parse_model_spec() {
-	# $1: model spec in repo[:file] form
-	# $2: default file name
-	local spec default_file repo file
-	spec="$1"
-	default_file="$2"
-
-	if [[ "${spec}" == *:* ]]; then
-		repo="${spec%%:*}"
-		file="${spec#*:}"
-	else
-		repo="${spec}"
-		file="${default_file}"
-	fi
-
-	printf '%s\n%s\n' "${repo}" "${file}"
-}
-
 usage() {
 	cat <<'USAGE'
 Usage: scripts/install.sh [options]
@@ -249,31 +229,6 @@ has_network() {
 		return 1
 	fi
 	curl --head --silent --connect-timeout 3 --max-time 5 https://brew.sh >/dev/null 2>&1
-}
-
-fetch_remote_metadata() {
-	# $1: HF repo, $2: file, $3: branch
-	local repo file branch url headers size checksum
-	repo="$1"
-	file="$2"
-	branch="$3"
-	url="https://huggingface.co/${repo}/resolve/${branch}/${file}"
-
-	headers=()
-	if [ -n "${HF_TOKEN:-}" ]; then
-		headers+=("-H" "Authorization: Bearer ${HF_TOKEN}")
-	fi
-
-	size=$(curl -sI "${headers[@]}" "${url}" | awk '/[Cc]ontent-[Ll]ength/ {print $2}' | tr -d '\r') || size=""
-
-	checksum=""
-	if curl -fsL "${headers[@]}" "${url}.sha256" >/tmp/do-model.sha256 2>/dev/null; then
-		checksum=$(cut -d' ' -f1 </tmp/do-model.sha256)
-	fi
-
-	rm -f /tmp/do-model.sha256
-
-	printf '%s\n%s\n' "${size}" "${checksum}"
 }
 
 compute_sha256() {
@@ -401,47 +356,24 @@ create_symlink() {
 }
 
 download_model() {
-	# $1: HF repo, $2: file, $3: branch, $4: cache dir, $5: force refresh (true/false)
-	local repo file branch cache_dir force_refresh model_path tmp_path meta size checksum llama_args actual_size actual_checksum
+	# $1: HF repo, $2: file, $3: force refresh (true/false)
+	local repo file llama_args
 	repo="$1"
 	file="$2"
-	branch="$3"
-	cache_dir="$4"
-	force_refresh="$5"
-	model_path="${cache_dir%/}/${file}"
-	tmp_path="${model_path}.download"
 
-	mkdir -p "${cache_dir}"
-
-	if [ -f "${model_path}" ] && [ "${force_refresh}" != "true" ]; then
-		log "INFO" "Model already present at ${model_path}"
-		return 0
-	fi
-
-	if ! has_network; then
-		if [ -f "${model_path}" ]; then
-			log "INFO" "Offline mode: skipping model refresh; existing file reused."
-			return 0
-		fi
-		log "ERROR" "Network connectivity required to download model."
-		exit 4
-	fi
 
 	if ! command -v "${LLAMA_BIN}" >/dev/null 2>&1; then
 		log "ERROR" "llama.cpp binary not found at ${LLAMA_BIN}"
 		exit 2
 	fi
 
-	read_lines_into_array meta < <(fetch_remote_metadata "${repo}" "${file}" "${branch}")
-	size="${meta[0]}"
-	checksum="${meta[1]}"
-
-	log "INFO" "Downloading ${file} from ${repo}@${branch}"
+	log "INFO" "Downloading ${file} from ${repo}"
 	llama_args=(
-		"--model" "${tmp_path}"
 		"--hf-repo" "${repo}"
 		"--hf-file" "${file}"
-		"--hf-branch" "${branch}"
+		"-no-cnv"
+		"--prompt" '"Hi"'
+		"-n" "1"
 	)
 	if [ -n "${HF_TOKEN:-}" ]; then
 		llama_args+=("--hf-token" "${HF_TOKEN}")
@@ -451,33 +383,6 @@ download_model() {
 		log "ERROR" "llama.cpp failed to download the model"
 		exit 4
 	fi
-
-	if [ ! -f "${tmp_path}" ]; then
-		log "ERROR" "Download did not produce ${tmp_path}"
-		exit 4
-	fi
-
-	actual_size=$(wc -c <"${tmp_path}")
-	if [ -n "${size}" ] && [ "${actual_size}" -ne "${size}" ]; then
-		log "ERROR" "Downloaded size ${actual_size} does not match expected ${size}"
-		rm -f "${tmp_path}"
-		exit 4
-	fi
-
-	if [ -n "${checksum}" ]; then
-		if ! actual_checksum=$(compute_sha256 "${tmp_path}"); then
-			rm -f "${tmp_path}"
-			exit 4
-		fi
-		if [ "${actual_checksum}" != "${checksum}" ]; then
-			log "ERROR" "Checksum mismatch for ${file}"
-			rm -f "${tmp_path}"
-			exit 4
-		fi
-	fi
-
-	mv -f "${tmp_path}" "${model_path}"
-	log "INFO" "Model ready at ${model_path}"
 }
 
 uninstall() {
@@ -512,10 +417,7 @@ uninstall() {
 main() {
 	local prefix="${DEFAULT_PREFIX}"
 	local mode="install"
-	local model_spec="${DEFAULT_MODEL_SPEC}"
-	local model_branch="${DEFAULT_MODEL_BRANCH}"
-	local model_cache="${DEFAULT_MODEL_CACHE}"
-	local model_repo model_file model_parts refresh_model
+	local model_repo model_file refresh_model
 
 	while [ $# -gt 0 ]; do
 		case "$1" in
@@ -535,30 +437,6 @@ main() {
 			mode="uninstall"
 			shift
 			;;
-		--model)
-			if [ $# -lt 2 ]; then
-				usage
-				exit 1
-			fi
-			model_spec="$2"
-			shift 2
-			;;
-		--model-branch)
-			if [ $# -lt 2 ]; then
-				usage
-				exit 1
-			fi
-			model_branch="$2"
-			shift 2
-			;;
-		--model-cache)
-			if [ $# -lt 2 ]; then
-				usage
-				exit 1
-			fi
-			model_cache="$2"
-			shift 2
-			;;
 		--help | -h)
 			usage
 			exit 0
@@ -570,9 +448,8 @@ main() {
 		esac
 	done
 
-	read_lines_into_array model_parts < <(parse_model_spec "${model_spec}" "${DEFAULT_MODEL_FILE}")
-	model_repo="${model_parts[0]}"
-	model_file="${model_parts[1]}"
+	model_repo="${DEFAULT_MODEL_REPO}"
+	model_file="${DEFAULT_MODEL_FILE}"
 	refresh_model=false
 
 	if [ "${mode}" = "upgrade" ]; then
@@ -593,7 +470,7 @@ main() {
 		prepare_source_payload
 		copy_project_files "${prefix}"
 		create_symlink "${prefix}" "${DEFAULT_LINK_PATH}"
-		download_model "${model_repo}" "${model_file}" "${model_branch}" "${model_cache}" "${refresh_model}"
+		download_model "${model_repo}" "${model_file}"
 		;;
 	uninstall)
 		uninstall "${prefix}" "${DEFAULT_LINK_PATH}"
