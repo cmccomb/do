@@ -31,39 +31,27 @@ source "${BASH_SOURCE[0]%/planner.sh}/tools.sh"
 # shellcheck source=./respond.sh disable=SC1091
 source "${BASH_SOURCE[0]%/planner.sh}/respond.sh"
 
-MIN_TOOL_SCORE=${MIN_TOOL_SCORE:-3}
-
 llama_infer() {
 	# Runs llama.cpp with HF caching enabled for the configured model.
 	local prompt
 	prompt="$1"
+	stop_string="$2"
 
-	echo "${prompt}"
+	# If a stop string is provided, use it to terminate output.
+	if [[ -n "${stop_string}" ]]; then
+		"${LLAMA_BIN}" \
+			--hf-repo "${MODEL_REPO}" \
+			--hf-file "${MODEL_FILE}" \
+			-no-cnv --no-display-prompt --verbose -r "${stop_string}" \
+			-p "${prompt}" 2>/dev/null || true
+		return
+	fi
 
 	"${LLAMA_BIN}" \
 		--hf-repo "${MODEL_REPO}" \
 		--hf-file "${MODEL_FILE}" \
-		-no-cnv \
+		-no-cnv --no-display-prompt --verbose \
 		-p "${prompt}" 2>/dev/null || true
-}
-
-filter_ranked_tools() {
-	local ranked entry score filtered
-	ranked="$1"
-	filtered=()
-	while IFS= read -r entry; do
-		[[ -z "${entry}" ]] && continue
-		score="${entry%%:*}"
-		if ((score >= MIN_TOOL_SCORE)); then
-			filtered+=("${entry}")
-		fi
-	done <<<"${ranked}"
-
-	if [[ ${#filtered[@]} -eq 0 && -n "${ranked}" ]]; then
-		filtered+=("${ranked%%$'\n'*}")
-	fi
-
-	printf '%s\n' "${filtered[@]}"
 }
 
 structured_tool_relevance() {
@@ -85,26 +73,34 @@ structured_tool_relevance() {
 	read -r -d '' grammar <<GRAM || true
 root ::= "{" entries? "}"
 entries ::= pair ("," pair)*
-pair ::= tool-name ":" bool
+pair ::= tool-key ":" bool
+
+tool-key ::= "\"" tool-name "\""
 tool-name ::= ${tool_alternatives}
+
 bool ::= "true" | "false"
 GRAM
 
-	prompt="Return a compact JSON map of tool relevance using boolean flags."
+	prompt="Return a compact JSON map of tool relevance using boolean flags. The available tools are: "
+	for tool in "${TOOLS[@]}"; do
+		prompt+=$(printf '%s ' "${tool}")
+	done
 	prompt+=" User request: ${user_query}"
 
 	raw="$(${LLAMA_BIN} \
 		--hf-repo "${MODEL_REPO}" \
 		--hf-file "${MODEL_FILE}" \
 		-no-cnv \
+		--no-display-prompt \
 		--grammar "${grammar}" \
+		-r "}" \
 		-p "${prompt}" 2>/dev/null || true)"
 
 	jq -r '
                 if type == "array" then
-                        .[] | select(.relevant == true and .tool != null) | "5:\(.tool)"
+                        .[] | select(.relevant == true and .tool != null) | "\(.tool)"
                 elif type == "object" then
-                        to_entries[] | select(.value == true) | "5:\(.key)"
+                        to_entries[] | select(.value == true) | "\(.key)"
                 else
                         empty
                 end
@@ -120,8 +116,8 @@ rank_tools() {
 		return 0
 	fi
 
-	parsed="$(structured_tool_relevance "${user_query}")"
-	printf '%s\n' "$(filter_ranked_tools "${parsed}")"
+	structured_tool_relevance "${user_query}"
+  return $?
 }
 
 derive_tool_query() {
@@ -315,7 +311,6 @@ ${tool_lines}
 Previous steps:
 ${history}
 PROMPT
-	#	PROMPT
 }
 
 allowed_tool_list() {
