@@ -28,8 +28,8 @@ source "${BASH_SOURCE[0]%/tools/terminal.sh}/logging.sh"
 source "${BASH_SOURCE[0]%/terminal.sh}/registry.sh"
 
 TERMINAL_ALLOWED_COMMANDS=(
-        "status"
-        "pwd"
+	"status"
+	"pwd"
 	"ls"
 	"cd"
 	"cat"
@@ -46,41 +46,41 @@ TERMINAL_ALLOWED_COMMANDS=(
 	"rm"
 	"stat"
 	"wc"
-        "du"
-        "base64"
+	"du"
+	"base64"
 )
 
 TERMINAL_SESSION_ID="${TERMINAL_SESSION_ID:-}" # string session identifier
 TERMINAL_WORKDIR="${TERMINAL_WORKDIR:-}"       # string working directory for the persistent session
 
 derive_terminal_query() {
-        # Arguments:
-        #   $1 - user query (string)
-        local user_query lower_query
-        user_query="$1"
-        lower_query=${user_query,,}
+	# Arguments:
+	#   $1 - user query (string)
+	local user_query lower_query
+	user_query="$1"
+	lower_query=${user_query,,}
 
-        if [[ "${user_query}" =~ \`([^\`]+)\` ]]; then
-                printf '%s\n' "${BASH_REMATCH[1]}"
-                return
-        fi
+	if [[ "${user_query}" =~ \`([^\`]+)\` ]]; then
+		printf '%s\n' "${BASH_REMATCH[1]}"
+		return
+	fi
 
-        if [[ "${lower_query}" == *"todo"* ]]; then
-                printf 'rg -n "TODO" .\n'
-                return
-        fi
+	if [[ "${lower_query}" == *"todo"* ]]; then
+		printf 'rg -n "TODO" .\n'
+		return
+	fi
 
-        if [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* ]]; then
-                printf 'ls -la\n'
-                return
-        fi
+	if [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* ]]; then
+		printf 'ls -la\n'
+		return
+	fi
 
-        if [[ "${user_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
-                printf '%s\n' "${BASH_REMATCH[2]}"
-                return
-        fi
+	if [[ "${user_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
+		printf '%s\n' "${BASH_REMATCH[2]}"
+		return
+	fi
 
-        printf 'status\n'
+	printf 'status\n'
 }
 
 terminal_init_session() {

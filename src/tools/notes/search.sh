@@ -29,13 +29,13 @@ source "${BASH_SOURCE[0]%/tools/notes/search.sh}/logging.sh"
 source "${BASH_SOURCE[0]%/search.sh}/common.sh"
 
 derive_notes_search_query() {
-        # Arguments:
-        #   $1 - user query (string)
-        printf '%s\n' "$1"
+	# Arguments:
+	#   $1 - user query (string)
+	printf '%s\n' "$1"
 }
 
 tool_notes_search() {
-        local query folder_script
+	local query folder_script
 	query=${TOOL_QUERY:-""}
 
 	if ! notes_require_platform; then

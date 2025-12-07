@@ -42,16 +42,16 @@
 #   0 for success, non-zero bubbled from downstream helpers.
 
 create_default_settings() {
-        # Arguments:
-        #   $1 - name of associative array to populate
-        local settings_name
-        settings_name="$1"
-        declare -gA "${settings_name}"
-        local -n settings_ref=$settings_name
+	# Arguments:
+	#   $1 - name of associative array to populate
+	local settings_name
+	settings_name="$1"
+	declare -gA "${settings_name}"
+	local -n settings_ref=$settings_name
 
-        settings_ref=()
+	settings_ref=()
 
-        settings_ref[version]="0.1.0"
+	settings_ref[version]="0.1.0"
 	settings_ref[llama_bin]="${LLAMA_BIN:-llama-cli}"
 	settings_ref[default_model_file]="Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
 	settings_ref[config_dir]="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
@@ -163,7 +163,7 @@ prepare_environment_with_settings() {
 }
 # shellcheck disable=SC2034
 render_plan_outputs() {
-        # Arguments:
+	# Arguments:
 	#   $1 - name of variable to receive action ("continue" or "exit")
 	#   $2 - name of settings associative array
 	#   $3 - ranked tools string
@@ -216,15 +216,15 @@ select_response_strategy() {
 	ranked_tools="$1"
 	plan_entries="$2"
 
-        apply_settings_to_globals "${settings_name}"
+	apply_settings_to_globals "${settings_name}"
 
-        if [[ -z "${ranked_tools}" ]]; then
-                log "WARN" "No tools selected; responding directly" "${USER_QUERY}"
-                printf 'No tools selected; responding directly.\n'
-                printf '%s\n' "$(respond_text "${USER_QUERY}" 256)"
-                printf 'Execution summary: no tool runs.\n'
-                return 0
-        fi
+	if [[ -z "${ranked_tools}" ]]; then
+		log "WARN" "No tools selected; responding directly" "${USER_QUERY}"
+		printf 'No tools selected; responding directly.\n'
+		printf '%s\n' "$(respond_text "${USER_QUERY}" 256)"
+		printf 'Execution summary: no tool runs.\n'
+		return 0
+	fi
 
 	react_loop "${USER_QUERY}" "${ranked_tools}" "${plan_entries}"
 }
