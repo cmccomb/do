@@ -32,27 +32,6 @@
 #   0 on success, non-zero on argument or runtime errors.
 set -euo pipefail
 
-VERSION="0.1.0"
-LLAMA_BIN=${LLAMA_BIN:-"llama-cli"}
-DEFAULT_MODEL_FILE="Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
-CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
-CONFIG_FILE="${CONFIG_DIR}/config.env"
-MODEL_SPEC="bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:${DEFAULT_MODEL_FILE}"
-MODEL_BRANCH="main"
-MODEL_REPO=""
-MODEL_FILE=""
-APPROVE_ALL=false
-FORCE_CONFIRM=false
-DRY_RUN=false
-PLAN_ONLY=false
-VERBOSITY=1
-NOTES_DIR="${HOME}/.okso"
-LLAMA_AVAILABLE=false
-USE_REACT_LLAMA=${USE_REACT_LLAMA:-false}
-IS_MACOS=false
-COMMAND="run"
-USER_QUERY=""
-
 resolve_script_dir() {
 	local source_path source_dir
 	source_path="${BASH_SOURCE[0]}"
@@ -81,61 +60,33 @@ source "${SCRIPT_DIR}/planner.sh"
 source "${SCRIPT_DIR}/respond.sh"
 # shellcheck source=./cli.sh disable=SC1091
 source "${SCRIPT_DIR}/cli.sh"
+# shellcheck source=./runtime.sh disable=SC1091
+source "${SCRIPT_DIR}/runtime.sh"
 
 main() {
-	local ranked_tools plan_entries
-	detect_config_file "$@"
-	load_config
-	parse_args "$@"
+	local -A settings
+	local ranked_tools plan_entries plan_action
 
-	normalize_approval_flags
+	load_runtime_settings settings "$@"
 
-	if [[ "${COMMAND}" == "init" ]]; then
+	if [[ "${settings[command]}" == "init" ]]; then
+		apply_settings_to_globals settings
 		write_config_file
 		return 0
 	fi
 
-	init_environment
-	init_tool_registry
-	initialize_tools
-	log "INFO" "Starting tool selection" "${USER_QUERY}"
-	ranked_tools="$(rank_tools "${USER_QUERY}")"
+	prepare_environment_with_settings settings
+	log "INFO" "Starting tool selection" "${settings[user_query]}"
+	ranked_tools="$(rank_tools "${settings[user_query]}")"
 	log "INFO" "Selected tools" "${ranked_tools}"
-	plan_entries="$(build_plan_entries "${ranked_tools}" "${USER_QUERY}")"
+	plan_entries="$(build_plan_entries "${ranked_tools}" "${settings[user_query]}")"
 
-	if [[ -z "${ranked_tools}" ]]; then
-		printf 'Suggested tools: none.\n'
-	else
-		printf 'Suggested tools:\n'
-		while IFS= read -r ranked_entry; do
-			[[ -z "${ranked_entry}" ]] && continue
-			printf ' - %s\n' "${ranked_entry#*:}"
-		done <<<"${ranked_tools}"
-	fi
-
-	if [[ "${PLAN_ONLY}" == true ]]; then
-		emit_plan_json "${plan_entries}"
+	render_plan_outputs plan_action settings "${ranked_tools}" "${plan_entries}"
+	if [[ "${plan_action}" == "exit" ]]; then
 		return 0
 	fi
 
-	if [[ "${DRY_RUN}" == true ]]; then
-		printf 'Dry run: planned tool calls (no execution).\n'
-		emit_plan_json "${plan_entries}"
-		while IFS='|' read -r tool query score; do
-			[[ -z "${tool}" ]] && continue
-			printf '%s\n' "${query}"
-		done <<<"${plan_entries}"
-		return 0
-	fi
-
-	if [[ -z "${ranked_tools}" ]]; then
-		log "WARN" "No tools selected; responding directly" "${USER_QUERY}"
-		printf 'No tools selected; responding directly.\n'
-		printf '%s\n' "$(respond_text "${USER_QUERY}" 256)"
-		return 0
-	fi
-
-	react_loop "${USER_QUERY}" "${ranked_tools}" "${plan_entries}"
+	select_response_strategy settings "${ranked_tools}" "${plan_entries}"
 }
 
 main "$@"
