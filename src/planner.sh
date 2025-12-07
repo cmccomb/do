@@ -19,6 +19,7 @@
 #   - bash 5+
 #   - optional llama.cpp binary
 #   - jq
+#   - gum (for interactive approvals; falls back to POSIX prompts)
 #
 # Exit codes:
 #   Functions return non-zero on misuse; fatal errors logged by caller.
@@ -353,17 +354,17 @@ emit_plan_json() {
 }
 
 should_prompt_for_tool() {
-	if [[ "${PLAN_ONLY}" == true || "${DRY_RUN}" == true ]]; then
-		return 1
-	fi
-	if [[ "${FORCE_CONFIRM}" == true ]]; then
-		return 0
-	fi
-	if [[ "${APPROVE_ALL}" == true ]]; then
-		return 1
-	fi
+        if [[ "${PLAN_ONLY}" == true || "${DRY_RUN}" == true ]]; then
+                return 1
+        fi
+        if [[ "${FORCE_CONFIRM}" == true ]]; then
+                return 0
+        fi
+        if [[ "${APPROVE_ALL}" == true ]]; then
+                return 1
+        fi
 
-	return 0
+        return 0
 }
 
 confirm_tool() {
@@ -373,7 +374,18 @@ confirm_tool() {
                 return 0
         fi
 
-        printf 'Execute tool "%s"? [y/N]: ' "${tool_name}" >&2
+        local prompt
+        prompt="Execute tool \"${tool_name}\"?"
+        if command -v gum >/dev/null 2>&1; then
+                if ! gum confirm --affirmative "Run" --negative "Skip" "${prompt}"; then
+                        log "WARN" "Tool execution declined" "${tool_name}"
+                        printf '[%s skipped]\n' "${tool_name}"
+                        return 1
+                fi
+                return 0
+        fi
+
+        printf '%s [y/N]: ' "${prompt}" >&2
         read -r reply
         if [[ "${reply}" != "y" && "${reply}" != "Y" ]]; then
                 log "WARN" "Tool execution declined" "${tool_name}"

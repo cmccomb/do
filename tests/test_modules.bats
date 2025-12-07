@@ -72,3 +72,72 @@ run bash -lc $'source ./src/planner.sh; plan=$'"'"'terminal|echo "hi"|4\nnotes_c
 [ "$(echo "${output}" | jq -r '.[0].query')" = 'echo "hi"' ]
 [ "$(echo "${output}" | jq -r '.[1].score')" = "3" ]
 }
+
+@test "confirm_tool uses gum when available" {
+run bash -lc '
+tmpdir=$(mktemp -d)
+export LOG_FILE="${tmpdir}/gum.log"
+cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+printf "%s\n" "$*" >>"${LOG_FILE}"
+exit 0
+EOF
+chmod +x "${tmpdir}/gum"
+PATH="${tmpdir}:$PATH"
+FORCE_CONFIRM=true
+APPROVE_ALL=false
+DRY_RUN=false
+PLAN_ONLY=false
+source ./src/planner.sh
+confirm_tool "terminal"
+cat "${LOG_FILE}"
+'
+ [ "$status" -eq 0 ]
+[ "${lines[0]}" = "confirm --affirmative Run --negative Skip Execute tool \"terminal\"?" ]
+}
+
+@test "confirm_tool surfaces skipped message when gum declines" {
+run bash -lc '
+tmpdir=$(mktemp -d)
+export LOG_FILE="${tmpdir}/gum.log"
+cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+printf "%s\n" "$*" >>"${LOG_FILE}"
+exit 1
+EOF
+chmod +x "${tmpdir}/gum"
+PATH="${tmpdir}:$PATH"
+FORCE_CONFIRM=true
+APPROVE_ALL=false
+DRY_RUN=false
+PLAN_ONLY=false
+source ./src/planner.sh
+confirm_tool "terminal"
+status=$?
+cat "${LOG_FILE}"
+exit ${status}
+'
+ [ "$status" -eq 1 ]
+[ "${lines[1]}" = "[terminal skipped]" ]
+[ "${lines[2]}" = "confirm --affirmative Run --negative Skip Execute tool \"terminal\"?" ]
+}
+
+@test "show_help renders through gum when available" {
+run bash -lc '
+tmpdir=$(mktemp -d)
+export LOG_FILE="${tmpdir}/gum.log"
+cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+printf "%s\n" "$*" >>"${LOG_FILE}"
+cat
+EOF
+chmod +x "${tmpdir}/gum"
+PATH="${tmpdir}:$PATH"
+source ./src/cli.sh
+show_help
+printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
+'
+ [ "$status" -eq 0 ]
+ last_index=$(( ${#lines[@]} - 1 ))
+ [ "${lines[${last_index}]}" = "LOG:format" ]
+}
