@@ -20,27 +20,26 @@
 source "${BASH_SOURCE[0]%/respond.sh}/logging.sh"
 
 respond_text() {
-        # Arguments:
-        #   $1 - user query (string)
-        #   $2 - prior observations (string, optional)
-        local user_query observations prompt
-        user_query="$1"
-        observations="${2:-}"
+	# Arguments:
+	#   $1 - user query (string)
+	#   $2 - prior observations (string, optional)
+	local user_query observations prompt
+	user_query="$1"
+	observations="${2:-}"
 
-        if [[ "${LLAMA_AVAILABLE}" == true ]]; then
-                prompt="Provide a concise answer to the user without suggesting tools. User request: ${user_query}. Context: ${observations}"
-                llama_infer "${prompt}"
-                return 0
-        fi
+	if [[ "${LLAMA_AVAILABLE}" == true ]]; then
+		prompt="Provide a concise answer to the user without suggesting tools. User request: ${user_query}. Context: ${observations}"
+		llama_infer "${prompt}"
+		return 0
+	fi
 
-        printf 'Responding directly to: %s\n' "${user_query}"
+	printf 'Responding directly to: %s\n' "${user_query}"
 }
 
 respond() {
-        local user_query observations answer
-        user_query="$1"
-        observations="${2:-}"
-        answer="$(respond_text "${user_query}" "${observations}")"
-        printf '%s\n' "${answer}"
+	local user_query observations answer
+	user_query="$1"
+	observations="${2:-}"
+	answer="$(respond_text "${user_query}" "${observations}")"
+	printf '%s\n' "${answer}"
 }
-

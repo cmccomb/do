@@ -82,10 +82,10 @@ source "${SCRIPT_DIR}/respond.sh"
 source "${SCRIPT_DIR}/cli.sh"
 
 main() {
-        local ranked_tools plan_entries
-        detect_config_file "$@"
-        load_config
-        parse_args "$@"
+	local ranked_tools plan_entries
+	detect_config_file "$@"
+	load_config
+	parse_args "$@"
 
 	normalize_approval_flags
 
@@ -94,32 +94,32 @@ main() {
 		return 0
 	fi
 
-        init_environment
-        init_tool_registry
-        initialize_tools
-        log "DEBUG" "Starting tool selection" "${USER_QUERY}"
-        ranked_tools="$(rank_tools "${USER_QUERY}")"
-        plan_entries="$(build_plan_entries "${ranked_tools}" "${USER_QUERY}")"
-        printf '%s\n' "$(generate_tool_prompt "${USER_QUERY}" "${ranked_tools}")"
+	init_environment
+	init_tool_registry
+	initialize_tools
+	log "DEBUG" "Starting tool selection" "${USER_QUERY}"
+	ranked_tools="$(rank_tools "${USER_QUERY}")"
+	plan_entries="$(build_plan_entries "${ranked_tools}" "${USER_QUERY}")"
+	printf '%s\n' "$(generate_tool_prompt "${USER_QUERY}" "${ranked_tools}")"
 
-        if [[ "${PLAN_ONLY}" == true ]]; then
-                emit_plan_json "${plan_entries}"
-                return 0
-        fi
+	if [[ "${PLAN_ONLY}" == true ]]; then
+		emit_plan_json "${plan_entries}"
+		return 0
+	fi
 
-        if [[ "${DRY_RUN}" == true ]]; then
-                printf 'Dry run: planned tool calls (no execution).\n'
-                emit_plan_json "${plan_entries}"
-                return 0
-        fi
+	if [[ "${DRY_RUN}" == true ]]; then
+		printf 'Dry run: planned tool calls (no execution).\n'
+		emit_plan_json "${plan_entries}"
+		return 0
+	fi
 
-        if [[ -z "${ranked_tools}" ]]; then
-                emit_plan_json "${plan_entries}"
-                respond "${USER_QUERY}" ""
-                return 0
-        fi
+	if [[ -z "${ranked_tools}" ]]; then
+		emit_plan_json "${plan_entries}"
+		respond "${USER_QUERY}" ""
+		return 0
+	fi
 
-        react_loop "${USER_QUERY}" "${ranked_tools}" "${plan_entries}"
+	react_loop "${USER_QUERY}" "${ranked_tools}" "${plan_entries}"
 }
 
 main "$@"
