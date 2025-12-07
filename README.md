@@ -45,6 +45,14 @@ For manual setups, ensure `bash` 5+, `llama.cpp` (the `llama-cli` binary, option
 for heuristic mode), `fd`, and `rg` are on your `PATH`, then run the script directly
 with `./src/main.sh`.
 
+Because `do` is a reserved shell keyword, invoke the installed symlink via its
+full path (for example, `/usr/local/bin/do --help`) or prefix it with
+`command`:
+
+```bash
+command do -- --help
+```
+
 ## Configuration
 
 The CLI defaults are stored in `${XDG_CONFIG_HOME:-~/.config}/do/config.env`.
