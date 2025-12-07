@@ -110,6 +110,10 @@ main() {
 	if [[ "${DRY_RUN}" == true ]]; then
 		printf 'Dry run: planned tool calls (no execution).\n'
 		emit_plan_json "${plan_entries}"
+		while IFS='|' read -r tool query score; do
+			[[ -z "${tool}" ]] && continue
+			printf '%s\n' "${query}"
+		done <<<"${plan_entries}"
 		return 0
 	fi
 

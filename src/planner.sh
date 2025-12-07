@@ -18,6 +18,7 @@
 # Dependencies:
 #   - bash 5+
 #   - optional llama.cpp binary
+#   - jq
 #
 # Exit codes:
 #   Functions return non-zero on misuse; fatal errors logged by caller.
@@ -46,7 +47,8 @@ llama_infer() {
 build_ranking_prompt() {
 	local user_query prompt tool
 	user_query="$1"
-	prompt="You are selecting tools to execute for a request. Respond with only the tools needed as lines in the format: tool=<name> score=<0-5> reason=<short justification>. Do not invent tools.\nRequest: ${user_query}\nAvailable tools:"
+	prompt=$'You are selecting tools to execute for a request. Respond ONLY with a JSON array of objects formatted as [{"tool":"name","score":0-5,"reason":"brief justification"}]. Do not invent tools.'
+	prompt+=$'\nRequest: '${user_query}'\nAvailable tools:'
 
 	for tool in "${TOOLS[@]}"; do
 		prompt+=$(
@@ -66,23 +68,21 @@ parse_llama_ranking() {
 	results=()
 
 	while IFS= read -r raw_line; do
-		if [[ "${raw_line}" =~ tool[=:\ ]*([a-zA-Z0-9_-]+)[[:space:]]+score[=:\ ]*([0-5]) ]]; then
-			tool="${BASH_REMATCH[1]}"
-			score="${BASH_REMATCH[2]}"
-			if [[ -n "${TOOL_DESCRIPTION[${tool}]:-}" ]]; then
-				if [[ -z "${best_scores[${tool}]:-}" || ${score} -gt ${best_scores[${tool}]} ]]; then
-					best_scores[${tool}]="${score}"
-				fi
-			fi
-		fi
-	done <<<"${raw}"
+	        score="${raw_line%%:*}"
+	        tool="${raw_line##*:}"
+	        if [[ -n "${TOOL_DESCRIPTION[${tool}]:-}" ]]; then
+	                if [[ -z "${best_scores[${tool}]:-}" || ${score} -gt ${best_scores[${tool}]} ]]; then
+	                        best_scores[${tool}]="${score}"
+	                fi
+	        fi
+	done < <(jq -r '.[] | select(.tool != null and .score != null) | (.score | tonumber) as $score | "\($score):\(.tool)"' <<<"${raw}" 2>/dev/null)
 
 	for tool in "${!best_scores[@]}"; do
-		results+=("${best_scores[${tool}]}:${tool}")
+	        results+=("${best_scores[${tool}]}:${tool}")
 	done
 
 	if [[ ${#results[@]} -eq 0 ]]; then
-		return 1
+	        return 1
 	fi
 
 	printf '%s\n' "${results[@]}" | sort -r -n -t ':' -k1,1 | head -n 3
@@ -225,10 +225,10 @@ derive_tool_query() {
 			return
 		fi
 
-		if [[ "${lower_query}" == *"todo"* ]]; then
-			printf 'rg -n "TODO" .\n'
-			return
-		fi
+                if [[ "${lower_query}" == *"todo"* ]]; then
+                        printf 'rg -n "TODO" .\n'
+                        return
+                fi
 
 		if [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* ]]; then
 			printf 'ls -la\n'
@@ -276,21 +276,17 @@ derive_tool_query() {
 }
 
 emit_plan_json() {
-	local plan_entries entry first tool query score
-	plan_entries="$1"
-	first=true
-	printf '['
-	while IFS=$'|' read -r tool query score; do
-		[[ -z "${tool}" ]] && continue
-		if [[ "${first}" == true ]]; then
-			first=false
-		else
-			printf ','
-		fi
-		printf '{"tool":"%s","query":"%s","score":%s}' \
-			"$(json_escape "${tool}")" "$(json_escape "${query}")" "${score:-0}"
-	done <<<"${plan_entries}"
-	printf ']\n'
+        local plan_entries
+        plan_entries="$1"
+
+        while IFS=$'|' read -r tool query score; do
+                [[ -z "${tool}" ]] && continue
+                jq -n \
+                        --arg tool "${tool}" \
+                        --arg query "${query}" \
+                        --argjson score "${score:-0}" \
+                        '{tool:$tool, query:$query, score:$score}'
+        done <<<"${plan_entries}" | jq -sc '.'
 }
 
 should_prompt_for_tool() {
@@ -328,15 +324,15 @@ build_plan_entries() {
 	local ranked user_query entry score tool plan query
 	ranked="$1"
 	user_query="$2"
-	plan=""
+        plan=""
 
-	while IFS= read -r entry; do
-		[[ -z "${entry}" ]] && continue
-		score="${entry%%:*}"
-		tool="${entry##*:}"
-		query="$(derive_tool_query "${tool}" "${user_query}")"
-		plan+=$(printf '%s|%s|%s\n' "${tool}" "${query}" "${score}")
-	done <<<"${ranked}"
+        while IFS= read -r entry; do
+                [[ -z "${entry}" ]] && continue
+                score="${entry%%:*}"
+                tool="${entry##*:}"
+                query="$(derive_tool_query "${tool}" "${user_query}")"
+                plan+="${tool}|${query}|${score}"$'\n'
+        done <<<"${ranked}"
 
 	printf '%s' "${plan}"
 }
@@ -416,9 +412,9 @@ fallback_action_from_plan() {
 	user_query="$3"
 	if ((step_index < ${#plan_entries[@]})); then
 		IFS='|' read -r tool query score <<<"${plan_entries[${step_index}]}"
-		printf '{"type":"tool","tool":"%s","query":"%s"}\n' "${tool}" "$(json_escape "${query}")"
+		jq -n --arg tool "${tool}" --arg query "${query}" '{type:"tool", tool:$tool, query:$query}'
 	else
-		printf '{"type":"final","answer":"%s"}\n' "$(json_escape "$(respond_text "${user_query}" "")")"
+		jq -n --arg answer "$(respond_text "${user_query}" "")" '{type:"final", answer:$answer}'
 	fi
 }
 

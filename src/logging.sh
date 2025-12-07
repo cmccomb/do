@@ -12,6 +12,7 @@
 # Dependencies:
 #   - bash 5+
 #   - date (coreutils)
+#   - jq
 #
 # Exit codes:
 #   None directly; callers handle failures.
@@ -44,18 +45,11 @@ log() {
 	esac
 
 	if [[ ${should_emit} -eq 1 ]]; then
-		printf '{"time":"%s","level":"%s","message":"%s","detail":"%s"}\n' \
-			"${timestamp}" "${level}" "${message}" "${detail}"
+		jq -cn \
+			--arg time "${timestamp}" \
+			--arg level "${level}" \
+			--arg message "${message}" \
+			--arg detail "${detail}" \
+			'{time:$time, level:$level, message:$message, detail:$detail}'
 	fi
-}
-
-json_escape() {
-	# Arguments:
-	#   $1 - raw string
-	local raw escaped
-	raw="$1"
-	escaped="${raw//\\/\\\\}"
-	escaped="${escaped//"/\\"/}"
-	escaped="${escaped//$'\n'/\\n}"
-	printf '%s' "${escaped}"
 }
