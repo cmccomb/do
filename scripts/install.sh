@@ -57,6 +57,9 @@ DEFAULT_INSTALLER_BASE_URL="https://cmccomb.github.io/do"
 INSTALLER_BASE_URL="${DO_INSTALLER_BASE_URL:-${DEFAULT_INSTALLER_BASE_URL}}"
 DEFAULT_PROJECT_ARCHIVE_URL="${DO_PROJECT_ARCHIVE_URL:-${INSTALLER_BASE_URL%/}/do.tar.gz}"
 LLAMA_BIN="llama-cli"
+MODEL_BRANCH="${DO_MODEL_BRANCH:-main}"
+MODEL_CACHE="${DO_MODEL_CACHE:-${HOME}/.do/models}"
+MODEL_SPEC="${DO_MODEL:-${DEFAULT_MODEL_REPO}:${DEFAULT_MODEL_FILE}}"
 
 SCRIPT_SOURCE="${BASH_SOURCE[0]-${0-}}"
 if [ -z "${SCRIPT_SOURCE}" ] || [ "${SCRIPT_SOURCE}" = "-" ] || [ ! -f "${SCRIPT_SOURCE}" ]; then
@@ -84,6 +87,38 @@ log() {
 	# $1: level, $2: message
 	printf '[%s] %s\n' "$1" "$2"
 }
+
+detect_macos() {
+	local uname_bin
+	uname_bin=$(command -v uname || true)
+
+	if [ -n "${uname_bin}" ] && [ "$(${uname_bin} -s)" = "Darwin" ]; then
+		printf 'true\n'
+		return 0
+	fi
+
+	printf 'false\n'
+}
+
+parse_model_spec() {
+	# $1: model spec repo[:file]
+	# $2: default file name
+	local spec default_file repo file
+	spec="$1"
+	default_file="$2"
+
+	if [[ "${spec}" == *:* ]]; then
+		repo="${spec%%:*}"
+		file="${spec#*:}"
+	else
+		repo="${spec}"
+		file="${default_file}"
+	fi
+
+	printf '%s\n%s\n' "${repo}" "${file}"
+}
+
+IS_MACOS=$(detect_macos)
 
 read_lines_into_array() {
 	# $1: destination array name
@@ -197,7 +232,7 @@ Options:
   --prefix PATH     Installation prefix (default: /usr/local/do)
   --upgrade         Reinstall project files and refresh the model download
   --uninstall       Remove installed files and symlink
-  --model VALUE     HF repo[:file] for llama.cpp download (default: Qwen/Qwen3-1.5B-Instruct-GGUF:qwen3-1.5b-instruct-q4_k_m.gguf)
+  --model VALUE     HF repo[:file] for llama.cpp download (default: bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf)
   --model-branch BRANCH
                     HF branch or tag to download from (default: main)
   --model-cache DIR Directory to store downloaded GGUF files (default: ~/.do/models)
@@ -218,7 +253,7 @@ USAGE
 }
 
 require_macos() {
-	if [ "$(uname -s)" != "Darwin" ]; then
+	if [ "${IS_MACOS}" != "true" ]; then
 		log "ERROR" "This installer only supports macOS."
 		exit 3
 	fi
@@ -357,29 +392,51 @@ create_symlink() {
 
 download_model() {
 	# $1: HF repo, $2: file, $3: force refresh (true/false)
-	local repo file llama_args
+	local repo file refresh cache_path llama_args
 	repo="$1"
 	file="$2"
+	refresh="${3:-false}"
+	cache_path="${MODEL_CACHE%/}/${file}"
 
+	if [ "${refresh}" != "true" ] && [ -f "${cache_path}" ]; then
+		log "INFO" "Model already present at ${cache_path}; skipping download."
+		return 0
+	fi
+
+	if [ "${DO_INSTALLER_ASSUME_OFFLINE:-false}" = "true" ]; then
+		if [ -f "${cache_path}" ]; then
+			log "INFO" "Offline mode enabled; using cached model at ${cache_path}."
+			return 0
+		fi
+
+		log "ERROR" "Offline mode enabled and model missing at ${cache_path}."
+		exit 4
+	fi
 
 	if ! command -v "${LLAMA_BIN}" >/dev/null 2>&1; then
 		log "ERROR" "llama.cpp binary not found at ${LLAMA_BIN}"
 		exit 2
 	fi
 
-	log "INFO" "Downloading ${file} from ${repo}"
+	log "INFO" "Downloading ${file} from ${repo} into ${MODEL_CACHE}"
+	mkdir -p "${MODEL_CACHE}"
 	llama_args=(
 		"--hf-repo" "${repo}"
 		"--hf-file" "${file}"
 		"-no-cnv"
 		"--prompt" '"Hi"'
 		"-n" "1"
+		"--hf-branch" "${MODEL_BRANCH}"
 	)
 	if [ -n "${HF_TOKEN:-}" ]; then
 		llama_args+=("--hf-token" "${HF_TOKEN}")
 	fi
 
-	if ! "${LLAMA_BIN}" "${llama_args[@]}"; then
+	if [ "${refresh}" = "true" ] && [ -f "${cache_path}" ]; then
+		rm -f "${cache_path}"
+	fi
+
+	if ! (cd "${MODEL_CACHE}" && "${LLAMA_BIN}" "${llama_args[@]}"); then
 		log "ERROR" "llama.cpp failed to download the model"
 		exit 4
 	fi
@@ -417,7 +474,9 @@ uninstall() {
 main() {
 	local prefix="${DEFAULT_PREFIX}"
 	local mode="install"
-	local model_repo model_file refresh_model
+	local model_repo model_file refresh_model model_parts model_spec
+
+	model_spec="${MODEL_SPEC}"
 
 	while [ $# -gt 0 ]; do
 		case "$1" in
@@ -437,6 +496,30 @@ main() {
 			mode="uninstall"
 			shift
 			;;
+		--model)
+			if [ $# -lt 2 ]; then
+				usage
+				exit 1
+			fi
+			model_spec="$2"
+			shift 2
+			;;
+		--model-branch)
+			if [ $# -lt 2 ]; then
+				usage
+				exit 1
+			fi
+			MODEL_BRANCH="$2"
+			shift 2
+			;;
+		--model-cache)
+			if [ $# -lt 2 ]; then
+				usage
+				exit 1
+			fi
+			MODEL_CACHE="$2"
+			shift 2
+			;;
 		--help | -h)
 			usage
 			exit 0
@@ -448,8 +531,9 @@ main() {
 		esac
 	done
 
-	model_repo="${DEFAULT_MODEL_REPO}"
-	model_file="${DEFAULT_MODEL_FILE}"
+	mapfile -t model_parts < <(parse_model_spec "${model_spec}" "${DEFAULT_MODEL_FILE}")
+	model_repo="${model_parts[0]}"
+	model_file="${model_parts[1]}"
 	refresh_model=false
 
 	if [ "${mode}" = "upgrade" ]; then
@@ -460,7 +544,7 @@ main() {
 		require_macos
 		ensure_homebrew
 		install_brew_packages
-	elif [ "$(uname -s)" != "Darwin" ]; then
+	elif [ "${IS_MACOS}" != "true" ]; then
 		log "ERROR" "Uninstall is only supported on macOS."
 		exit 3
 	fi
@@ -470,7 +554,7 @@ main() {
 		prepare_source_payload
 		copy_project_files "${prefix}"
 		create_symlink "${prefix}" "${DEFAULT_LINK_PATH}"
-		download_model "${model_repo}" "${model_file}"
+		download_model "${model_repo}" "${model_file}" "${refresh_model}"
 		;;
 	uninstall)
 		uninstall "${prefix}" "${DEFAULT_LINK_PATH}"

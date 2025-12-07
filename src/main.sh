@@ -54,18 +54,18 @@ COMMAND="run"
 USER_QUERY=""
 
 resolve_script_dir() {
-        local source_path source_dir
-        source_path="${BASH_SOURCE[0]}"
+	local source_path source_dir
+	source_path="${BASH_SOURCE[0]}"
 
-        while [ -h "${source_path}" ]; do
-                source_dir=$(cd -P -- "$(dirname -- "${source_path}")" && pwd)
-                source_path=$(readlink "${source_path}")
-                if [[ "${source_path}" != /* ]]; then
-                        source_path="${source_dir}/${source_path}"
-                fi
-        done
+	while [ -h "${source_path}" ]; do
+		source_dir=$(cd -P -- "$(dirname -- "${source_path}")" && pwd)
+		source_path=$(readlink "${source_path}")
+		if [[ "${source_path}" != /* ]]; then
+			source_path="${source_dir}/${source_path}"
+		fi
+	done
 
-        cd -P -- "$(dirname -- "${source_path}")" && pwd
+	cd -P -- "$(dirname -- "${source_path}")" && pwd
 }
 
 SCRIPT_DIR=$(resolve_script_dir)
