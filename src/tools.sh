@@ -39,10 +39,10 @@ source "${TOOLS_DIR}/mail/index.sh"
 source "${TOOLS_DIR}/applescript.sh"
 
 initialize_tools() {
-        register_terminal
-        register_file_search
-        register_notes_suite
-        register_reminders_suite
-        register_mail_suite
-        register_applescript
+	register_terminal
+	register_file_search
+	register_notes_suite
+	register_reminders_suite
+	register_mail_suite
+	register_applescript
 }

@@ -162,19 +162,19 @@ resolve_model_path() {
 }
 
 init_environment() {
-        normalize_approval_flags
-        resolve_model_path
-        if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
-                # shellcheck disable=SC2034
-                IS_MACOS=true
-        fi
+	normalize_approval_flags
+	resolve_model_path
+	if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
+		# shellcheck disable=SC2034
+		IS_MACOS=true
+	fi
 
-        if command -v "${LLAMA_BIN}" >/dev/null 2>&1; then
-                # shellcheck disable=SC2034
-                LLAMA_AVAILABLE=true
-        else
-                log "WARN" "llama.cpp binary not found; using heuristic fallback" "${LLAMA_BIN}"
-        fi
+	if command -v "${LLAMA_BIN}" >/dev/null 2>&1; then
+		# shellcheck disable=SC2034
+		LLAMA_AVAILABLE=true
+	else
+		log "WARN" "llama.cpp binary not found; using heuristic fallback" "${LLAMA_BIN}"
+	fi
 
 	mkdir -p "${NOTES_DIR}"
 }
