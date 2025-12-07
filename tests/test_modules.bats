@@ -11,11 +11,17 @@
 # Exit codes:
 #   Inherits Bats semantics; individual tests assert script exit codes.
 
+setup() {
+        export HOME="${BATS_TMPDIR}/modules-home"
+        mkdir -p "${HOME}/.cargo"
+        : >"${HOME}/.cargo/env"
+}
+
 @test "parse_model_spec falls back to default file" {
-	run bash -lc 'source ./src/config.sh; parts=(); mapfile -t parts < <(parse_model_spec "example/repo" "fallback.gguf"); echo "${parts[0]}"; echo "${parts[1]}"'
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "example/repo" ]
-	[ "${lines[1]}" = "fallback.gguf" ]
+        run bash -lc 'source ./src/config.sh; parts=(); mapfile -t parts < <(parse_model_spec "example/repo" "fallback.gguf"); echo "${parts[0]}"; echo "${parts[1]}"'
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "example/repo" ]
+        [ "${lines[1]}" = "fallback.gguf" ]
 }
 
 @test "init_tool_registry clears previous tools" {

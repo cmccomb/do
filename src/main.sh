@@ -83,10 +83,10 @@ source "${SCRIPT_DIR}/respond.sh"
 source "${SCRIPT_DIR}/cli.sh"
 
 main() {
-	local ranked_tools plan_entries
-	detect_config_file "$@"
-	load_config
-	parse_args "$@"
+        local ranked_tools plan_entries
+        detect_config_file "$@"
+        load_config
+        parse_args "$@"
 
 	normalize_approval_flags
 
@@ -95,18 +95,20 @@ main() {
 		return 0
 	fi
 
-	init_environment
-	init_tool_registry
-	initialize_tools
-	log "INFO" "Starting tool selection" "${USER_QUERY}"
-	ranked_tools="$(rank_tools "${USER_QUERY}")"
-	log "INFO" "Selected tools" "${ranked_tools}"
-	plan_entries="$(build_plan_entries "${ranked_tools}" "${USER_QUERY}")"
+        init_environment
+        init_tool_registry
+        initialize_tools
+        log "INFO" "Starting tool selection" "${USER_QUERY}"
+        ranked_tools="$(rank_tools "${USER_QUERY}")"
+        log "INFO" "Selected tools" "${ranked_tools}"
+        plan_entries="$(build_plan_entries "${ranked_tools}" "${USER_QUERY}")"
 
-	if [[ "${PLAN_ONLY}" == true ]]; then
-		emit_plan_json "${plan_entries}"
-		return 0
-	fi
+        print_suggested_tools "${ranked_tools}"
+
+        if [[ "${PLAN_ONLY}" == true ]]; then
+                emit_plan_json "${plan_entries}"
+                return 0
+        fi
 
 	if [[ "${DRY_RUN}" == true ]]; then
 		printf 'Dry run: planned tool calls (no execution).\n'
@@ -118,12 +120,13 @@ main() {
 		return 0
 	fi
 
-	if [[ -z "${ranked_tools}" ]]; then
-		emit_plan_json "${plan_entries}"
-		log "WARN" "No tools selected; responding directly" "${USER_QUERY}"
-		printf '%s\n' "$(respond_text "${USER_QUERY}" "${plan_entries}")"
-		return 0
-	fi
+        if [[ -z "${ranked_tools}" ]]; then
+                emit_plan_json "${plan_entries}"
+                log "WARN" "No tools selected; responding directly" "${USER_QUERY}"
+                printf '%s\n' "$(respond_text "${USER_QUERY}" "${plan_entries}")"
+                printf 'Execution summary: no actions.\n'
+                return 0
+        fi
 
 	react_loop "${USER_QUERY}" "${ranked_tools}" "${plan_entries}"
 }

@@ -96,7 +96,7 @@ GRAM
 		-r "}" \
 		-p "${prompt}" 2>/dev/null || true)"
 
-	jq -r '
+        jq -r '
                 if type == "array" then
                         .[] | select(.relevant == true and .tool != null) | "\(.tool)"
                 elif type == "object" then
@@ -104,17 +104,20 @@ GRAM
                 else
                         empty
                 end
-        ' <<<"${raw}" 2>/dev/null || true
+        ' <<<"${raw}" 2>/dev/null | while IFS= read -r tool; do
+                [[ -z "${tool}" ]] && continue
+                printf '5:%s\n' "${tool}"
+        done
 }
 
 rank_tools() {
-	local user_query parsed
-	user_query="$1"
+        local user_query parsed
+        user_query="$1"
 
-	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
-		log "WARN" "llama.cpp binary unavailable; skipping tool selection" "${LLAMA_BIN}"
-		return 0
-	fi
+        if [[ "${LLAMA_AVAILABLE}" != true ]]; then
+                log "WARN" "llama.cpp binary unavailable; skipping tool selection" "${LLAMA_BIN}" >&2
+                return 0
+        fi
 
 	structured_tool_relevance "${user_query}"
 	return $?
@@ -187,17 +190,34 @@ derive_tool_query() {
 }
 
 emit_plan_json() {
-	local plan_entries
-	plan_entries="$1"
+        local plan_entries
+        plan_entries="$1"
 
-	while IFS=$'|' read -r tool query score; do
-		[[ -z "${tool}" ]] && continue
-		jq -n \
-			--arg tool "${tool}" \
-			--arg query "${query}" \
-			--argjson score "${score:-0}" \
-			'{tool:$tool, query:$query, score:$score}'
-	done <<<"${plan_entries}" | jq -sc '.'
+        while IFS=$'|' read -r tool query score; do
+                [[ -z "${tool}" ]] && continue
+                jq -n \
+                        --arg tool "${tool}" \
+                        --arg query "${query}" \
+                        --argjson score "${score:-0}" \
+                        '{tool:$tool, query:$query, score:$score}'
+        done <<<"${plan_entries}" | jq -sc '.'
+}
+
+print_suggested_tools() {
+        local ranked entry tool
+        ranked="$1"
+
+        if [[ -z "${ranked}" ]]; then
+                printf 'Suggested tools: none.\n'
+                return 0
+        fi
+
+        printf 'Suggested tools:\n'
+        while IFS= read -r entry; do
+                [[ -z "${entry}" ]] && continue
+                tool="${entry##*:}"
+                printf '%s\n' "${tool}"
+        done <<<"${ranked}"
 }
 
 should_prompt_for_tool() {

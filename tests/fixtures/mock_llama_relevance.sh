@@ -24,11 +24,16 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-prompt_lower=${prompt,,}
+user_query=${prompt#*User request: }
+if [[ "${user_query}" == "${prompt}" ]]; then
+        user_query="${prompt}"
+fi
+
+prompt_lower=${user_query,,}
 
 if [[ "${prompt_lower}" == *"joke"* || "${prompt_lower}" == *"chat"* ]]; then
-	printf '{}\n'
-	exit 0
+        printf '{}\n'
+        exit 0
 fi
 
 if [[ "${prompt_lower}" == *"remind"* ]]; then

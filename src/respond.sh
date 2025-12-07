@@ -20,12 +20,11 @@
 source "${BASH_SOURCE[0]%/respond.sh}/logging.sh"
 
 respond_text() {
-	# Arguments:
-	#   $1 - user query (string)
-	local user_query prompt
-	user_query="$1"
+        # Arguments:
+        #   $1 - user query (string)
+        local user_query prompt
+        user_query="$1"
 
-	prompt="Provide a short, concise answer (two to three sentences) to the user. Your response will be stopped after the first newline character. USER REQUEST: ${user_query}.\nCONCISE RESPONSE: "
-	llama_infer "${prompt}" "\n"
-	return 0
+        printf 'Responding directly to: %s\n' "${user_query}"
+        return 0
 }
