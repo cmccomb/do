@@ -26,6 +26,10 @@
 source "${BASH_SOURCE[0]%/planner.sh}/logging.sh"
 # shellcheck source=./tools.sh disable=SC1091
 source "${BASH_SOURCE[0]%/planner.sh}/tools.sh"
+# shellcheck source=./respond.sh disable=SC1091
+source "${BASH_SOURCE[0]%/planner.sh}/respond.sh"
+
+MIN_TOOL_SCORE=${MIN_TOOL_SCORE:-3}
 
 llama_infer() {
 	# Runs llama.cpp with HF caching enabled for the configured model.
@@ -84,48 +88,86 @@ parse_llama_ranking() {
 	printf '%s\n' "${results[@]}" | sort -r -n -t ':' -k1,1 | head -n 3
 }
 
+filter_ranked_tools() {
+	local ranked entry score filtered
+	ranked="$1"
+	filtered=()
+	while IFS= read -r entry; do
+		[[ -z "${entry}" ]] && continue
+		score="${entry%%:*}"
+		if ((score >= MIN_TOOL_SCORE)); then
+			filtered+=("${entry}")
+		fi
+	done <<<"${ranked}"
+
+	printf '%s\n' "${filtered[@]}"
+}
+
 heuristic_rank_tools() {
-	local user_query tool desc score lower_query is_note_intent
+	local user_query tool score lower_query has_shell_command has_backtick
 	user_query="$1"
 	lower_query=${user_query,,}
-	is_note_intent=false
-	if [[ "${lower_query}" == *"note"* ]]; then
-		is_note_intent=true
-	fi
-	local scores
+	has_backtick=false
+	has_shell_command=false
+	local scores threshold
 	scores=()
+	threshold=3
+
+	if [[ "${user_query}" =~ \`[^\`]+\` ]]; then
+		has_backtick=true
+	fi
+
+	if [[ "${lower_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
+		has_shell_command=true
+	fi
 
 	for tool in "${TOOLS[@]}"; do
-		desc="${TOOL_DESCRIPTION[${tool}]}"
-		score=1
-		if [[ "${is_note_intent}" == true ]]; then
-			case "${tool}" in
-			notes_create)
-				score=5
-				;;
-			notes_append | notes_search | notes_read | notes_list)
-				score=4
-				;;
-			esac
-		fi
+		score=0
 
-		if [[ "${tool}" == "terminal" && "${lower_query}" == *"list"* ]]; then
-			if [[ "${lower_query}" == *"file"* || "${lower_query}" == *"dir"* || "${lower_query}" == *"directory"* ]]; then
+		case "${tool}" in
+                terminal)
+                        if [[ "${has_backtick}" == true || "${has_shell_command}" == true ]]; then
+                                score=5
+                        elif [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* || "${lower_query}" == *"grep"* || "${lower_query}" == *"find "* || "${lower_query}" == *"search files"* ]]; then
+                                score=3
+                        fi
+                        ;;
+		reminders_create)
+			if [[ "${lower_query}" == *"remind me"* || "${lower_query}" == *"set a reminder"* || "${lower_query}" == *"add a reminder"* ]]; then
 				score=5
 			fi
-		fi
+			;;
+		reminders_list)
+			if [[ "${lower_query}" == *"show reminders"* || "${lower_query}" == *"list reminders"* ]]; then
+				score=4
+			fi
+			;;
+		*)
+			if [[ "${lower_query}" == *"note"* || "${lower_query}" == *"notes"* ]]; then
+				case "${tool}" in
+				notes_create)
+					score=5
+					;;
+				notes_append | notes_search | notes_read | notes_list)
+					score=4
+					;;
+				esac
+			fi
 
-		if [[ "${lower_query}" == *"${tool,,}"* ]]; then
-			score=5
-		elif [[ "${desc,,}" == *"${lower_query}"* ]]; then
-			((score < 4)) && score=4
-		elif printf '%s' "${desc}" | grep -iq "${user_query}"; then
-			((score < 3)) && score=3
-		elif [[ "${TOOL_COMMAND[${tool}]}" == *"${user_query}"* ]]; then
-			((score < 2)) && score=2
+			if [[ "${lower_query}" == *"${tool,,}"* ]]; then
+				((score < 4)) && score=4
+			fi
+			;;
+		esac
+
+		if [[ ${score} -ge ${threshold} ]]; then
+			scores+=("${score}:${tool}")
 		fi
-		scores+=("${score}:${tool}")
 	done
+
+	if [[ ${#scores[@]} -eq 0 ]]; then
+		return 0
+	fi
 
 	printf '%s\n' "${scores[@]}" | sort -r -n -t ':' -k1,1 | head -n 3
 }
@@ -144,7 +186,7 @@ rank_tools() {
 		parsed="$(heuristic_rank_tools "${user_query}")"
 	fi
 
-	printf '%s\n' "${parsed}"
+	printf '%s\n' "$(filter_ranked_tools "${parsed}")"
 }
 
 generate_tool_prompt() {
@@ -152,6 +194,10 @@ generate_tool_prompt() {
 	user_query="$1"
 	ranked="$2"
 	prompt="User request: ${user_query}. Suggested tools:"
+	if [[ -z "${ranked}" ]]; then
+		printf 'User request: %s. Suggested tools: none.\n' "${user_query}"
+		return
+	fi
 	while IFS= read -r entry; do
 		score="${entry%%:*}"
 		tool="${entry##*:}"
@@ -163,27 +209,87 @@ generate_tool_prompt() {
 	printf '%s\n' "${prompt%,}"
 }
 
-emit_plan_json() {
-	local ranked entry score tool first description command safety
-	ranked="$1"
-	first=true
+derive_tool_query() {
+	# Arguments:
+	#   $1 - tool name (string)
+	#   $2 - user query (string)
+	local tool_name user_query lower_query
+	tool_name="$1"
+	user_query="$2"
+	lower_query=${user_query,,}
 
+	case "${tool_name}" in
+	terminal)
+		if [[ "${user_query}" =~ \`([^\`]+)\` ]]; then
+			printf '%s\n' "${BASH_REMATCH[1]}"
+			return
+		fi
+
+		if [[ "${lower_query}" == *"todo"* ]]; then
+			printf 'rg -n "TODO" .\n'
+			return
+		fi
+
+		if [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* ]]; then
+			printf 'ls -la\n'
+			return
+		fi
+
+		if [[ "${user_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
+			printf '%s\n' "${BASH_REMATCH[2]}"
+			return
+		fi
+
+		printf 'status\n'
+		;;
+	reminders_create)
+		if [[ "${lower_query}" == *"remind me to"* ]]; then
+			printf '%s\n' "${user_query#*remind me to }"
+			return
+		fi
+		if [[ "${lower_query}" == *"remind me"* ]]; then
+			printf '%s\n' "${user_query#*remind me }"
+			return
+		fi
+		printf '%s\n' "${user_query}"
+		;;
+	reminders_list)
+		printf 'list\n'
+		;;
+	notes_create)
+		if [[ "${lower_query}" == note* ]]; then
+			printf '%s\n' "${user_query#note }"
+			return
+		fi
+		printf '%s\n' "${user_query}"
+		;;
+	notes_append)
+		printf '%s\n' "${user_query}"
+		;;
+	notes_search | notes_read | notes_list)
+		printf '%s\n' "${user_query}"
+		;;
+	*)
+		printf '%s\n' "${user_query}"
+		;;
+	esac
+}
+
+emit_plan_json() {
+	local plan_entries entry first tool query score
+	plan_entries="$1"
+	first=true
 	printf '['
-	while IFS= read -r entry; do
-		[[ -z "${entry}" ]] && continue
-		score="${entry%%:*}"
-		tool="${entry##*:}"
-		description="$(json_escape "${TOOL_DESCRIPTION[${tool}]}")"
-		command="$(json_escape "${TOOL_COMMAND[${tool}]}")"
-		safety="$(json_escape "${TOOL_SAFETY[${tool}]}")"
+	while IFS=$'|' read -r tool query score; do
+		[[ -z "${tool}" ]] && continue
 		if [[ "${first}" == true ]]; then
 			first=false
 		else
 			printf ','
 		fi
-		printf '{"tool":"%s","score":%s,"command":"%s","description":"%s","safety":"%s"}' \
-			"$(json_escape "${tool}")" "${score:-0}" "${command}" "${description}" "${safety}"
-	done <<<"${ranked}"
+		printf '{"tool":"%s","query":"%s","score":%s}' \
+			"$(json_escape "${tool}")" "$(json_escape "${query}")" "${score:-0}"
+	done <<<"${plan_entries}"
 	printf ']\n'
 }
 
@@ -202,32 +308,53 @@ should_prompt_for_tool() {
 }
 
 confirm_tool() {
-	local tool_name
-	tool_name="$1"
-	if ! should_prompt_for_tool; then
-		return 0
-	fi
+        local tool_name
+        tool_name="$1"
+        if ! should_prompt_for_tool; then
+                return 0
+        fi
 
-	printf 'Execute tool "%s"? [y/N]: ' "${tool_name}" >&2
-	read -r reply
-	if [[ "${reply}" != "y" && "${reply}" != "Y" ]]; then
-		log "WARN" "Tool execution declined" "${tool_name}"
-		return 1
-	fi
-	return 0
+        printf 'Execute tool "%s"? [y/N]: ' "${tool_name}" >&2
+        read -r reply
+        if [[ "${reply}" != "y" && "${reply}" != "Y" ]]; then
+                log "WARN" "Tool execution declined" "${tool_name}"
+                printf '[%s skipped]\n' "${tool_name}"
+                return 1
+        fi
+        return 0
 }
 
-execute_tool() {
-	local tool_name handler
+build_plan_entries() {
+	local ranked user_query entry score tool plan query
+	ranked="$1"
+	user_query="$2"
+	plan=""
+
+	while IFS= read -r entry; do
+		[[ -z "${entry}" ]] && continue
+		score="${entry%%:*}"
+		tool="${entry##*:}"
+		query="$(derive_tool_query "${tool}" "${user_query}")"
+		plan+=$(printf '%s|%s|%s\n' "${tool}" "${query}" "${score}")
+	done <<<"${ranked}"
+
+	printf '%s' "${plan}"
+}
+
+execute_tool_with_query() {
+	local tool_name tool_query handler output status
 	tool_name="$1"
+	tool_query="$2"
 	handler="${TOOL_HANDLER[${tool_name}]}"
+
 	if [[ -z "${handler}" ]]; then
 		log "ERROR" "No handler registered for tool" "${tool_name}"
 		return 1
 	fi
 
 	if ! confirm_tool "${tool_name}"; then
-		return 1
+		printf 'Declined %s\n' "${tool_name}"
+		return 0
 	fi
 
 	if [[ "${DRY_RUN}" == true || "${PLAN_ONLY}" == true ]]; then
@@ -235,49 +362,117 @@ execute_tool() {
 		return 0
 	fi
 
-	TOOL_QUERY="${USER_QUERY:-}" ${handler}
+	output="$(TOOL_QUERY="${tool_query}" ${handler} 2>&1)"
+	status=$?
+	if ((status != 0)); then
+		log "WARN" "Tool reported non-zero exit" "${tool_name}"
+	fi
+	printf '%s\n' "${output}"
+	return 0
 }
 
-collect_plan() {
-	local ranked plan_prompt raw_plan
-	ranked="$1"
-	plan_prompt="Plan a concise sequence of tool uses to satisfy: ${USER_QUERY}. Candidates: ${ranked}."
-	if [[ "${LLAMA_AVAILABLE}" == true ]]; then
-		raw_plan="$(llama_infer "${plan_prompt}")"
-	else
-		raw_plan="Use top-ranked tools sequentially: ${ranked}."
-	fi
-	printf '%s\n' "${raw_plan}"
+build_react_prompt() {
+	local user_query allowed_tools history tool_lines
+	user_query="$1"
+	allowed_tools="$2"
+	history="$3"
+
+	tool_lines="Allowed tools:"
+	while IFS= read -r tool; do
+		tool_lines+=$(printf '\n- %s: %s (example query: %s)' "${tool}" "${TOOL_DESCRIPTION[${tool}]}" "${TOOL_COMMAND[${tool}]}")
+	done <<<"${allowed_tools}"
+
+	cat <<PROMPT
+You are an assistant that can take iterative actions. Respond ONLY with a single JSON object on each turn.
+Action schema:
+- To use a tool: {"type":"tool","tool":"<tool_name>","query":"<specific command>"}
+- To finish: {"type":"final","answer":"<concise reply>"}
+Use tools only when necessary. Provide concrete tool queries, not general requests. If no tools are needed, return type=final.
+User request: ${user_query}
+${tool_lines}
+Previous steps:
+${history}
+PROMPT
+	PROMPT
 }
 
-planner_executor_loop() {
-	local plan ranked entry tool summary plan_json
+allowed_tool_list() {
+	local ranked entry tool
 	ranked="$1"
-	plan="$(collect_plan "${ranked}")"
-	plan_json="$(emit_plan_json "${ranked}")"
-	log "INFO" "Generated plan" "${plan}"
-
-	if [[ "${PLAN_ONLY}" == true ]]; then
-		printf '%s\n' "${plan_json}"
-		return 0
-	fi
-
-	if [[ "${DRY_RUN}" == true ]]; then
-		printf 'Dry run: planned tool calls (no execution).\n'
-		printf '%s\n' "${plan_json}"
-		return 0
-	fi
-
-	summary=""
 	while IFS= read -r entry; do
+		[[ -z "${entry}" ]] && continue
 		tool="${entry##*:}"
-		if execute_tool "${tool}"; then
-			summary+=$(printf '[%s executed] ' "${tool}")
-		else
-			summary+=$(printf '[%s skipped] ' "${tool}")
-		fi
+		printf '%s\n' "${tool}"
 	done <<<"${ranked}"
+}
 
-	log "INFO" "Execution summary" "${summary}"
-	printf '%s\n' "${summary}"
+fallback_action_from_plan() {
+	local plan_entries step_index user_query
+	plan_entries=()
+	while IFS= read -r line; do
+		plan_entries+=("${line}")
+	done <<<"$1"
+	step_index=$2
+	user_query="$3"
+	if ((step_index < ${#plan_entries[@]})); then
+		IFS='|' read -r tool query score <<<"${plan_entries[${step_index}]}"
+		printf '{"type":"tool","tool":"%s","query":"%s"}\n' "${tool}" "$(json_escape "${query}")"
+	else
+		printf '{"type":"final","answer":"%s"}\n' "$(json_escape "$(respond_text "${user_query}" "")")"
+	fi
+}
+
+react_loop() {
+        local user_query ranked plan_entries max_steps allowed_tools history step action_json action_type tool query observation final_answer
+        user_query="$1"
+        ranked="$2"
+        plan_entries="$3"
+        max_steps=${MAX_STEPS:-6}
+        allowed_tools="$(allowed_tool_list "${ranked}")"
+        history=""
+        step=0
+        final_answer=""
+
+	while ((step < max_steps)); do
+		step=$((step + 1))
+
+		if [[ "${LLAMA_AVAILABLE}" == true ]]; then
+			action_json="$(llama_infer "$(build_react_prompt "${user_query}" "${allowed_tools}" "${history}")")"
+		else
+			action_json="$(fallback_action_from_plan "${plan_entries}" $((step - 1)) "${user_query}")"
+		fi
+
+		action_type="$(printf '%s' "${action_json}" | jq -r '.type // empty' 2>/dev/null)"
+		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null)"
+		query="$(printf '%s' "${action_json}" | jq -r '.query // empty' 2>/dev/null)"
+
+		if [[ "${action_type}" != "tool" && "${action_type}" != "final" ]]; then
+			history+=$(printf 'Unusable action: %s\n' "${action_json}")
+			continue
+		fi
+
+                if [[ "${action_type}" == "final" ]]; then
+                        final_answer="$(printf '%s' "${action_json}" | jq -r '.answer // ""')"
+                        break
+                fi
+
+		if ! grep -Fxq "${tool}" <<<"${allowed_tools}"; then
+			history+=$(printf 'Tool %s not permitted.\n' "${tool}")
+			continue
+		fi
+
+                observation="$(execute_tool_with_query "${tool}" "${query}")" || observation=""
+                history+=$(printf 'Action %s query=%s\nObservation: %s\n' "${tool}" "${query}" "${observation}")
+        done
+
+        if [[ -z "${final_answer}" ]]; then
+                final_answer="$(respond_text "${user_query}" "${history}")"
+        fi
+
+        printf '%s\n' "${final_answer}"
+        if [[ -z "${history}" ]]; then
+                printf 'Execution summary: no actions executed.\n'
+        else
+                printf 'Execution summary:\n%s\n' "${history}"
+        fi
 }

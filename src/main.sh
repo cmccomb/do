@@ -76,11 +76,13 @@ source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/tools.sh"
 # shellcheck source=./planner.sh disable=SC1091
 source "${SCRIPT_DIR}/planner.sh"
+# shellcheck source=./respond.sh disable=SC1091
+source "${SCRIPT_DIR}/respond.sh"
 # shellcheck source=./cli.sh disable=SC1091
 source "${SCRIPT_DIR}/cli.sh"
 
 main() {
-	local ranked_tools
+	local ranked_tools plan_entries
 	detect_config_file "$@"
 	load_config
 	parse_args "$@"
@@ -97,8 +99,27 @@ main() {
 	initialize_tools
 	log "DEBUG" "Starting tool selection" "${USER_QUERY}"
 	ranked_tools="$(rank_tools "${USER_QUERY}")"
+	plan_entries="$(build_plan_entries "${ranked_tools}" "${USER_QUERY}")"
 	printf '%s\n' "$(generate_tool_prompt "${USER_QUERY}" "${ranked_tools}")"
-	planner_executor_loop "${ranked_tools}"
+
+	if [[ "${PLAN_ONLY}" == true ]]; then
+		emit_plan_json "${plan_entries}"
+		return 0
+	fi
+
+	if [[ "${DRY_RUN}" == true ]]; then
+		printf 'Dry run: planned tool calls (no execution).\n'
+		emit_plan_json "${plan_entries}"
+		return 0
+	fi
+
+	if [[ -z "${ranked_tools}" ]]; then
+		emit_plan_json "${plan_entries}"
+		respond "${USER_QUERY}" ""
+		return 0
+	fi
+
+	react_loop "${USER_QUERY}" "${ranked_tools}" "${plan_entries}"
 }
 
 main "$@"
