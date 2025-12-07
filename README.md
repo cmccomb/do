@@ -71,8 +71,9 @@ CLI and config file are the primary configuration surfaces.
 
 The planner registers the following tools (each defined in `src/tools/<name>.sh`):
 
-- `terminal`: persistent terminal session with a limited command set (pwd, ls,
-  cd, cat, head, tail, find, grep, open on macOS).
+- `terminal`: persistent terminal session with a curated command set (pwd, ls,
+  du, cd, cat, head, tail, find, grep, stat, wc, base64 encode/decode, mkdir,
+  rmdir, mv, cp, touch, rm -i by default, plus `open` on macOS).
 - `file_search`: search for files and contents using `fd`/`rg` fallbacks.
 - `clipboard_copy`: copy provided text into the macOS clipboard.
 - `clipboard_paste`: read the current macOS clipboard contents.
@@ -97,8 +98,12 @@ The planner registers the following tools (each defined in `src/tools/<name>.sh`
 The `terminal` tool keeps a per-query working directory and reuses it across
 invocations so agents can `cd` once and continue running commands from the same
 location. Supported commands include `status` (default, shows the current
-directory and a listing), `pwd`, `ls`, `cd`, `cat`, `head`, `tail`, `find`, and
-`grep`, plus `open` on macOS hosts.
+directory and a listing), `pwd`, `ls`, `cd`, `cat`, `head`, `tail`, `find`,
+`grep`, `stat`, `wc`, `du` (defaults to `-sh .` when no arguments are provided),
+`base64` (requires an explicit `encode` or `decode` mode), and `open` on macOS
+hosts. Mutation commands are guarded to reduce risk: `rm` always includes
+`-i` unless an interactive flag is already present, while `mkdir`, `rmdir`,
+`mv`, `cp`, and `touch` validate required arguments before executing.
 
 Clipboard helpers are macOS-only and rely on `pbcopy`/`pbpaste`. Avoid copying
 credentials or other sensitive information because clipboard contents may be
