@@ -54,11 +54,11 @@ show_version() {
 
 # shellcheck disable=SC2034
 parse_args() {
-        local positional
-        positional=()
+	local positional
+	positional=()
 
-        while [[ $# -gt 0 ]]; do
-                case "$1" in
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
 		init | configure)
 			COMMAND="init"
 			shift
@@ -151,8 +151,8 @@ parse_args() {
 		USER_QUERY="$*"
 	fi
 
-        if [[ "${COMMAND}" == "run" && -z "${USER_QUERY:-}" ]]; then
-                log "ERROR" "A user query is required. See --help for usage."
-                exit 1
-        fi
+	if [[ "${COMMAND}" == "run" && -z "${USER_QUERY:-}" ]]; then
+		log "ERROR" "A user query is required. See --help for usage."
+		exit 1
+	fi
 }
