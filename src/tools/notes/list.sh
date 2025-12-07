@@ -27,8 +27,14 @@ source "${BASH_SOURCE[0]%/tools/notes/list.sh}/logging.sh"
 # shellcheck source=./common.sh disable=SC1091
 source "${BASH_SOURCE[0]%/list.sh}/common.sh"
 
+derive_notes_list_query() {
+        # Arguments:
+        #   $1 - user query (string)
+        printf '%s\n' "$1"
+}
+
 tool_notes_list() {
-	local folder_script
+        local folder_script
 	if ! notes_require_platform; then
 		return 0
 	fi

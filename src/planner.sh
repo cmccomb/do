@@ -124,82 +124,45 @@ GRAM
 }
 
 rank_tools() {
-	local user_query
-	user_query="$1"
+        local user_query
+        user_query="$1"
 
 	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
 		log "WARN" "llama.cpp binary unavailable; skipping tool selection" "${LLAMA_BIN}"
 		return 0
 	fi
 
-	structured_tool_relevance "${user_query}"
-	return $?
+        structured_tool_relevance "${user_query}"
+        return $?
+}
+
+declare -A TOOL_QUERY_DERIVERS=(
+        [terminal]=derive_terminal_query
+        [reminders_create]=derive_reminders_create_query
+        [reminders_list]=derive_reminders_list_query
+        [notes_create]=derive_notes_create_query
+        [notes_append]=derive_notes_append_query
+        [notes_search]=derive_notes_search_query
+        [notes_read]=derive_notes_read_query
+        [notes_list]=derive_notes_list_query
+)
+
+derive_default_tool_query() {
+        # Arguments:
+        #   $1 - user query (string)
+        printf '%s\n' "$1"
 }
 
 derive_tool_query() {
-	# Arguments:
-	#   $1 - tool name (string)
-	#   $2 - user query (string)
-	local tool_name user_query lower_query
-	tool_name="$1"
-	user_query="$2"
-	lower_query=${user_query,,}
+        # Arguments:
+        #   $1 - tool name (string)
+        #   $2 - user query (string)
+        local tool_name user_query handler
+        tool_name="$1"
+        user_query="$2"
+        handler="${TOOL_QUERY_DERIVERS[${tool_name}]:-derive_default_tool_query}"
 
-	case "${tool_name}" in
-	terminal)
-		if [[ "${user_query}" =~ \`([^\`]+)\` ]]; then
-			printf '%s\n' "${BASH_REMATCH[1]}"
-			return
-		fi
-
-		if [[ "${lower_query}" == *"todo"* ]]; then
-			printf 'rg -n "TODO" .\n'
-			return
-		fi
-
-		if [[ "${lower_query}" == *"list files"* || "${lower_query}" == *"show directory"* || "${lower_query}" == *"show folder"* ]]; then
-			printf 'ls -la\n'
-			return
-		fi
-
-		if [[ "${user_query}" =~ (^|[[:space:]])(ls|cd|cat|grep|find|pwd|rg)([[:space:]]|$) ]]; then
-			printf '%s\n' "${BASH_REMATCH[2]}"
-			return
-		fi
-
-		printf 'status\n'
-		;;
-	reminders_create)
-		if [[ "${lower_query}" == *"remind me to"* ]]; then
-			printf '%s\n' "${user_query#*remind me to }"
-			return
-		fi
-		if [[ "${lower_query}" == *"remind me"* ]]; then
-			printf '%s\n' "${user_query#*remind me }"
-			return
-		fi
-		printf '%s\n' "${user_query}"
-		;;
-	reminders_list)
-		printf 'list\n'
-		;;
-	notes_create)
-		if [[ "${lower_query}" == note* ]]; then
-			printf '%s\n' "${user_query#note }"
-			return
-		fi
-		printf '%s\n' "${user_query}"
-		;;
-	notes_append)
-		printf '%s\n' "${user_query}"
-		;;
-	notes_search | notes_read | notes_list)
-		printf '%s\n' "${user_query}"
-		;;
-	*)
-		printf '%s\n' "${user_query}"
-		;;
-	esac
+        "${handler}" "${user_query}"
 }
 
 emit_plan_json() {
