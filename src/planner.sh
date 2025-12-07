@@ -37,10 +37,12 @@ llama_infer() {
 	local prompt
 	prompt="$1"
 
+	echo "${prompt}"
+
 	"${LLAMA_BIN}" \
 		--hf-repo "${MODEL_REPO}" \
 		--hf-file "${MODEL_FILE}" \
-		--hf-branch "${MODEL_BRANCH}" \
+		-no-cnv \
 		-p "${prompt}" 2>/dev/null || true
 }
 
@@ -137,7 +139,6 @@ GRAM
         raw="$(${LLAMA_BIN} \
                 --hf-repo "${MODEL_REPO}" \
                 --hf-file "${MODEL_FILE}" \
-                --hf-branch "${MODEL_BRANCH}" \
                 --grammar "${grammar}" \
                 -p "${prompt}" 2>/dev/null || true)"
 
@@ -452,7 +453,7 @@ ${tool_lines}
 Previous steps:
 ${history}
 PROMPT
-	PROMPT
+#	PROMPT
 }
 
 allowed_tool_list() {
