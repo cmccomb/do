@@ -27,8 +27,14 @@ source "${BASH_SOURCE[0]%/tools/reminders/list.sh}/logging.sh"
 # shellcheck source=./common.sh disable=SC1091
 source "${BASH_SOURCE[0]%/list.sh}/common.sh"
 
+derive_reminders_list_query() {
+        # Arguments:
+        #   $1 - user query (string)
+        printf 'list\n'
+}
+
 tool_reminders_list() {
-	local list_script
+        local list_script
 
 	if ! reminders_require_platform; then
 		return 0
