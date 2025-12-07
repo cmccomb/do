@@ -19,10 +19,6 @@ while [[ $# -gt 0 ]]; do
 		file="$2"
 		shift 2
 		;;
-	--hf-branch)
-		branch="$2"
-		shift 2
-		;;
 	--hf-token)
 		shift 2
 		;;

@@ -38,10 +38,12 @@ llama_infer() {
 	local prompt
 	prompt="$1"
 
+	echo "${prompt}"
+
 	"${LLAMA_BIN}" \
 		--hf-repo "${MODEL_REPO}" \
 		--hf-file "${MODEL_FILE}" \
-		--hf-branch "${MODEL_BRANCH}" \
+		-no-cnv \
 		-p "${prompt}" 2>/dev/null || true
 }
 
@@ -135,12 +137,11 @@ GRAM
 	prompt="Identify which tools are relevant to the user request with true/false flags."
 	prompt+=" User request: ${user_query}"
 
-	raw="$(${LLAMA_BIN} \
-		--hf-repo "${MODEL_REPO}" \
-		--hf-file "${MODEL_FILE}" \
-		--hf-branch "${MODEL_BRANCH}" \
-		--grammar "${grammar}" \
-		-p "${prompt}" 2>/dev/null || true)"
+        raw="$(${LLAMA_BIN} \
+                --hf-repo "${MODEL_REPO}" \
+                --hf-file "${MODEL_FILE}" \
+                --grammar "${grammar}" \
+                -p "${prompt}" 2>/dev/null || true)"
 
 	jq -r '.[] | select(.relevant == true and .tool != null) | "5:\(.tool)"' <<<"${raw}" 2>/dev/null || true
 }
@@ -464,7 +465,7 @@ ${tool_lines}
 Previous steps:
 ${history}
 PROMPT
-	PROMPT
+#	PROMPT
 }
 
 allowed_tool_list() {
