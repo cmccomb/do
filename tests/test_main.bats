@@ -68,3 +68,17 @@ EOF
 	[ -f "${new_config}" ]
 	grep -q "MODEL_BRANCH=\"dev\"" "${new_config}"
 }
+
+@test "resolves sources when executed via symlink" {
+	local prefix link_path
+	prefix="${BATS_TMPDIR}/symlink-prefix"
+	link_path="${BATS_TMPDIR}/do"
+
+	mkdir -p "${prefix}"
+	cp -R src "${prefix}"
+	ln -sf "${prefix}/src/main.sh" "${link_path}"
+
+	run "${link_path}" --config "${CONFIG_FILE}" --yes -- "note something"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"notes_create executed"* ]]
+}

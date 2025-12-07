@@ -16,7 +16,8 @@ dependencies and installs the CLI binary without running global Homebrew
 upgrades:
 
 ```bash
-./scripts/install.sh [--prefix /custom/path] [--upgrade | --uninstall]
+./scripts/install.sh [--prefix /custom/path] [--upgrade | --uninstall] \
+  [--model repo[:file]] [--model-branch BRANCH] [--model-cache DIR]
 ```
 
 For unattended installs, the CI pipeline publishes the installer and a
@@ -37,13 +38,22 @@ What the installer does:
 3. Copies the `src/` contents into `/usr/local/do` (override with `--prefix`),
    and symlinks `do` into your `PATH` (default: `/usr/local/bin`).
 4. Downloads a configurable Qwen3 GGUF for `llama.cpp` into `~/.do/models`
-   via llama.cpp's Hugging Face flags, reusing cached copies when present.
+   (override with `--model-cache`) via llama.cpp's Hugging Face flags, reusing
+   cached copies when present or when `DO_INSTALLER_ASSUME_OFFLINE=true`.
 5. Offers `--upgrade` (refresh files/model) and `--uninstall` flows, refusing
    to run on non-macOS hosts.
 
 For manual setups, ensure `bash` 5+, `llama.cpp` (the `llama-cli` binary, optional
 for heuristic mode), `fd`, and `rg` are on your `PATH`, then run the script directly
 with `./src/main.sh`.
+
+Because `do` is a reserved shell keyword, invoke the installed symlink via its
+full path (for example, `/usr/local/bin/do --help`) or prefix it with
+`command`:
+
+```bash
+command do -- --help
+```
 
 ## Configuration
 

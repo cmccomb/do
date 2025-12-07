@@ -34,7 +34,7 @@
 set -euo pipefail
 
 VERSION="0.1.0"
-LLAMA_BIN="${llama-cli}"
+LLAMA_BIN="llama-cli"
 DEFAULT_MODEL_FILE="qwen3-1.5b-instruct-q4_k_m.gguf"
 CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/do"
 CONFIG_FILE="${CONFIG_DIR}/config.env"
@@ -53,7 +53,22 @@ IS_MACOS=false
 COMMAND="run"
 USER_QUERY=""
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+resolve_script_dir() {
+	local source_path source_dir
+	source_path="${BASH_SOURCE[0]}"
+
+	while [ -h "${source_path}" ]; do
+		source_dir=$(cd -P -- "$(dirname -- "${source_path}")" && pwd)
+		source_path=$(readlink "${source_path}")
+		if [[ "${source_path}" != /* ]]; then
+			source_path="${source_dir}/${source_path}"
+		fi
+	done
+
+	cd -P -- "$(dirname -- "${source_path}")" && pwd
+}
+
+SCRIPT_DIR=$(resolve_script_dir)
 # shellcheck source=./logging.sh disable=SC1091
 source "${SCRIPT_DIR}/logging.sh"
 # shellcheck source=./config.sh disable=SC1091
