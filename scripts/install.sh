@@ -16,7 +16,7 @@
 #       defaults to "${HOME}/.do/models".
 #   DO_LINK_DIR (string): Directory for the PATH symlink. Defaults to
 #       "/usr/local/bin".
-#   HF_TOKEN (string): Optional Hugging Face token for gated model downloads.
+#   HF_TOKEN (string): Optional Hugging Face token for downloading gated models.
 #   DO_INSTALLER_ASSUME_OFFLINE (bool): Set to "true" to skip network actions
 #       (intended for CI); install fails if downloads are required while offline.
 #   DO_INSTALLER_BASE_URL (string): Base URL hosting the installer artifacts
