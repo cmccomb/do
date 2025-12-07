@@ -51,8 +51,24 @@
 	[ "${lines[20]}" = "applescript" ]
 }
 
-@test "json_escape preserves newlines and quotes" {
-	run bash -lc "source ./src/logging.sh; json_escape $'quote\nline'"
-	[ "$status" -eq 0 ]
-	[ "${output}" = "quote\\nline" ]
+@test "log emits JSON with escaped fields" {
+run bash -lc $'VERBOSITY=2; source ./src/logging.sh; log "INFO" $'"'"'quote\nline'"'"' "detail"'
+[ "$status" -eq 0 ]
+message=$(echo "${output}" | jq -r '.message')
+[ "${message}" = $'quote\nline' ]
+}
+
+@test "parse_llama_ranking reads JSON responses" {
+run bash -lc 'source ./src/planner.sh; initialize_tools; raw='"'"'[{"tool":"terminal","score":4,"reason":"ok"},{"tool":"file_search","score":5}]'"'"'; parse_llama_ranking "${raw}"'
+[ "$status" -eq 0 ]
+[ "${lines[0]}" = "5:file_search" ]
+[ "${lines[1]}" = "4:terminal" ]
+}
+
+@test "emit_plan_json builds valid array" {
+run bash -lc $'source ./src/planner.sh; plan=$'"'"'terminal|echo "hi"|4\nnotes_create|add note|3'"'"'; emit_plan_json "${plan}"'
+[ "$status" -eq 0 ]
+[ "$(echo "${output}" | jq -r '.[0].tool')" = "terminal" ]
+[ "$(echo "${output}" | jq -r '.[0].query')" = 'echo "hi"' ]
+[ "$(echo "${output}" | jq -r '.[1].score')" = "3" ]
 }
