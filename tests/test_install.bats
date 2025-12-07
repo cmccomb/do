@@ -119,7 +119,7 @@ EOM_BREW
 	export DO_INSTALLER_ASSUME_OFFLINE=false
 	export LLAMA_CALL_LOG="${log_path}"
 
-	cp tests/fixtures/mock_llama_download.sh "${mock_path}/llama"
+    cp tests/fixtures/mock_llama_download.sh "${mock_path}/llama-cli"
 	cp tests/fixtures/mock_curl.sh "${mock_path}/curl"
 
 	cat >"${mock_path}/uname" <<'EOM_UNAME'
@@ -139,7 +139,7 @@ fi
 command -v "$1" >/dev/null 2>&1
 EOM_BREW
 	chmod +x "${mock_path}/brew"
-	chmod +x "${mock_path}/llama" "${mock_path}/curl"
+    chmod +x "${mock_path}/llama-cli" "${mock_path}/curl"
 
 	run env PATH="${mock_path}:${PATH}" ./scripts/install.sh --prefix "${TEST_ROOT}/prefix" --model "example/repo:demo.gguf" --model-branch main
 	[ "$status" -eq 0 ]
