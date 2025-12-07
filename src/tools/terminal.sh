@@ -15,7 +15,7 @@
 #
 # Dependencies:
 #   - bash 5+
-#   - coreutils (ls, pwd, cat, head, tail)
+#   - coreutils (ls, pwd, cat, head, tail, stat, wc, du, base64, cp, mv, rm, mkdir, rmdir, touch)
 #   - logging helpers from logging.sh
 #   - register_tool from tools/registry.sh
 #
@@ -38,6 +38,16 @@ TERMINAL_ALLOWED_COMMANDS=(
 	"find"
 	"grep"
 	"open"
+	"mkdir"
+	"rmdir"
+	"mv"
+	"cp"
+	"touch"
+	"rm"
+	"stat"
+	"wc"
+	"du"
+	"base64"
 )
 
 TERMINAL_SESSION_ID="${TERMINAL_SESSION_ID:-}" # string session identifier
@@ -108,7 +118,7 @@ terminal_print_status() {
 }
 
 tool_terminal() {
-	local query raw_args command args
+	local query raw_args command args mode shifted_args has_interactive rm_args
 	terminal_init_session
 
 	query=${TOOL_QUERY:-""}
@@ -167,6 +177,101 @@ tool_terminal() {
 		fi
 		terminal_run_in_workdir open "${args[@]}"
 		;;
+	mkdir)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			log "ERROR" "mkdir requires a target directory" ""
+			return 1
+		fi
+		terminal_run_in_workdir mkdir -p "${args[@]}"
+		;;
+	rmdir)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			log "ERROR" "rmdir requires a target directory" ""
+			return 1
+		fi
+		terminal_run_in_workdir rmdir "${args[@]}"
+		;;
+	mv)
+		if [[ ${#args[@]} -lt 2 ]]; then
+			log "ERROR" "mv requires a source and destination" "${args[*]:-""}"
+			return 1
+		fi
+		terminal_run_in_workdir mv "${args[@]}"
+		;;
+	cp)
+		if [[ ${#args[@]} -lt 2 ]]; then
+			log "ERROR" "cp requires a source and destination" "${args[*]:-""}"
+			return 1
+		fi
+		terminal_run_in_workdir cp "${args[@]}"
+		;;
+	touch)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			log "ERROR" "touch requires at least one target" ""
+			return 1
+		fi
+		terminal_run_in_workdir touch "${args[@]}"
+		;;
+	rm)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			log "ERROR" "rm requires a target" ""
+			return 1
+		fi
+		has_interactive=false
+		for arg in "${args[@]}"; do
+			if [[ "${arg}" == -*i* || "${arg}" == "--interactive"* ]]; then
+				has_interactive=true
+				break
+			fi
+		done
+		rm_args=()
+		if [[ "${has_interactive}" != true ]]; then
+			rm_args+=("-i")
+		fi
+		rm_args+=("${args[@]}")
+		terminal_run_in_workdir rm "${rm_args[@]}"
+		;;
+	stat)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			log "ERROR" "stat requires a target" ""
+			return 1
+		fi
+		terminal_run_in_workdir stat "${args[@]}"
+		;;
+	wc)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			log "ERROR" "wc requires at least one target" ""
+			return 1
+		fi
+		terminal_run_in_workdir wc "${args[@]}"
+		;;
+	du)
+		if [[ ${#args[@]} -eq 0 ]]; then
+			terminal_run_in_workdir du -sh .
+		else
+			terminal_run_in_workdir du "${args[@]}"
+		fi
+		;;
+	base64)
+		if [[ ${#args[@]} -lt 2 ]]; then
+			log "ERROR" "base64 requires a mode (encode|decode) and a target" "${args[*]:-""}"
+			return 1
+		fi
+		mode="${args[0]}"
+		shifted_args=("${args[@]:1}")
+		case "${mode}" in
+		encode)
+			terminal_run_in_workdir base64 "${shifted_args[@]}"
+			;;
+		decode)
+			terminal_run_in_workdir base64 -d "${shifted_args[@]}"
+			;;
+		*)
+			log "ERROR" "base64 mode must be encode or decode" "${mode}"
+			return 1
+			;;
+		esac
+		;;
 	*)
 		log "ERROR" "Unsupported terminal command after validation" "${command}"
 		return 1
@@ -175,10 +280,10 @@ tool_terminal() {
 }
 
 register_terminal() {
-	register_tool \
-		"terminal" \
-		"Persistent terminal session for navigation and basic commands (pwd, ls, cd, cat, head, tail, find, grep, open)." \
-		"terminal <status|pwd|ls|cd|cat|head|tail|find|grep|open>" \
-		"Restricted command set with a per-query working directory." \
-		tool_terminal
+        register_tool \
+                "terminal" \
+                "Persistent terminal session for navigation, inspection, and safe mutations (pwd, ls, du, cd, cat, head, tail, find, grep, stat, wc, base64 encode/decode, mkdir, rmdir, mv, cp, touch, rm -i default; open on macOS)." \
+                "terminal <status|pwd|ls|cd|cat|head|tail|find|grep|open|mkdir|rmdir|mv|cp|touch|rm|stat|wc|du|base64>" \
+                "Restricted command set with a per-query working directory; destructive operations default to interactive rm." \
+                tool_terminal
 }
