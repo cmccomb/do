@@ -247,30 +247,32 @@ build_plan_entries() {
 }
 
 execute_tool_with_query() {
-	local tool_name tool_query handler output status
-	tool_name="$1"
-	tool_query="$2"
-	handler="${TOOL_HANDLER[${tool_name}]}"
+        local tool_name tool_query handler output status
+        tool_name="$1"
+        tool_query="$2"
+        handler="${TOOL_HANDLER[${tool_name}]}"
 
-	local requires_confirmation
-	requires_confirmation=false
-	if should_prompt_for_tool; then
-		requires_confirmation=true
-	fi
+        local requires_confirmation
+        requires_confirmation=false
+        if [[ "${tool_name}" != "final_answer" ]] && should_prompt_for_tool; then
+                requires_confirmation=true
+        fi
 
 	if [[ -z "${handler}" ]]; then
 		log "ERROR" "No handler registered for tool" "${tool_name}"
 		return 1
 	fi
 
-	if [[ "${requires_confirmation}" == true ]]; then
-		log "INFO" "Requesting tool confirmation" "$(printf 'tool=%s query=%s' "${tool_name}" "${tool_query}")"
-	fi
+        if [[ "${tool_name}" != "final_answer" ]]; then
+                if [[ "${requires_confirmation}" == true ]]; then
+                        log "INFO" "Requesting tool confirmation" "$(printf 'tool=%s query=%s' "${tool_name}" "${tool_query}")"
+                fi
 
-	if ! confirm_tool "${tool_name}"; then
-		printf 'Declined %s\n' "${tool_name}"
-		return 0
-	fi
+                if ! confirm_tool "${tool_name}"; then
+                        printf 'Declined %s\n' "${tool_name}"
+                        return 0
+                fi
+        fi
 
 	if [[ "${DRY_RUN}" == true || "${PLAN_ONLY}" == true ]]; then
 		log "INFO" "Skipping execution in preview mode" "${tool_name}"
@@ -358,6 +360,7 @@ initialize_react_state() {
         state_ref[plan_outline]="$(build_plan_outline "${4}")"
         state_ref[history]=""
         state_ref[step]=0
+        state_ref[plan_index]=0
         state_ref[max_steps]="${MAX_STEPS:-6}"
         state_ref[final_answer]=""
 }
@@ -375,15 +378,39 @@ record_history() {
 select_next_action() {
         # Arguments:
         #   $1 - name of associative array holding state
-        local -n state_ref=$1
-        local react_prompt
+        #   $2 - (optional) name of variable to receive JSON action output
+        local state_name output_name
+        state_name="$1"
+        output_name="${2:-}"
+        local -n state_ref=$state_name
+        local react_prompt plan_index planned_entry tool query next_action_payload
         if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
                 react_prompt="$(build_react_prompt "${state_ref[user_query]}" "${state_ref[allowed_tools]}" "${state_ref[history]}" "${state_ref[plan_outline]}")"
                 llama_infer "${react_prompt}"
                 return
         fi
 
-        jq -n --arg tool "final_answer" --arg query "$(respond_text "${state_ref[user_query]} ${state_ref[history]}" 512)" '{type:"tool", tool:$tool, query:$query}'
+        plan_index="${state_ref[plan_index]}"
+        planned_entry=$(printf '%s\n' "${state_ref[plan_entries]}" | sed -n "$((plan_index + 1))p")
+
+        if [[ -n "${planned_entry}" ]]; then
+                tool="${planned_entry%%|*}"
+                query="${planned_entry#*|}"
+                query="${query%%|*}"
+                state_ref[plan_index]=$((plan_index + 1))
+                next_action_payload="$(jq -n --arg tool "${tool}" --arg query "${query}" '{type:"tool", tool:$tool, query:$query}')"
+        else
+                local final_query
+                final_query="$(respond_text "${state_ref[user_query]} ${state_ref[history]}" 512)"
+                next_action_payload="$(jq -n --arg tool "final_answer" --arg query "${final_query}" '{type:"tool", tool:$tool, query:$query}')"
+        fi
+
+        if [[ -n "${output_name}" ]]; then
+                local -n output_ref=$output_name
+                output_ref="${next_action_payload}"
+        else
+                printf '%s\n' "${next_action_payload}"
+        fi
 }
 
 validate_tool_permission() {
@@ -459,11 +486,12 @@ react_loop() {
         allowed_tools="$(allowed_tool_list "${ranked}")"
 
         initialize_react_state react_state "${user_query}" "${allowed_tools}" "${plan_entries}"
+        action_json=""
 
         while ((react_state[step] < react_state[max_steps])); do
                 current_step=$((react_state[step] + 1))
 
-                action_json="$(select_next_action react_state)"
+                select_next_action react_state action_json
                 action_type="$(printf '%s' "${action_json}" | jq -r '.type // empty' 2>/dev/null || true)"
                 tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
                 query="$(printf '%s' "${action_json}" | jq -r '.query // empty' 2>/dev/null || true)"
