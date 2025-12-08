@@ -96,15 +96,18 @@ GRAM
 
 	log "INFO" "Structured tool relevance prompt:" "${prompt}" >&2
 
-	raw="$(${LLAMA_BIN} \
-		--hf-repo "${MODEL_REPO}" \
-		--hf-file "${MODEL_FILE}" \
-		-no-cnv --simple-io \
-		--no-display-prompt \
-		--repeat-penalty 1.5 \
-		--grammar "${grammar}" \
-		-p "${prompt}" 2>/dev/null || true)" #
-	echo "${raw}" >&2
+        raw="$(${LLAMA_BIN} \
+                --hf-repo "${MODEL_REPO}" \
+                --hf-file "${MODEL_FILE}" \
+                -no-cnv --simple-io \
+                --no-display-prompt \
+                --repeat-penalty 1.5 \
+                --grammar "${grammar}" \
+                -p "${prompt}" 2>/dev/null || true)" #
+
+        if [[ ${VERBOSITY:-1} -ge 2 ]]; then
+                printf '%s\n' "${raw}" >&2
+        fi
 
 	mapfile -t relevant_tools < <(jq -r '
                 if type == "array" then
@@ -308,13 +311,21 @@ PROMPT
 }
 
 allowed_tool_list() {
-	local ranked entry tool
-	ranked="$1"
-	while IFS= read -r entry; do
-		[[ -z "${entry}" ]] && continue
-		tool="${entry##*:}"
-		printf '%s\n' "${tool}"
-	done <<<"${ranked}"
+        local ranked entry tool
+        ranked="$1"
+        local includes_final_answer=false
+        while IFS= read -r entry; do
+                [[ -z "${entry}" ]] && continue
+                tool="${entry##*:}"
+                printf '%s\n' "${tool}"
+                if [[ "${tool}" == "final_answer" ]]; then
+                        includes_final_answer=true
+                fi
+        done <<<"${ranked}"
+
+        if [[ "${includes_final_answer}" != true ]]; then
+                printf 'final_answer\n'
+        fi
 }
 
 fallback_action_from_plan() {
@@ -391,13 +402,13 @@ validate_tool_permission() {
 }
 
 execute_tool_action() {
-	# Arguments:
-	#   $1 - tool name
-	#   $2 - tool query
-	local tool query
-	tool="$1"
-	query="$2"
-	execute_tool_with_query "${tool}" "${query}" || true
+        # Arguments:
+        #   $1 - tool name
+        #   $2 - tool query
+        local tool query
+        tool="$1"
+        query="$2"
+        execute_tool_with_query "${tool}" "${query}" || true
 }
 
 record_tool_execution() {
@@ -460,13 +471,18 @@ react_loop() {
 			break
 		fi
 
-		if ! validate_tool_permission react_state "${tool}"; then
-			continue
-		fi
+                if ! validate_tool_permission react_state "${tool}"; then
+                        continue
+                fi
 
-		observation="$(execute_tool_action "${tool}" "${query}")"
-		record_tool_execution react_state "${tool}" "${query}" "${observation}"
-	done
+                observation="$(execute_tool_action "${tool}" "${query}")"
+                record_tool_execution react_state "${tool}" "${query}" "${observation}"
 
-	finalize_react_result react_state
+                if [[ "${tool}" == "final_answer" ]]; then
+                        react_state[final_answer]="${observation}"
+                        break
+                fi
+        done
+
+        finalize_react_result react_state
 }

@@ -23,6 +23,7 @@ The planner registers the following tools (each defined in `src/tools/<name>.sh`
 - `mail_list_inbox`: list recent Apple Mail inbox messages.
 - `mail_list_unread`: list unread Apple Mail inbox messages.
 - `applescript`: execute AppleScript snippets on macOS (no-op elsewhere).
+- `final_answer`: emit the agent's final reply without side effects.
 
 ## Terminal tool
 
