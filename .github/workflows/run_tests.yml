@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck shfmt
-          gem install bashcov simplecov-cobertura
+          sudo gem install bashcov simplecov-cobertura
 
       - name: Check formatting
         run: |
