@@ -7,7 +7,7 @@
 #
 # Dependencies:
 #   - bats
-#   - bash 5+
+#   - bash 3+
 #
 # Exit codes:
 #   Inherits Bats semantics; individual tests assert helper outcomes.
@@ -28,11 +28,11 @@
 }
 
 @test "initialize_react_state seeds defaults" {
-	run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; declare -A state; initialize_react_state state "answer me" $"alpha" "alpha|query|0" "1. alpha"; [[ "${state[user_query]}" == "answer me" ]]; [[ "${state[allowed_tools]}" == "alpha" ]]; [[ "${state[plan_index]}" == "0" ]]; [[ "${state[max_steps]}" -eq ${MAX_STEPS:-6} ]]'
-	[ "$status" -eq 0 ]
+        run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; state_prefix=state; initialize_react_state "${state_prefix}" "answer me" $"alpha" "alpha|query|0" "1. alpha"; [[ "${state_user_query}" == "answer me" ]]; [[ "${state_allowed_tools}" == "alpha" ]]; [[ "${state_plan_index}" == "0" ]]; [[ "${state_max_steps}" -eq ${MAX_STEPS:-6} ]]'
+        [ "$status" -eq 0 ]
 }
 
 @test "validate_tool_permission records disallowed tools" {
-	run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; declare -A state; initialize_react_state state "answer me" $"alpha" "" "1. alpha"; validate_tool_permission state beta; [[ "$?" -eq 1 ]]; [[ "${state[history]}" == *"not permitted"* ]]'
-	[ "$status" -eq 0 ]
+        run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; state_prefix=state; initialize_react_state "${state_prefix}" "answer me" $"alpha" "" "1. alpha"; validate_tool_permission "${state_prefix}" beta; [[ "$?" -eq 1 ]]; [[ "${state_history}" == *"not permitted"* ]]'
+        [ "$status" -eq 0 ]
 }
