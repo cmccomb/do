@@ -30,56 +30,65 @@ source "${BASH_SOURCE[0]%/planner.sh}/logging.sh"
 source "${BASH_SOURCE[0]%/planner.sh}/tools.sh"
 # shellcheck source=./respond.sh disable=SC1091
 source "${BASH_SOURCE[0]%/planner.sh}/respond.sh"
+# shellcheck source=./prompts.sh disable=SC1091
+source "${BASH_SOURCE[0]%/planner.sh}/prompts.sh"
 
 llama_infer() {
-	# Runs llama.cpp with HF caching enabled for the configured model.
-	local prompt
-	prompt="$1"
-	stop_string="$2"
-	number_of_tokens="$3"
+        # Runs llama.cpp with HF caching enabled for the configured model.
+        local prompt
+        prompt="$1"
+        stop_string="$2"
+        number_of_tokens="$3"
 
-	# If a stop string is provided, use it to terminate output.
-	if [[ -n "${stop_string}" ]]; then
-		"${LLAMA_BIN}" \
-			--hf-repo "${MODEL_REPO}" \
-			--hf-file "${MODEL_FILE}" \
-			-no-cnv --no-display-prompt --simple-io --verbose -r "${stop_string}" \
-			-n "${number_of_tokens}" \
-			-p "${prompt}" 2>/dev/null || true
-		return
-	fi
+        # If a stop string is provided, use it to terminate output.
+        if [[ -n "${stop_string}" ]]; then
+                "${LLAMA_BIN}" \
+                        --hf-repo "${MODEL_REPO}" \
+                        --hf-file "${MODEL_FILE}" \
+                        -no-cnv --no-display-prompt --simple-io --verbose -r "${stop_string}" \
+                        -n "${number_of_tokens}" \
+                        -p "${prompt}" 2>/dev/null || true
+                return
+        fi
 
-	"${LLAMA_BIN}" \
-		--hf-repo "${MODEL_REPO}" \
-		--hf-file "${MODEL_FILE}" \
-		-n "${number_of_tokens}" \
-		-no-cnv --no-display-prompt --simple-io --verbose \
-		-p "${prompt}" 2>/dev/null || true
+        "${LLAMA_BIN}" \
+                --hf-repo "${MODEL_REPO}" \
+                --hf-file "${MODEL_FILE}" \
+                -n "${number_of_tokens}" \
+                -no-cnv --no-display-prompt --simple-io --verbose \
+                -p "${prompt}" 2>/dev/null || true
 }
 
-build_planner_prompt() {
-	# Arguments:
-	#   $1 - user query (string)
-	local user_query tool_lines
-	user_query="$1"
-	tool_lines=""
+format_tool_catalog() {
+        local tool_lines tool
+        tool_lines=""
 
-	for tool in "${TOOLS[@]}"; do
-		tool_lines+=$(printf -- '- %s: %s\n' "${tool}" "${TOOL_DESCRIPTION[${tool}]}")
-	done
+        for tool in "${TOOLS[@]}"; do
+                tool_lines+=$(printf -- '- %s: %s\n' "${tool}" "${TOOL_DESCRIPTION[${tool}]}")
+        done
 
-	cat <<PROMPT
-You are a planner for an autonomous agent. Given a user request and a list of available tools, draft a numbered list of high-level actions the agent should take. Each step must mention the tool name that will be used. Do NOT include fully executable shell commands; keep the guidance conceptual. Always end with a final step that uses the final_answer tool to deliver the response back to the user.
+        printf '%s' "${tool_lines}"
+}
 
-Available tools:
-${tool_lines}
-User request: ${user_query}
-PROMPT
+format_allowed_tool_descriptions() {
+        # Arguments:
+        #   $1 - newline-delimited allowed tool names (string)
+        local allowed_tools tool
+        allowed_tools="$1"
+        local tool_lines
+        tool_lines="Available tools:"
+
+        while IFS= read -r tool; do
+                [[ -z "${tool}" ]] && continue
+                tool_lines+=$(printf '\n- %s: %s (example query: %s)' "${tool}" "${TOOL_DESCRIPTION[${tool}]}" "${TOOL_COMMAND[${tool}]}")
+        done <<<"${allowed_tools}"
+
+        printf '%s' "${tool_lines}"
 }
 
 append_final_answer_step() {
-	# Ensures the plan includes a final step with the final_answer tool.
-	# Arguments:
+        # Ensures the plan includes a final step with the final_answer tool.
+        # Arguments:
 	#   $1 - plan text (string)
 	local plan_text step_count
 	plan_text="$1"
@@ -96,10 +105,12 @@ append_final_answer_step() {
 }
 
 generate_plan_outline() {
-	# Arguments:
-	#   $1 - user query (string)
-	local user_query prompt raw_plan
-	user_query="$1"
+        # Arguments:
+        #   $1 - user query (string)
+        local user_query prompt raw_plan
+        user_query="$1"
+        local tool_lines
+        tool_lines="$(format_tool_catalog)"
 
 	# Had to disable this check to allow this to work outside of testing environments.
 	#	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
@@ -107,9 +118,9 @@ generate_plan_outline() {
 	#		return 0
 	#	fi
 
-	prompt="$(build_planner_prompt "${user_query}")"
-	raw_plan="$(llama_infer "${prompt}" '' 512)"
-	append_final_answer_step "${raw_plan}"
+        prompt="$(build_planner_prompt "${user_query}" "${tool_lines}")"
+        raw_plan="$(llama_infer "${prompt}" '' 512)"
+        append_final_answer_step "${raw_plan}"
 }
 
 declare -A TOOL_QUERY_DERIVERS=(
@@ -288,36 +299,9 @@ execute_tool_with_query() {
 	return 0
 }
 
-build_react_prompt() {
-	local user_query allowed_tools history plan_outline tool_lines
-	user_query="$1"
-	allowed_tools="$2"
-	history="$3"
-	plan_outline="$4"
-
-	tool_lines="Available tools:"
-	while IFS= read -r tool; do
-		tool_lines+=$(printf '\n- %s: %s (example query: %s)' "${tool}" "${TOOL_DESCRIPTION[${tool}]}" "${TOOL_COMMAND[${tool}]}")
-	done <<<"${allowed_tools}"
-
-	cat <<PROMPT
-You are an assistant planning a sequence of actions. Use the high-level plan as guidance but adapt after each observation.
-Respond ONLY with a single JSON object per turn.
-Action schema:
-- To use a tool: {"type":"tool","tool":"<tool_name>","query":"<specific command>"}
-- To finish: {"type":"tool","tool":"final_answer","query":"<final user-facing reply>"}
-High-level plan:
-${plan_outline}
-User request: ${user_query}
-${tool_lines}
-Previous steps:
-${history}
-PROMPT
-}
-
 initialize_react_state() {
-	# Arguments:
-	#   $1 - name of associative array to populate
+        # Arguments:
+        #   $1 - name of associative array to populate
 	#   $2 - user query
 	#   $3 - allowed tools (newline delimited)
 	#   $4 - ranked plan entries
@@ -351,13 +335,14 @@ select_next_action() {
 	local state_name output_name
 	state_name="$1"
 	output_name="${2:-}"
-	local -n state_ref=$state_name
-	local react_prompt plan_index planned_entry tool query next_action_payload
-	if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
-		react_prompt="$(build_react_prompt "${state_ref[user_query]}" "${state_ref[allowed_tools]}" "${state_ref[history]}" "${state_ref[plan_outline]}")"
-		llama_infer "${react_prompt}"
-		return
-	fi
+        local -n state_ref=$state_name
+        local react_prompt plan_index planned_entry tool query next_action_payload allowed_tool_descriptions
+        if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
+                allowed_tool_descriptions="$(format_allowed_tool_descriptions "${state_ref[allowed_tools]}")"
+                react_prompt="$(build_react_prompt "${state_ref[user_query]}" "${allowed_tool_descriptions}" "${state_ref[plan_outline]}" "${state_ref[history]}")"
+                llama_infer "${react_prompt}"
+                return
+        fi
 
 	plan_index="${state_ref[plan_index]}"
 	planned_entry=$(printf '%s\n' "${state_ref[plan_entries]}" | sed -n "$((plan_index + 1))p")

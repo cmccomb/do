@@ -31,3 +31,7 @@ Write a config file up front with a custom model branch (defaults to `bartowski/
 ```
 
 More scenarios and approval modes live in the [usage guide](docs/usage.md). Configuration keys are covered in [configuration](docs/configuration.md), and available tools are listed in [tools](docs/tools.md). Development and testing steps are in [development](docs/development.md).
+
+## Prompt catalogue
+
+All prompts used by the assistant are centralized in [`src/prompts.sh`](src/prompts.sh) for easier maintenance. The file exposes prompt builders for direct responses, plan generation, and ReAct steps so updates to tone, structure, or schema can be made in one place.
