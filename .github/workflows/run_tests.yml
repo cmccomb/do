@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt bats
+          sudo apt-get install -y shellcheck shfmt bats bats-core
 
       - name: Check formatting
         run: |
@@ -24,7 +24,8 @@ jobs:
             scripts/install.sh \
             tests/test_all.sh \
             tests/test_main.bats \
-            tests/test_install.bats
+            tests/test_install.bats \
+            tests/install/test_install_features.bats
 
       - name: Run shellcheck
         run: |
@@ -33,8 +34,13 @@ jobs:
             scripts/install.sh \
             tests/test_all.sh \
             tests/test_main.bats \
-            tests/test_install.bats
+            tests/test_install.bats \
+            tests/install/test_install_features.bats
 
       - name: Run Bats suite
         run: |
-          bats tests/test_main.bats tests/test_all.sh tests/test_install.bats
+          bats \
+            tests/test_main.bats \
+            tests/test_all.sh \
+            tests/test_install.bats \
+            tests/install/test_install_features.bats

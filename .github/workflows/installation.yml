@@ -15,12 +15,13 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt bats
+          sudo apt-get install -y shellcheck shfmt bats bats-core
 
       - name: Lint installer
         run: |
-          shfmt -d scripts/install.sh tests/test_install.bats
-          shellcheck scripts/install.sh tests/test_install.bats
+          shfmt -d scripts/install.sh tests/test_install.bats tests/install/test_install_features.bats
+          shellcheck scripts/install.sh tests/test_install.bats tests/install/test_install_features.bats
 
       - name: Run installer tests
-        run: bats tests/test_install.bats
+        run: |
+          bats tests/test_install.bats tests/install/test_install_features.bats
