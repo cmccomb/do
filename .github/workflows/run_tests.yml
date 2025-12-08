@@ -15,8 +15,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt bats bats-core
-          sudo apt-get install -y shellcheck shfmt bats bc
+          sudo apt-get install -y shellcheck shfmt
+          npm install -g bats
           gem install bashcov simplecov-cobertura
 
       - name: Check formatting
