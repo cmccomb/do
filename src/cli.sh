@@ -21,7 +21,11 @@
 source "${BASH_SOURCE[0]%/cli.sh}/logging.sh"
 
 build_usage_text() {
-	cat <<'USAGE'
+	local default_model_spec default_model_branch
+	default_model_spec="${DEFAULT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf}"
+	default_model_branch="${DEFAULT_MODEL_BRANCH_BASE:-main}"
+
+	cat <<USAGE
 Usage: ./src/main.sh [OPTIONS] -- "user query"
 
 Options:
@@ -32,9 +36,9 @@ Options:
       --confirm         Always prompt before running tools.
       --dry-run         Print the planned tool calls without running them.
       --plan-only       Emit the planned calls as JSON and exit (implies --dry-run).
-  -m, --model VALUE     HF repo[:file] for llama.cpp (default: Qwen/Qwen3-1.5B-Instruct-GGUF:qwen3-1.5b-instruct-q4_k_m.gguf).
+  -m, --model VALUE     HF repo[:file] for llama.cpp (default: ${default_model_spec}).
       --model-branch BRANCH
-                        HF branch or tag for the model download (default: main).
+                        HF branch or tag for the model download (default: ${default_model_branch}).
       --config FILE     Config file to load or create (default: ${XDG_CONFIG_HOME:-$HOME/.config}/okso/config.env).
   -v, --verbose         Increase log verbosity (JSON logs are always structured).
   -q, --quiet           Silence informational logs.

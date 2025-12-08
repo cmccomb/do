@@ -14,8 +14,8 @@
 #       --confirm         Always prompt before running tools.
 #       --dry-run         Print the planned tool calls without running them.
 #       --plan-only       Emit the planned calls as JSON and exit.
-#   -m, --model VALUE     HF repo[:file] for llama.cpp download (default: Qwen/Qwen3-1.5B-Instruct-GGUF:qwen3-1.5b-instruct-q4_k_m.gguf).
-#       --model-branch BRANCH  HF branch or tag for the model download.
+#   -m, --model VALUE     HF repo[:file] for llama.cpp download (default: bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF:Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf).
+#       --model-branch BRANCH  HF branch or tag for the model download (default: main).
 #       --config FILE     Config file to load (default: ${XDG_CONFIG_HOME:-$HOME/.config}/okso/config.env).
 #   -v, --verbose         Increase log verbosity (JSON logs are always structured).
 #   -q, --quiet           Silence informational logs.

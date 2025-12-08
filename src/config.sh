@@ -27,6 +27,11 @@
 # shellcheck source=./logging.sh disable=SC1091
 source "${BASH_SOURCE[0]%/config.sh}/logging.sh"
 
+readonly DEFAULT_MODEL_REPO_BASE="bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF"
+readonly DEFAULT_MODEL_FILE_BASE="Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+readonly DEFAULT_MODEL_SPEC_BASE="${DEFAULT_MODEL_REPO_BASE}:${DEFAULT_MODEL_FILE_BASE}"
+readonly DEFAULT_MODEL_BRANCH_BASE="main"
+
 detect_config_file() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -55,8 +60,8 @@ load_config() {
 		source "${CONFIG_FILE}"
 	fi
 
-	MODEL_SPEC=${MODEL_SPEC:-"Qwen/Qwen3-1.5B-Instruct-GGUF:${DEFAULT_MODEL_FILE}"}
-	MODEL_BRANCH=${MODEL_BRANCH:-main}
+	MODEL_SPEC=${MODEL_SPEC:-"${DEFAULT_MODEL_SPEC_BASE}"}
+	MODEL_BRANCH=${MODEL_BRANCH:-${DEFAULT_MODEL_BRANCH_BASE}}
 	VERBOSITY=${VERBOSITY:-1}
 	APPROVE_ALL=${APPROVE_ALL:-false}
 	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
@@ -85,8 +90,8 @@ load_config() {
 write_config_file() {
 	mkdir -p "$(dirname "${CONFIG_FILE}")"
 	cat >"${CONFIG_FILE}" <<EOF_CONFIG
-MODEL_SPEC="${MODEL_SPEC}"
-MODEL_BRANCH="${MODEL_BRANCH}"
+	MODEL_SPEC="${MODEL_SPEC}"
+	MODEL_BRANCH="${MODEL_BRANCH}"
 VERBOSITY=${VERBOSITY}
 APPROVE_ALL=${APPROVE_ALL}
 FORCE_CONFIRM=${FORCE_CONFIRM}
