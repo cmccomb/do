@@ -41,15 +41,18 @@ source "${TOOLS_DIR}/calendar/index.sh"
 source "${TOOLS_DIR}/mail/index.sh"
 # shellcheck source=./tools/applescript.sh disable=SC1091
 source "${TOOLS_DIR}/applescript.sh"
+# shellcheck source=./tools/final_answer.sh disable=SC1091
+source "${TOOLS_DIR}/final_answer.sh"
 
 initialize_tools() {
 	register_terminal
 	register_file_search
 	register_clipboard_copy
-	register_clipboard_paste
-	register_notes_suite
-	register_reminders_suite
-	register_calendar_suite
-	register_mail_suite
-	register_applescript
+        register_clipboard_paste
+        register_notes_suite
+        register_reminders_suite
+        register_calendar_suite
+        register_mail_suite
+        register_applescript
+        register_final_answer
 }

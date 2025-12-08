@@ -60,7 +60,7 @@
 @test "initialize_tools registers each module" {
 	run bash -lc 'source ./src/tools.sh; init_tool_registry; initialize_tools; printf "%s\n" "${TOOLS[@]}"'
 	[ "$status" -eq 0 ]
-	[ "${#lines[@]}" -eq 21 ]
+        [ "${#lines[@]}" -eq 22 ]
 	[ "${lines[0]}" = "terminal" ]
 	[ "${lines[1]}" = "file_search" ]
 	[ "${lines[2]}" = "clipboard_copy" ]
@@ -79,9 +79,10 @@
 	[ "${lines[15]}" = "mail_draft" ]
 	[ "${lines[16]}" = "mail_send" ]
 	[ "${lines[17]}" = "mail_search" ]
-	[ "${lines[18]}" = "mail_list_inbox" ]
-	[ "${lines[19]}" = "mail_list_unread" ]
-	[ "${lines[20]}" = "applescript" ]
+        [ "${lines[18]}" = "mail_list_inbox" ]
+        [ "${lines[19]}" = "mail_list_unread" ]
+        [ "${lines[20]}" = "applescript" ]
+        [ "${lines[21]}" = "final_answer" ]
 }
 
 @test "log emits JSON with escaped fields" {
@@ -96,6 +97,7 @@
                 source ./src/planner.sh
                 initialize_tools
                 LLAMA_AVAILABLE=true
+                VERBOSITY=0
                 LLAMA_BIN="./tests/fixtures/mock_llama_relevance.sh"
                 MODEL_REPO="demo/repo"
                 MODEL_FILE="demo.gguf"
@@ -110,6 +112,7 @@
                 source ./src/planner.sh
                 initialize_tools
                 LLAMA_AVAILABLE=true
+                VERBOSITY=0
                 LLAMA_BIN="./tests/fixtures/mock_llama_relevance.sh"
                 MODEL_REPO="demo/repo"
                 MODEL_FILE="demo.gguf"
@@ -234,7 +237,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "finalize_react_result generates answer when none provided" {
-	run bash -lc '
+        run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "%s" "stubbed response"; }
                 declare -A state=(
@@ -250,7 +253,30 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
         '
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "stubbed response" ]
-	[ "${lines[1]}" = "Execution summary:" ]
-	[ "${lines[2]}" = "Action terminal query=list" ]
-	[ "${lines[3]}" = "Observation: ok" ]
+        [ "${lines[1]}" = "Execution summary:" ]
+        [ "${lines[2]}" = "Action terminal query=list" ]
+        [ "${lines[3]}" = "Observation: ok" ]
+}
+
+@test "react_loop returns final_answer tool output" {
+        run bash -lc '
+                source ./src/planner.sh
+                execute_tool_action() { printf "%s" "${2}"; }
+                allowed_tool_list() { echo "final_answer"; }
+                select_next_action() {
+                        if [[ -z "${CALLED:-}" ]]; then
+                                CALLED=1
+                                printf "{\"type\":\"tool\",\"tool\":\"final_answer\",\"query\":\"done\"}"
+                        else
+                                printf "{\"type\":\"final\",\"answer\":\"unused\"}"
+                        fi
+                }
+                react_loop "question" "5:final_answer" "final_answer|done|5"
+        '
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "done" ]
+        [ "${lines[1]}" = "Execution summary:" ]
+        [ "${lines[2]}" = "Action final_answer query=done" ]
+        [ "${lines[3]}" = "Observation: done" ]
 }
