@@ -79,7 +79,7 @@ tools_normalize_path() {
 	# Returns a normalized absolute path for allowlist checks.
 	# Arguments:
 	#   $1 - path to normalize (string)
-	if command -v realpath >/dev/null 2>&1; then
+	if command -v realpath >/dev/null 2>&1 && realpath -m / >/dev/null 2>&1; then
 		realpath -m "$1"
 		return
 	fi
