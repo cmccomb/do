@@ -16,7 +16,7 @@
 #   VERBOSITY (int): log level.
 #
 # Dependencies:
-#   - bash 5+
+#   - bash 3+
 #   - optional llama.cpp binary
 #   - jq
 #   - gum (for interactive approvals; falls back to POSIX prompts)
@@ -36,6 +36,40 @@ source "${BASH_SOURCE[0]%/planner.sh}/respond.sh"
 source "${BASH_SOURCE[0]%/planner.sh}/prompts.sh"
 # shellcheck source=./grammar.sh disable=SC1091
 source "${BASH_SOURCE[0]%/planner.sh}/grammar.sh"
+
+state_set() {
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - key
+        #   $3 - value
+        local prefix key value
+        prefix="$1"
+        key="$2"
+        value="$3"
+        printf -v "${prefix}_${key}" '%s' "${value}"
+}
+
+state_get() {
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - key
+        local prefix key var_name
+        prefix="$1"
+        key="$2"
+        var_name="${prefix}_${key}"
+        printf '%s' "${!var_name:-}"
+}
+
+state_append_history() {
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - entry to append
+        local prefix entry current
+        prefix="$1"
+        entry="$2"
+        current="$(state_get "${prefix}" "history")"
+        state_set "${prefix}" "history" "${current}$(printf '%s\n' "${entry}")"
+}
 
 llama_infer() {
 	# Runs llama.cpp with HF caching enabled for the configured model.
@@ -114,19 +148,19 @@ format_tool_descriptions() {
 }
 
 format_tool_summary_line() {
-	# Arguments:
-	#   $1 - tool name (string)
-	local tool
-	tool="$1"
-	printf -- '- %s: %s' "${tool}" "${TOOL_DESCRIPTION[${tool}]}"
+        # Arguments:
+        #   $1 - tool name (string)
+        local tool
+        tool="$1"
+        printf -- '- %s: %s' "${tool}" "$(tool_description "${tool}")"
 }
 
 format_tool_example_line() {
-	# Arguments:
-	#   $1 - tool name (string)
-	local tool
-	tool="$1"
-	printf -- '- %s: %s (example query: %s)' "${tool}" "${TOOL_DESCRIPTION[${tool}]}" "${TOOL_COMMAND[${tool}]}"
+        # Arguments:
+        #   $1 - tool name (string)
+        local tool
+        tool="$1"
+        printf -- '- %s: %s (example query: %s)' "${tool}" "$(tool_description "${tool}")" "$(tool_command "${tool}")"
 }
 
 append_final_answer_step() {
@@ -169,16 +203,39 @@ generate_plan_outline() {
 	append_final_answer_step "${raw_plan}"
 }
 
-declare -A TOOL_QUERY_DERIVERS=(
-	[terminal]=derive_terminal_query
-	[reminders_create]=derive_reminders_create_query
-	[reminders_list]=derive_reminders_list_query
-	[notes_create]=derive_notes_create_query
-	[notes_append]=derive_notes_append_query
-	[notes_search]=derive_notes_search_query
-	[notes_read]=derive_notes_read_query
-	[notes_list]=derive_notes_list_query
-)
+tool_query_deriver() {
+        # Arguments:
+        #   $1 - tool name (string)
+        case "$1" in
+        terminal)
+                printf '%s' "derive_terminal_query"
+                ;;
+        reminders_create)
+                printf '%s' "derive_reminders_create_query"
+                ;;
+        reminders_list)
+                printf '%s' "derive_reminders_list_query"
+                ;;
+        notes_create)
+                printf '%s' "derive_notes_create_query"
+                ;;
+        notes_append)
+                printf '%s' "derive_notes_append_query"
+                ;;
+        notes_search)
+                printf '%s' "derive_notes_search_query"
+                ;;
+        notes_read)
+                printf '%s' "derive_notes_read_query"
+                ;;
+        notes_list)
+                printf '%s' "derive_notes_list_query"
+                ;;
+        *)
+                printf '%s' "derive_default_tool_query"
+                ;;
+        esac
+}
 
 derive_default_tool_query() {
 	# Arguments:
@@ -187,15 +244,15 @@ derive_default_tool_query() {
 }
 
 derive_tool_query() {
-	# Arguments:
-	#   $1 - tool name (string)
-	#   $2 - user query (string)
-	local tool_name user_query handler
-	tool_name="$1"
-	user_query="$2"
-	handler="${TOOL_QUERY_DERIVERS[${tool_name}]:-derive_default_tool_query}"
+        # Arguments:
+        #   $1 - tool name (string)
+        #   $2 - user query (string)
+        local tool_name user_query handler
+        tool_name="$1"
+        user_query="$2"
+        handler="$(tool_query_deriver "${tool_name}")"
 
-	"${handler}" "${user_query}"
+        "${handler}" "${user_query}"
 }
 
 emit_plan_json() {
@@ -213,29 +270,30 @@ emit_plan_json() {
 }
 
 extract_tools_from_plan() {
-	# Arguments:
-	#   $1 - plan outline text (string)
-	local plan_text lower_line tool
-	declare -A seen=()
-	local -a required=()
-	plan_text="$1"
+        # Arguments:
+        #   $1 - plan outline text (string)
+        local plan_text lower_line tool
+        local seen
+        seen=""
+        local -a required=()
+        plan_text="$1"
 
-	while IFS= read -r line; do
-		lower_line="${line,,}"
-		for tool in "${TOOLS[@]}"; do
-			if [[ -n "${seen[${tool}]:-}" ]]; then
-				continue
-			fi
-			if [[ "${lower_line}" == *"${tool,,}"* ]]; then
-				required+=("${tool}")
-				seen["${tool}"]=1
-			fi
-		done
-	done <<<"${plan_text}"
+        while IFS= read -r line; do
+                lower_line="${line,,}"
+                for tool in "${TOOLS[@]}"; do
+                        if grep -Fxq "${tool}" <<<"${seen}"; then
+                                continue
+                        fi
+                        if [[ "${lower_line}" == *"${tool,,}"* ]]; then
+                                required+=("${tool}")
+                                seen+="${tool}"$'\n'
+                        fi
+                done
+        done <<<"${plan_text}"
 
-	if [[ -z "${seen[final_answer]:-}" ]]; then
-		required+=("final_answer")
-	fi
+        if ! grep -Fxq "final_answer" <<<"${seen}"; then
+                required+=("final_answer")
+        fi
 
 	printf '%s\n' "${required[@]}"
 }
@@ -304,10 +362,10 @@ confirm_tool() {
 }
 
 execute_tool_with_query() {
-	local tool_name tool_query handler output status
-	tool_name="$1"
-	tool_query="$2"
-	handler="${TOOL_HANDLER[${tool_name}]}"
+        local tool_name tool_query handler output status
+        tool_name="$1"
+        tool_query="$2"
+        handler="$(tool_handler "${tool_name}")"
 
 	local requires_confirmation
 	requires_confirmation=false
@@ -345,63 +403,52 @@ execute_tool_with_query() {
 	return 0
 }
 
-# shellcheck disable=SC2154,SC2178
 initialize_react_state() {
-	# Arguments:
-	#   $1 - name of associative array to populate
-	#   $2 - user query
-	#   $3 - allowed tools (newline delimited)
-	#   $4 - ranked plan entries
-	#   $5 - plan outline text
-	# shellcheck disable=SC2178
-	local -n state_ref=$1
-	local -r history_key="history"
-	local -r step_key="step"
-	local -r max_steps_key="max_steps"
-	state_ref[user_query]="$2"
-	state_ref[allowed_tools]="$3"
-	state_ref[plan_entries]="$4"
-	state_ref[plan_outline]="$5"
-	state_ref["${history_key}"]=""
-	state_ref["${step_key}"]=0
-	state_ref[plan_index]=0
-	state_ref["${max_steps_key}"]="${MAX_STEPS:-6}"
-	state_ref[final_answer]=""
+        # Arguments:
+        #   $1 - state prefix to populate
+        #   $2 - user query
+        #   $3 - allowed tools (newline delimited)
+        #   $4 - ranked plan entries
+        #   $5 - plan outline text
+        local state_prefix
+        state_prefix="$1"
+        state_set "${state_prefix}" "user_query" "$2"
+        state_set "${state_prefix}" "allowed_tools" "$3"
+        state_set "${state_prefix}" "plan_entries" "$4"
+        state_set "${state_prefix}" "plan_outline" "$5"
+        state_set "${state_prefix}" "history" ""
+        state_set "${state_prefix}" "step" 0
+        state_set "${state_prefix}" "plan_index" 0
+        state_set "${state_prefix}" "max_steps" "${MAX_STEPS:-6}"
+        state_set "${state_prefix}" "final_answer" ""
 }
 
 record_history() {
-	# Arguments:
-	#   $1 - name of associative array holding state
-	#   $2 - formatted history entry
-	# shellcheck disable=SC2178
-	local -n state_ref=$1
-	local entry
-	local -r history_key="history"
-	entry="$2"
-	state_ref["${history_key}"]+=$(printf '%s\n' "${entry}")
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - formatted history entry
+        local entry
+        entry="$2"
+        state_append_history "$1" "${entry}"
 }
 
-# shellcheck disable=SC2178,SC2034
 select_next_action() {
-	# Arguments:
-	#   $1 - name of associative array holding state
-	#   $2 - (optional) name of variable to receive JSON action output
-	local state_name output_name
-	state_name="$1"
-	output_name="${2:-}"
-	# shellcheck disable=SC2178
-	local -n state_ref=$state_name
-	local react_prompt plan_index planned_entry tool query next_action_payload allowed_tool_descriptions allowed_tool_lines
-	if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
-		allowed_tool_lines="$(format_tool_descriptions "${state_ref[allowed_tools]}" format_tool_example_line)"
-		allowed_tool_descriptions="Available tools:"
-		if [[ -n "${allowed_tool_lines}" ]]; then
-			allowed_tool_descriptions+=$'\n'"${allowed_tool_lines}"
-		fi
-		react_prompt="$(build_react_prompt "${state_ref[user_query]}" "${allowed_tool_descriptions}" "${state_ref[plan_outline]}" "${state_ref[history]}")"
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - (optional) name of variable to receive JSON action output
+        local state_name output_name react_prompt plan_index planned_entry tool query next_action_payload allowed_tool_descriptions allowed_tool_lines
+        state_name="$1"
+        output_name="${2:-}"
+        if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
+                allowed_tool_lines="$(format_tool_descriptions "$(state_get "${state_name}" "allowed_tools")" format_tool_example_line)"
+                allowed_tool_descriptions="Available tools:"
+                if [[ -n "${allowed_tool_lines}" ]]; then
+                        allowed_tool_descriptions+=$'\n'"${allowed_tool_lines}"
+                fi
+                react_prompt="$(build_react_prompt "$(state_get "${state_name}" "user_query")" "${allowed_tool_descriptions}" "$(state_get "${state_name}" "plan_outline")" "$(state_get "${state_name}" "history")")"
 
-		local react_grammar_path raw_action validated_action
-		react_grammar_path="$(grammar_path react_action)"
+                local react_grammar_path raw_action validated_action
+                react_grammar_path="$(grammar_path react_action)"
 
 		raw_action="$(llama_infer "${react_prompt}" "" 256 "${react_grammar_path}")"
 		if ! validated_action=$(jq -cer 'select(type == "object") | {type, tool, query} | select(.type|type == "string") | select(.tool|type == "string") | select(.query|type == "string")' <<<"${raw_action}"); then
@@ -409,57 +456,51 @@ select_next_action() {
 			return 1
 		fi
 
-		if [[ -n "${output_name}" ]]; then
-			local -n output_ref=$output_name
-			output_ref="${validated_action}"
-		else
-			printf '%s\n' "${validated_action}"
-		fi
+                if [[ -n "${output_name}" ]]; then
+                        printf -v "${output_name}" '%s' "${validated_action}"
+                else
+                        printf '%s\n' "${validated_action}"
+                fi
 
-		return
-	fi
+                return
+        fi
 
-	plan_index="${state_ref[plan_index]}"
-	planned_entry=$(printf '%s\n' "${state_ref[plan_entries]}" | sed -n "$((plan_index + 1))p")
+        plan_index="$(state_get "${state_name}" "plan_index")"
+        planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-	if [[ -n "${planned_entry}" ]]; then
-		tool="${planned_entry%%|*}"
-		query="${planned_entry#*|}"
-		query="${query%%|*}"
-		state_ref[plan_index]=$((plan_index + 1))
-		next_action_payload="$(jq -n --arg tool "${tool}" --arg query "${query}" '{type:"tool", tool:$tool, query:$query}')"
-	else
-		local final_query
-		final_query="$(respond_text "${state_ref[user_query]} ${state_ref[history]}" 512)"
-		next_action_payload="$(jq -n --arg tool "final_answer" --arg query "${final_query}" '{type:"tool", tool:$tool, query:$query}')"
-	fi
+        if [[ -n "${planned_entry}" ]]; then
+                tool="${planned_entry%%|*}"
+                query="${planned_entry#*|}"
+                query="${query%%|*}"
+                state_set "${state_name}" "plan_index" $((plan_index + 1))
+                next_action_payload="$(jq -n --arg tool "${tool}" --arg query "${query}" '{type:"tool", tool:$tool, query:$query}')"
+        else
+                local final_query
+                final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"
+                next_action_payload="$(jq -n --arg tool "final_answer" --arg query "${final_query}" '{type:"tool", tool:$tool, query:$query}')"
+        fi
 
-	if [[ -n "${output_name}" ]]; then
-		# shellcheck disable=SC2034
-		local -n output_ref=$output_name
-		# shellcheck disable=SC2034
-		output_ref="${next_action_payload}"
-	else
-		printf '%s\n' "${next_action_payload}"
-	fi
+        if [[ -n "${output_name}" ]]; then
+                printf -v "${output_name}" '%s' "${next_action_payload}"
+        else
+                printf '%s\n' "${next_action_payload}"
+        fi
 }
 
 validate_tool_permission() {
-	# Arguments:
-	#   $1 - name of associative array holding state
-	#   $2 - tool name to validate
-	local state_name
-	# shellcheck disable=SC2178
-	local -n state_ref=$1
-	local tool
-	state_name="$1"
-	tool="$2"
-	if grep -Fxq "${tool}" <<<"${state_ref[allowed_tools]}"; then
-		return 0
-	fi
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - tool name to validate
+        local state_name
+        local tool
+        state_name="$1"
+        tool="$2"
+        if grep -Fxq "${tool}" <<<"$(state_get "${state_name}" "allowed_tools")"; then
+                return 0
+        fi
 
-	record_history "${state_name}" "$(printf 'Tool %s not permitted.' "${tool}")"
-	return 1
+        record_history "${state_name}" "$(printf 'Tool %s not permitted.' "${tool}")"
+        return 1
 }
 
 execute_tool_action() {
@@ -473,83 +514,82 @@ execute_tool_action() {
 }
 
 record_tool_execution() {
-	# Arguments:
-	#   $1 - name of associative array holding state
-	#   $2 - tool name
-	#   $3 - query string
-	#   $4 - observation text
-	#   $5 - step index
-	local state_name
-	# shellcheck disable=SC2178
-	local -n state_ref=$1
-	local tool query observation step_index
-	state_name="$1"
-	tool="$2"
-	query="$3"
-	observation="$4"
-	step_index="$5"
-	record_history "${state_name}" "$(printf 'Step %s action %s query=%s\nObservation: %s' "${step_index}" "${tool}" "${query}" "${observation}")"
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - tool name
+        #   $3 - query string
+        #   $4 - observation text
+        #   $5 - step index
+        local state_name
+        local tool query observation step_index
+        state_name="$1"
+        tool="$2"
+        query="$3"
+        observation="$4"
+        step_index="$5"
+        record_history "${state_name}" "$(printf 'Step %s action %s query=%s\nObservation: %s' "${step_index}" "${tool}" "${query}" "${observation}")"
 }
 
 finalize_react_result() {
-	# Arguments:
-	#   $1 - name of associative array holding state
-	# shellcheck disable=SC2178
-	local -n state_ref=$1
-	if [[ -z "${state_ref[final_answer]}" ]]; then
-		state_ref[final_answer]="$(respond_text "${state_ref[user_query]} ${state_ref[history]}" 1000)"
-	fi
+        # Arguments:
+        #   $1 - state prefix
+        local state_name
+        state_name="$1"
+        if [[ -z "$(state_get "${state_name}" "final_answer")" ]]; then
+                state_set "${state_name}" "final_answer" "$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 1000)"
+        fi
 
-	printf '%s\n' "${state_ref[final_answer]}"
-	if [[ -n "${state_ref[plan_outline]}" ]]; then
-		printf 'Plan outline:\n%s\n' "${state_ref[plan_outline]}"
-	fi
-	if [[ -z "${state_ref[history]}" ]]; then
-		printf 'Execution summary: no tool runs.\n'
-	else
-		printf 'Execution summary:\n%s\n' "${state_ref[history]}"
-	fi
+        printf '%s\n' "$(state_get "${state_name}" "final_answer")"
+        if [[ -n "$(state_get "${state_name}" "plan_outline")" ]]; then
+                printf 'Plan outline:\n%s\n' "$(state_get "${state_name}" "plan_outline")"
+        fi
+        if [[ -z "$(state_get "${state_name}" "history")" ]]; then
+                printf 'Execution summary: no tool runs.\n'
+        else
+                printf 'Execution summary:\n%s\n' "$(state_get "${state_name}" "history")"
+        fi
 }
 
 react_loop() {
-	local user_query allowed_tools plan_entries plan_outline action_json action_type tool query observation current_step
-	declare -A react_state
-	user_query="$1"
-	allowed_tools="$2"
-	plan_entries="$3"
-	plan_outline="$4"
+        local user_query allowed_tools plan_entries plan_outline action_json action_type tool query observation current_step
+        local state_prefix
+        user_query="$1"
+        allowed_tools="$2"
+        plan_entries="$3"
+        plan_outline="$4"
 
-	initialize_react_state react_state "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}"
-	action_json=""
+        state_prefix="react_state"
+        initialize_react_state "${state_prefix}" "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}"
+        action_json=""
 
-	while ((react_state[step] < react_state[max_steps])); do
-		current_step=$((react_state[step] + 1))
+        while (( $(state_get "${state_prefix}" "step") < $(state_get "${state_prefix}" "max_steps") )); do
+                current_step=$(( $(state_get "${state_prefix}" "step") + 1 ))
 
-		select_next_action react_state action_json
-		action_type="$(printf '%s' "${action_json}" | jq -r '.type // empty' 2>/dev/null || true)"
-		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
-		query="$(printf '%s' "${action_json}" | jq -r '.query // empty' 2>/dev/null || true)"
+                select_next_action "${state_prefix}" action_json
+                action_type="$(printf '%s' "${action_json}" | jq -r '.type // empty' 2>/dev/null || true)"
+                tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
+                query="$(printf '%s' "${action_json}" | jq -r '.query // empty' 2>/dev/null || true)"
 
-		if [[ "${action_type}" != "tool" ]]; then
-			record_history react_state "$(printf 'Step %s unusable action: %s' "${current_step}" "${action_json}")"
-			react_state[step]=${current_step}
-			continue
-		fi
+                if [[ "${action_type}" != "tool" ]]; then
+                        record_history "${state_prefix}" "$(printf 'Step %s unusable action: %s' "${current_step}" "${action_json}")"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 
-		if ! validate_tool_permission react_state "${tool}"; then
-			react_state[step]=${current_step}
-			continue
-		fi
+                if ! validate_tool_permission "${state_prefix}" "${tool}"; then
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 
-		observation="$(execute_tool_action "${tool}" "${query}")"
-		record_tool_execution react_state "${tool}" "${query}" "${observation}" "${current_step}"
+                observation="$(execute_tool_action "${tool}" "${query}")"
+                record_tool_execution "${state_prefix}" "${tool}" "${query}" "${observation}" "${current_step}"
 
-		react_state[step]=${current_step}
-		if [[ "${tool}" == "final_answer" ]]; then
-			react_state[final_answer]="${observation}"
-			break
-		fi
-	done
+                state_set "${state_prefix}" "step" "${current_step}"
+                if [[ "${tool}" == "final_answer" ]]; then
+                        state_set "${state_prefix}" "final_answer" "${observation}"
+                        break
+                fi
+        done
 
-	finalize_react_result react_state
+        finalize_react_result "${state_prefix}"
 }

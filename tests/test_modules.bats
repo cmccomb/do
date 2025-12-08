@@ -76,9 +76,10 @@ EOF
 }
 
 @test "init_tool_registry clears previous tools" {
-	run bash -lc 'source ./src/tools.sh; TOOLS=(stub); TOOL_DESCRIPTION=( [stub]="desc"); init_tool_registry; echo "${#TOOLS[@]}"'
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" -eq 0 ]
+        run bash -lc 'source ./src/tools.sh; TOOLS=(stub); TOOL_DESCRIPTION_stub="desc"; init_tool_registry; echo "${#TOOLS[@]}"; echo "${TOOL_DESCRIPTION_stub:-missing}"'
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" -eq 0 ]
+        [ "${lines[1]}" = "missing" ]
 }
 
 @test "assert_osascript_available warns and exits when not on macOS" {
@@ -267,7 +268,7 @@ chmod +x "${tmpdir}/gum"
 PATH="${tmpdir}:$PATH"
 source ./src/planner.sh
 demo_handler() { echo "ran ${TOOL_QUERY}"; }
-TOOL_HANDLER["demo_tool"]="demo_handler"
+TOOL_HANDLER_demo_tool="demo_handler"
 FORCE_CONFIRM=true
 APPROVE_ALL=false
 DRY_RUN=false
@@ -285,7 +286,7 @@ execute_tool_with_query "demo_tool" "echo hi"
 	run bash -lc '
 source ./src/planner.sh
 demo_handler() { echo "ran ${TOOL_QUERY}"; }
-TOOL_HANDLER["demo_tool"]="demo_handler"
+TOOL_HANDLER_demo_tool="demo_handler"
 FORCE_CONFIRM=true
 APPROVE_ALL=false
 DRY_RUN=false
@@ -318,22 +319,15 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action follows plan entries before finalizing" {
-	run bash -lc '
+        run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "offline response"; }
-                declare -A state=(
-                        [user_query]="list files"
-                        [allowed_tools]=$'"'"'terminal\nfinal_answer'"'"'
-                        [plan_entries]=$'"'"'terminal|echo hi|4'"'"'
-                        [plan_outline]=$'"'"'1. terminal -> echo hi\n2. final_answer -> respond'"'"'
-                        [history]=""
-                        [step]=0
-                        [max_steps]=2
-                        [final_answer]=""
-                )
+                state_prefix=state
+                initialize_react_state "${state_prefix}" "list files" $'"'"'terminal\nfinal_answer'"'"' $'"'"'terminal|echo hi|4'"'"' $'"'"'1. terminal -> echo hi\n2. final_answer -> respond'"'"'
+                state_set "${state_prefix}" "max_steps" 2
                 USE_REACT_LLAMA=false
                 LLAMA_AVAILABLE=false
-                select_next_action state | jq -r ".type,.tool,.query"
+                select_next_action "${state_prefix}" | jq -r ".type,.tool,.query"
         '
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "tool" ]
@@ -353,23 +347,15 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                         printf "{\"type\":\"tool\",\"tool\":\"terminal\",\"query\":\"ls\"}"
                 }
 
-                declare -A state=(
-                        [user_query]="list files"
-                        [allowed_tools]=$'"'"'terminal\nfinal_answer'"'"'
-                        [plan_entries]=""
-                        [plan_outline]=$'"'"'1. terminal -> list\n2. final_answer -> summarize'"'"'
-                        [history]=""
-                        [step]=0
-                        [plan_index]=0
-                        [max_steps]=2
-                        [final_answer]=""
-                )
+                state_prefix=state
+                initialize_react_state "${state_prefix}" "list files" $'"'"'terminal\nfinal_answer'"'"' "" $'"'"'1. terminal -> list\n2. final_answer -> summarize'"'"'
+                state_set "${state_prefix}" "max_steps" 2
 
                 USE_REACT_LLAMA=true
                 LLAMA_AVAILABLE=true
                 action_json=""
 
-                select_next_action state action_json
+                select_next_action "${state_prefix}" action_json
 
                 llama_arg_count="$(cat "${llama_arg_file}")"
                 llama_grammar="$(cat "${llama_grammar_file}")"
@@ -478,23 +464,15 @@ printf "PLAN:%s\nGRAMMAR:%s\n" "${plan_text}" "$(cat "${llama_grammar_file}")"
                         printf "invalid json"
                 }
 
-                declare -A state=(
-                        [user_query]="list files"
-                        [allowed_tools]=$'"'"'terminal\nfinal_answer'"'"'
-                        [plan_entries]=""
-                        [plan_outline]=$'"'"'1. terminal -> list'"'"'
-                        [history]=""
-                        [step]=0
-                        [plan_index]=0
-                        [max_steps]=2
-                        [final_answer]=""
-                )
+                state_prefix=state
+                initialize_react_state "${state_prefix}" "list files" $'"'"'terminal\nfinal_answer'"'"' "" $'"'"'1. terminal -> list'"'"'
+                state_set "${state_prefix}" "max_steps" 2
 
                 USE_REACT_LLAMA=true
                 LLAMA_AVAILABLE=true
                 action_json=""
 
-                select_next_action state action_json
+                select_next_action "${state_prefix}" action_json
                 rc=$?
                 echo "STATUS:${rc}"
                 exit ${rc}
@@ -507,35 +485,29 @@ printf "PLAN:%s\nGRAMMAR:%s\n" "${plan_text}" "$(cat "${llama_grammar_file}")"
 }
 
 @test "validate_tool_permission records history for disallowed tool" {
-	run bash -lc '
+        run bash -lc '
                 source ./src/planner.sh
-                declare -A state=(
-                        [allowed_tools]=$'"'"'terminal\nnotes_create'"'"'
-                        [history]=""
-                )
-                validate_tool_permission state "mail_send"
+                state_prefix=state
+                state_set "${state_prefix}" "allowed_tools" $'"'"'terminal\nnotes_create'"'"'
+                state_set "${state_prefix}" "history" ""
+                validate_tool_permission "${state_prefix}" "mail_send"
                 echo "$?"
-                printf "%s" "${state[history]}"
+                printf "%s" "${state_history}"
         '
-	[ "${lines[0]}" -eq 1 ]
-	[ "${lines[1]}" = "Tool mail_send not permitted." ]
+        [ "${lines[0]}" -eq 1 ]
+        [ "${lines[1]}" = "Tool mail_send not permitted." ]
 }
 
 @test "finalize_react_result generates answer when none provided" {
-	run bash -lc '
+        run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "%s" "stubbed response"; }
-                declare -A state=(
-                        [user_query]="demo question"
-                        [allowed_tools]="terminal"
-                        [plan_entries]=""
-                        [plan_outline]=$'"'"'1. terminal -> list'"'"'
-                        [history]=$'"'"'Action terminal query=list\nObservation: ok'"'"'
-                        [step]=2
-                        [max_steps]=3
-                        [final_answer]=""
-                )
-                finalize_react_result state
+                state_prefix=state
+                initialize_react_state "${state_prefix}" "demo question" "terminal" "" $'"'"'1. terminal -> list'"'"'
+                state_set "${state_prefix}" "history" $'"'"'Action terminal query=list\nObservation: ok'"'"'
+                state_set "${state_prefix}" "step" 2
+                state_set "${state_prefix}" "max_steps" 3
+                finalize_react_result "${state_prefix}"
         '
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "stubbed response" ]
