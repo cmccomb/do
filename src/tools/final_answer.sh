@@ -23,16 +23,16 @@ source "${BASH_SOURCE[0]%/tools/final_answer.sh}/logging.sh"
 source "${BASH_SOURCE[0]%/final_answer.sh}/registry.sh"
 
 tool_final_answer() {
-        # Emits the provided final answer text without modification.
-        # Arguments: none. Reads TOOL_QUERY for the final reply content.
-        printf '%s' "${TOOL_QUERY:-}" || true
+	# Emits the provided final answer text without modification.
+	# Arguments: none. Reads TOOL_QUERY for the final reply content.
+	printf '%s' "${TOOL_QUERY:-}" || true
 }
 
 register_final_answer() {
-        register_tool \
-                "final_answer" \
-                "Emit the final user-facing answer without performing additional actions." \
-                "final_answer <final reply>" \
-                "Returns text directly to the user; avoid exposing sensitive data." \
-                tool_final_answer
+	register_tool \
+		"final_answer" \
+		"Emit the final user-facing answer without performing additional actions." \
+		"final_answer <final reply>" \
+		"Returns text directly to the user; avoid exposing sensitive data." \
+		tool_final_answer
 }

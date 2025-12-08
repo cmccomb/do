@@ -48,11 +48,11 @@ initialize_tools() {
 	register_terminal
 	register_file_search
 	register_clipboard_copy
-        register_clipboard_paste
-        register_notes_suite
-        register_reminders_suite
-        register_calendar_suite
-        register_mail_suite
-        register_applescript
-        register_final_answer
+	register_clipboard_paste
+	register_notes_suite
+	register_reminders_suite
+	register_calendar_suite
+	register_mail_suite
+	register_applescript
+	register_final_answer
 }

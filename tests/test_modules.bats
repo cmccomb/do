@@ -60,7 +60,7 @@
 @test "initialize_tools registers each module" {
 	run bash -lc 'source ./src/tools.sh; init_tool_registry; initialize_tools; printf "%s\n" "${TOOLS[@]}"'
 	[ "$status" -eq 0 ]
-        [ "${#lines[@]}" -eq 22 ]
+	[ "${#lines[@]}" -eq 22 ]
 	[ "${lines[0]}" = "terminal" ]
 	[ "${lines[1]}" = "file_search" ]
 	[ "${lines[2]}" = "clipboard_copy" ]
@@ -79,10 +79,10 @@
 	[ "${lines[15]}" = "mail_draft" ]
 	[ "${lines[16]}" = "mail_send" ]
 	[ "${lines[17]}" = "mail_search" ]
-        [ "${lines[18]}" = "mail_list_inbox" ]
-        [ "${lines[19]}" = "mail_list_unread" ]
-        [ "${lines[20]}" = "applescript" ]
-        [ "${lines[21]}" = "final_answer" ]
+	[ "${lines[18]}" = "mail_list_inbox" ]
+	[ "${lines[19]}" = "mail_list_unread" ]
+	[ "${lines[20]}" = "applescript" ]
+	[ "${lines[21]}" = "final_answer" ]
 }
 
 @test "log emits JSON with escaped fields" {
@@ -93,7 +93,7 @@
 }
 
 @test "structured_tool_relevance parses boolean map grammar" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 initialize_tools
                 VERBOSITY=0
@@ -109,7 +109,7 @@
 }
 
 @test "rank_tools uses grammar-constrained llama selection" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 initialize_tools
                 VERBOSITY=0
@@ -156,7 +156,7 @@ cat "${LOG_FILE}"
 }
 
 @test "confirm_tool surfaces skipped message when gum declines" {
-        run bash -lc '
+	run bash -lc '
 tmpdir=$(mktemp -d)
 export LOG_FILE="${tmpdir}/gum.log"
 cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'
@@ -177,12 +177,12 @@ cat "${LOG_FILE}"
 exit ${status}
 '
 	[ "$status" -eq 1 ]
-        [ "${lines[1]}" = "[terminal skipped]" ]
-        [ "${lines[2]}" = "confirm --affirmative Run --negative Skip Execute tool \"terminal\"?" ]
+	[ "${lines[1]}" = "[terminal skipped]" ]
+	[ "${lines[2]}" = "confirm --affirmative Run --negative Skip Execute tool \"terminal\"?" ]
 }
 
 @test "execute_tool_with_query logs confirmation before prompt" {
-        run bash -lc '
+	run bash -lc '
 tmpdir=$(mktemp -d)
 cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'
 #!/usr/bin/env bash
@@ -200,15 +200,15 @@ DRY_RUN=false
 PLAN_ONLY=false
 execute_tool_with_query "demo_tool" "echo hi"
 '
-        [ "$status" -eq 0 ]
-        [[ "${lines[0]}" == *"Requesting tool confirmation"* ]]
-        [ "$(echo "${lines[0]}" | jq -r '.detail')" = "tool=demo_tool query=echo hi" ]
-        [ "${lines[1]}" = "PROMPT:confirm --affirmative Run --negative Skip Execute tool \"demo_tool\"?" ]
-        [ "${lines[2]}" = "ran echo hi" ]
+	[ "$status" -eq 0 ]
+	[[ "${lines[0]}" == *"Requesting tool confirmation"* ]]
+	[ "$(echo "${lines[0]}" | jq -r '.detail')" = "tool=demo_tool query=echo hi" ]
+	[ "${lines[1]}" = "PROMPT:confirm --affirmative Run --negative Skip Execute tool \"demo_tool\"?" ]
+	[ "${lines[2]}" = "ran echo hi" ]
 }
 
 @test "execute_tool_with_query skips confirmation logging in preview modes" {
-        run bash -lc '
+	run bash -lc '
 source ./src/planner.sh
 demo_handler() { echo "ran ${TOOL_QUERY}"; }
 TOOL_HANDLER["demo_tool"]="demo_handler"
@@ -218,9 +218,9 @@ DRY_RUN=false
 PLAN_ONLY=true
 execute_tool_with_query "demo_tool" "noop"
 '
-        [ "$status" -eq 0 ]
-        [[ "${output}" != *"Requesting tool confirmation"* ]]
-        [ "$(echo "${output}" | jq -r '.message')" = "Skipping execution in preview mode" ]
+	[ "$status" -eq 0 ]
+	[[ "${output}" != *"Requesting tool confirmation"* ]]
+	[ "$(echo "${output}" | jq -r '.message')" = "Skipping execution in preview mode" ]
 }
 
 @test "show_help renders through gum when available" {
@@ -244,7 +244,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action emits final_answer action without llama" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "offline response"; }
                 declare -A state=(
@@ -261,10 +261,10 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 LLAMA_AVAILABLE=false
                 select_next_action state | jq -r ".type,.tool,.query"
         '
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "tool" ]
-        [ "${lines[1]}" = "final_answer" ]
-        [ "${lines[2]}" = "offline response" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "tool" ]
+	[ "${lines[1]}" = "final_answer" ]
+	[ "${lines[2]}" = "offline response" ]
 }
 
 @test "validate_tool_permission records history for disallowed tool" {
@@ -283,7 +283,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "finalize_react_result generates answer when none provided" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "%s" "stubbed response"; }
                 declare -A state=(
@@ -300,15 +300,15 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
         '
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "stubbed response" ]
-        [ "${lines[1]}" = "Plan outline:" ]
-        [ "${lines[2]}" = "1. terminal -> list" ]
-        [ "${lines[3]}" = "Execution summary:" ]
-        [ "${lines[4]}" = "Action terminal query=list" ]
-        [ "${lines[5]}" = "Observation: ok" ]
+	[ "${lines[1]}" = "Plan outline:" ]
+	[ "${lines[2]}" = "1. terminal -> list" ]
+	[ "${lines[3]}" = "Execution summary:" ]
+	[ "${lines[4]}" = "Action terminal query=list" ]
+	[ "${lines[5]}" = "Observation: ok" ]
 }
 
 @test "react_loop returns final_answer tool output" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 execute_tool_action() { printf "%s" "${2}"; }
                 allowed_tool_list() { echo "final_answer"; }
@@ -323,11 +323,11 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 react_loop "question" "5:final_answer" "final_answer|done|5"
         '
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "done" ]
-        [ "${lines[1]}" = "Plan outline:" ]
-        [ "${lines[2]}" = "1. final_answer -> done" ]
-        [ "${lines[3]}" = "Execution summary:" ]
-        [ "${lines[4]}" = "Step 1 action final_answer query=done" ]
-        [ "${lines[5]}" = "Observation: done" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "done" ]
+	[ "${lines[1]}" = "Plan outline:" ]
+	[ "${lines[2]}" = "1. final_answer -> done" ]
+	[ "${lines[3]}" = "Execution summary:" ]
+	[ "${lines[4]}" = "Step 1 action final_answer query=done" ]
+	[ "${lines[5]}" = "Observation: done" ]
 }
