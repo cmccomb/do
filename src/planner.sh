@@ -40,11 +40,11 @@ llama_infer() {
         #   $2 - stop string (optional)
         #   $3 - max tokens (optional)
         #   $4 - grammar file path (optional)
-        local prompt stop_string number_of_tokens grammar_path
-        prompt="$1"
-        stop_string="$2"
-        number_of_tokens="${3:-256}"
-        grammar_path="$4"
+local prompt stop_string number_of_tokens grammar_path
+prompt="$1"
+stop_string="${2:-}"
+number_of_tokens="${3:-256}"
+grammar_path="${4:-}"
 
         local additional_args
         additional_args=()
