@@ -23,39 +23,39 @@ source "${BASH_SOURCE[0]%/tools/registry.sh}/logging.sh"
 TOOLS=()
 
 tool_description() {
-        local name var_name
-        name="$1"
-        var_name="TOOL_DESCRIPTION_${name}"
-        printf '%s' "${!var_name:-}"
+	local name var_name
+	name="$1"
+	var_name="TOOL_DESCRIPTION_${name}"
+	printf '%s' "${!var_name:-}"
 }
 
 tool_command() {
-        local name var_name
-        name="$1"
-        var_name="TOOL_COMMAND_${name}"
-        printf '%s' "${!var_name:-}"
+	local name var_name
+	name="$1"
+	var_name="TOOL_COMMAND_${name}"
+	printf '%s' "${!var_name:-}"
 }
 
 tool_safety() {
-        local name var_name
-        name="$1"
-        var_name="TOOL_SAFETY_${name}"
-        printf '%s' "${!var_name:-}"
+	local name var_name
+	name="$1"
+	var_name="TOOL_SAFETY_${name}"
+	printf '%s' "${!var_name:-}"
 }
 
 tool_handler() {
-        local name var_name
-        name="$1"
-        var_name="TOOL_HANDLER_${name}"
-        printf '%s' "${!var_name:-}"
+	local name var_name
+	name="$1"
+	var_name="TOOL_HANDLER_${name}"
+	printf '%s' "${!var_name:-}"
 }
 
 init_tool_registry() {
-        local name
-        for name in "${TOOLS[@]}"; do
-                unset "TOOL_DESCRIPTION_${name}" "TOOL_COMMAND_${name}" "TOOL_SAFETY_${name}" "TOOL_HANDLER_${name}"
-        done
-        TOOLS=()
+	local name
+	for name in "${TOOLS[@]}"; do
+		unset "TOOL_DESCRIPTION_${name}" "TOOL_COMMAND_${name}" "TOOL_SAFETY_${name}" "TOOL_HANDLER_${name}"
+	done
+	TOOLS=()
 }
 
 register_tool() {
@@ -93,9 +93,9 @@ register_tool() {
 			return 1
 		fi
 	fi
-        TOOLS+=("${name}")
-        printf -v "TOOL_DESCRIPTION_${name}" '%s' "$2"
-        printf -v "TOOL_COMMAND_${name}" '%s' "$3"
-        printf -v "TOOL_SAFETY_${name}" '%s' "$4"
-        printf -v "TOOL_HANDLER_${name}" '%s' "${5:-}"
+	TOOLS+=("${name}")
+	printf -v "TOOL_DESCRIPTION_${name}" '%s' "$2"
+	printf -v "TOOL_COMMAND_${name}" '%s' "$3"
+	printf -v "TOOL_SAFETY_${name}" '%s' "$4"
+	printf -v "TOOL_HANDLER_${name}" '%s' "${5:-}"
 }

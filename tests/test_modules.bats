@@ -76,10 +76,10 @@ EOF
 }
 
 @test "init_tool_registry clears previous tools" {
-        run bash -lc 'source ./src/tools.sh; TOOLS=(stub); TOOL_DESCRIPTION_stub="desc"; init_tool_registry; echo "${#TOOLS[@]}"; echo "${TOOL_DESCRIPTION_stub:-missing}"'
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" -eq 0 ]
-        [ "${lines[1]}" = "missing" ]
+	run bash -lc 'source ./src/tools.sh; TOOLS=(stub); TOOL_DESCRIPTION_stub="desc"; init_tool_registry; echo "${#TOOLS[@]}"; echo "${TOOL_DESCRIPTION_stub:-missing}"'
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" -eq 0 ]
+	[ "${lines[1]}" = "missing" ]
 }
 
 @test "assert_osascript_available warns and exits when not on macOS" {
@@ -319,7 +319,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action follows plan entries before finalizing" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "offline response"; }
                 state_prefix=state
@@ -485,7 +485,7 @@ printf "PLAN:%s\nGRAMMAR:%s\n" "${plan_text}" "$(cat "${llama_grammar_file}")"
 }
 
 @test "validate_tool_permission records history for disallowed tool" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 state_prefix=state
                 state_set "${state_prefix}" "allowed_tools" $'"'"'terminal\nnotes_create'"'"'
@@ -494,12 +494,12 @@ printf "PLAN:%s\nGRAMMAR:%s\n" "${plan_text}" "$(cat "${llama_grammar_file}")"
                 echo "$?"
                 printf "%s" "${state_history}"
         '
-        [ "${lines[0]}" -eq 1 ]
-        [ "${lines[1]}" = "Tool mail_send not permitted." ]
+	[ "${lines[0]}" -eq 1 ]
+	[ "${lines[1]}" = "Tool mail_send not permitted." ]
 }
 
 @test "finalize_react_result generates answer when none provided" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 respond_text() { printf "%s" "stubbed response"; }
                 state_prefix=state
