@@ -76,15 +76,15 @@ source "${TOOLS_DIR}/applescript.sh"
 source "${TOOLS_DIR}/final_answer.sh"
 
 tools_normalize_path() {
-	# Returns a normalized absolute path for allowlist checks.
-	# Arguments:
-	#   $1 - path to normalize (string)
-	if command -v realpath >/dev/null 2>&1; then
-		realpath -m "$1"
-		return
-	fi
+        # Returns a normalized absolute path for allowlist checks.
+        # Arguments:
+        #   $1 - path to normalize (string)
+        if command -v realpath >/dev/null 2>&1 && realpath -m / >/dev/null 2>&1; then
+                realpath -m "$1"
+                return
+        fi
 
-	python - "$1" <<'PY'
+        python - "$1" <<'PY'
 import os, sys
 print(os.path.realpath(sys.argv[1]))
 PY
