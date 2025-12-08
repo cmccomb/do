@@ -12,10 +12,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Bats and bats libs
+        uses: bats-core/bats-action@3.0.0
+
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt bats bc
+          sudo apt-get install -y shellcheck shfmt
           gem install bashcov simplecov-cobertura
 
       - name: Check formatting
@@ -27,6 +30,9 @@ jobs:
             scripts/*.sh \
             tests/*.bats \
             tests/test_all.sh \
+            tests/test_main.bats \
+            tests/test_install.bats \
+            tests/install/test_install_features.bats
             tests/test_install.bats
 
       - name: Run shellcheck
@@ -37,6 +43,7 @@ jobs:
             tests/test_all.sh \
             tests/test_main.bats \
             tests/test_install.bats \
+            tests/install/test_install_features.bats
             tests/test_config.bats \
             tests/test_planner.bats \
             tests/test_tools_registry.bats \
@@ -44,6 +51,11 @@ jobs:
 
       - name: Run Bats suite with coverage
         run: |
+          bats \
+            tests/test_main.bats \
+            tests/test_all.sh \
+            tests/test_install.bats \
+            tests/install/test_install_features.bats
           ./scripts/coverage.sh
 
       - name: Upload coverage artifacts
