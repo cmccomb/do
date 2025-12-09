@@ -162,7 +162,10 @@ hydrate_model_spec() {
 	local model_parts
 	# parse_model_spec prints repo then file on separate lines for easy mapfile
 	# consumption; we preserve that order here explicitly.
-	mapfile -t model_parts < <(parse_model_spec "${MODEL_SPEC}" "${DEFAULT_MODEL_FILE}")
+	model_parts=()
+	while IFS= read -r line; do
+		model_parts+=("$line")
+	done < <(parse_model_spec "$MODEL_SPEC" "$DEFAULT_MODEL_FILE")
 	# shellcheck disable=SC2034
 	MODEL_REPO="${model_parts[0]}"
 	# shellcheck disable=SC2034
