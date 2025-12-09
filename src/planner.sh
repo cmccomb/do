@@ -99,7 +99,11 @@ llama_infer() {
 	additional_args=()
 
 	if [[ -n "${grammar_file_path}" ]]; then
-		additional_args+=(--grammar-file "${grammar_file_path}")
+		if [[ "${grammar_file_path}" == *.json ]]; then
+			additional_args+=(--json-schema "${grammar_file_path}")
+		else
+			additional_args+=(--grammar-file "${grammar_file_path}")
+		fi
 	fi
 
 	# If a stop string is provided, use it to terminate output.

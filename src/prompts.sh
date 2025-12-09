@@ -27,7 +27,7 @@ build_concise_response_prompt() {
 
 	cat <<PROMPT
 Provide a short, concise answer (two to three sentences) to the user. Your response will be stopped after the first newline character. USER REQUEST: ${user_query}.
-Follow this grammar to avoid multi-line answers:
+Follow this JSON schema and terminate with the <eot> marker:
 ${concise_grammar}
 CONCISE RESPONSE:
 PROMPT
@@ -45,7 +45,7 @@ build_planner_prompt() {
 	cat <<PROMPT
 You are a planner for an autonomous agent. Given a user request and a list of available tools, draft a numbered list of high-level actions the agent should take. Each step must mention the tool name that will be used. Do NOT include fully executable shell commands; keep the guidance conceptual. Always end with a final step that uses the final_answer tool to deliver the response back to the user.
 
-Constrain your response using this grammar:
+Constrain your response using this JSON schema:
 ${planner_grammar}
 
 Available tools:
@@ -71,7 +71,7 @@ build_react_prompt() {
 You are an assistant planning a sequence of actions. Use the high-level plan as guidance but adapt after each observation.
 Respond ONLY with a single JSON object per turn.
 
-Action schema (grammar enforced):
+Action schema (JSON Schema enforced):
 ${react_grammar}
 High-level plan:
 ${plan_outline}

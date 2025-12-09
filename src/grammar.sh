@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 #
-# Grammar utilities for locating shared llama.cpp grammars.
+# Grammar utilities for locating shared llama.cpp schemas.
 #
 # Usage:
 #   source "${BASH_SOURCE[0]%/grammar.sh}/grammar.sh"
@@ -22,7 +22,7 @@ grammar_root_dir() {
 	cd "${script_dir}/grammars" && pwd
 }
 
-# Resolves a grammar name to its file path.
+# Resolves a grammar name to its schema file path.
 # Arguments:
 #   $1 - grammar key (string)
 grammar_path() {
@@ -31,13 +31,13 @@ grammar_path() {
 
 	case "${grammar_name}" in
 	react_action)
-		grammar_file="react_action.gbnf"
+		grammar_file="react_action.schema.json"
 		;;
 	planner_plan)
-		grammar_file="planner_plan.gbnf"
+		grammar_file="planner_plan.schema.json"
 		;;
 	concise_response)
-		grammar_file="concise_response.gbnf"
+		grammar_file="concise_response.schema.json"
 		;;
 	*)
 		printf 'Unknown grammar requested: %s\n' "${grammar_name}" >&2
