@@ -33,11 +33,11 @@
 }
 
 @test "initialize_react_state seeds defaults" {
-	run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; state_prefix=state; initialize_react_state "${state_prefix}" "answer me" $"alpha" "alpha|query|0" "1. alpha"; [[ "${state_user_query}" == "answer me" ]]; [[ "${state_allowed_tools}" == "alpha" ]]; [[ "${state_plan_index}" == "0" ]]; [[ "${state_max_steps}" -eq ${MAX_STEPS:-6} ]]'
-	[ "$status" -eq 0 ]
+        run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; state_prefix=state; initialize_react_state "${state_prefix}" "answer me" $"alpha" "alpha|query|0" "1. alpha"; [[ "$(state_get "${state_prefix}" "user_query")" == "answer me" ]]; [[ "$(state_get "${state_prefix}" "allowed_tools")" == "alpha" ]]; [[ "$(state_get "${state_prefix}" "plan_index")" == "0" ]]; [[ "$(state_get "${state_prefix}" "max_steps")" -eq ${MAX_STEPS:-6} ]]'
+        [ "$status" -eq 0 ]
 }
 
 @test "validate_tool_permission records disallowed tools" {
-	run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; state_prefix=state; initialize_react_state "${state_prefix}" "answer me" $"alpha" "" "1. alpha"; validate_tool_permission "${state_prefix}" beta; [[ "$?" -eq 1 ]]; [[ "${state_history}" == *"not permitted"* ]]'
+        run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/planner.sh; state_prefix=state; initialize_react_state "${state_prefix}" "answer me" $"alpha" "" "1. alpha"; validate_tool_permission "${state_prefix}" beta; [[ "$?" -eq 1 ]]; [[ "$(state_get "${state_prefix}" "history")" == *"not permitted"* ]]'
 	[ "$status" -eq 0 ]
 }
