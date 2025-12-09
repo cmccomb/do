@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ConciseResponse",
   "type": "string",
-  "description": "Short response text terminated by an explicit <eot> marker.",
-  "pattern": ".*<eot>$",
+  "description": "Short response text",
+  "pattern": "^.*$",
   "examples": [
-    "Here is your answer<eot>",
-    "Done.<eot>"
+    "Here is your answer.",
+    "Done."
   ]
 }

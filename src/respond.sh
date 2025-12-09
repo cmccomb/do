@@ -44,6 +44,6 @@ respond_text() {
 	fi
 
 	prompt="$(build_concise_response_prompt "${user_query}")"
-	llama_infer "${prompt}" "\n" "${number_of_tokens}" "${concise_grammar_path}"
+	llama_infer "${prompt}" "" "${number_of_tokens}" "${concise_grammar_path}"
 	return 0
 }

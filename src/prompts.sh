@@ -26,9 +26,10 @@ build_concise_response_prompt() {
 	concise_grammar="$(load_grammar_text concise_response)"
 
 	cat <<PROMPT
-Provide a short, concise answer (two to three sentences) to the user. Your response will be stopped after the first newline character. USER REQUEST: ${user_query}.
-Follow this JSON schema and terminate with the <eot> marker:
+Provide a short, concise answer (two to three sentences) to the user.
+Follow this JSON schema:
 ${concise_grammar}
+USER REQUEST: ${user_query}.
 CONCISE RESPONSE:
 PROMPT
 }

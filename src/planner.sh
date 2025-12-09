@@ -38,75 +38,75 @@ source "${BASH_SOURCE[0]%/planner.sh}/prompts.sh"
 source "${BASH_SOURCE[0]%/planner.sh}/grammar.sh"
 
 state_namespace_json_var() {
-        # Arguments:
-        #   $1 - state prefix
-        printf '%s_json' "$1"
+	# Arguments:
+	#   $1 - state prefix
+	printf '%s_json' "$1"
 }
 
 state_get_json_document() {
-        # Arguments:
-        #   $1 - state prefix
-        local json_var default_json
-        json_var=$(state_namespace_json_var "$1")
-        default_json='{}'
-        printf '%s' "${!json_var:-${default_json}}"
+	# Arguments:
+	#   $1 - state prefix
+	local json_var default_json
+	json_var=$(state_namespace_json_var "$1")
+	default_json='{}'
+	printf '%s' "${!json_var:-${default_json}}"
 }
 
 state_set_json_document() {
-        # Arguments:
-        #   $1 - state prefix
-        #   $2 - JSON document
-        local json_var
-        json_var=$(state_namespace_json_var "$1")
-        printf -v "${json_var}" '%s' "$2"
+	# Arguments:
+	#   $1 - state prefix
+	#   $2 - JSON document
+	local json_var
+	json_var=$(state_namespace_json_var "$1")
+	printf -v "${json_var}" '%s' "$2"
 }
 
 state_set() {
-        # Arguments:
-        #   $1 - state prefix
-        #   $2 - key
-        #   $3 - value
-        local prefix key value updated
-        prefix="$1"
-        key="$2"
-        value="$3"
-        updated=$(jq -c --arg key "${key}" --arg value "${value}" '.[$key] = $value' <<<"$(state_get_json_document "${prefix}")")
-        state_set_json_document "${prefix}" "${updated}"
+	# Arguments:
+	#   $1 - state prefix
+	#   $2 - key
+	#   $3 - value
+	local prefix key value updated
+	prefix="$1"
+	key="$2"
+	value="$3"
+	updated=$(jq -c --arg key "${key}" --arg value "${value}" '.[$key] = $value' <<<"$(state_get_json_document "${prefix}")")
+	state_set_json_document "${prefix}" "${updated}"
 }
 
 state_get() {
-        # Arguments:
-        #   $1 - state prefix
-        #   $2 - key
-        local prefix key
-        prefix="$1"
-        key="$2"
-        jq -r --arg key "${key}" '(.[$key] // "") | (if type == "array" then join("\n") else tostring end)' <<<"$(state_get_json_document "${prefix}")"
+	# Arguments:
+	#   $1 - state prefix
+	#   $2 - key
+	local prefix key
+	prefix="$1"
+	key="$2"
+	jq -r --arg key "${key}" '(.[$key] // "") | (if type == "array" then join("\n") else tostring end)' <<<"$(state_get_json_document "${prefix}")"
 }
 
 state_increment() {
-        # Arguments:
-        #   $1 - state prefix
-        #   $2 - key
-        #   $3 - increment amount (optional, defaults to 1)
-        local prefix key increment current updated value
-        prefix="$1"
-        key="$2"
-        increment="${3:-1}"
-        current="$(state_get_json_document "${prefix}")"
-        updated=$(jq -c --arg key "${key}" --argjson inc "${increment}" '.[$key] = ((try (.[$key]|tonumber) catch 0) + $inc)' <<<"${current}")
-        state_set_json_document "${prefix}" "${updated}"
+	# Arguments:
+	#   $1 - state prefix
+	#   $2 - key
+	#   $3 - increment amount (optional, defaults to 1)
+	local prefix key increment current updated value
+	prefix="$1"
+	key="$2"
+	increment="${3:-1}"
+	current="$(state_get_json_document "${prefix}")"
+	updated=$(jq -c --arg key "${key}" --argjson inc "${increment}" '.[$key] = ((try (.[$key]|tonumber) catch 0) + $inc)' <<<"${current}")
+	state_set_json_document "${prefix}" "${updated}"
 }
 
 state_append_history() {
-        # Arguments:
-        #   $1 - state prefix
-        #   $2 - entry to append
-        local prefix entry updated
-        prefix="$1"
-        entry="$2"
-        updated=$(jq -c --arg entry "${entry}" '(.history //= []) | .history += [$entry]' <<<"$(state_get_json_document "${prefix}")")
-        state_set_json_document "${prefix}" "${updated}"
+	# Arguments:
+	#   $1 - state prefix
+	#   $2 - entry to append
+	local prefix entry updated
+	prefix="$1"
+	entry="$2"
+	updated=$(jq -c --arg entry "${entry}" '(.history //= []) | .history += [$entry]' <<<"$(state_get_json_document "${prefix}")")
+	state_set_json_document "${prefix}" "${updated}"
 }
 
 lowercase() {
@@ -152,7 +152,7 @@ llama_infer() {
 			-no-cnv --no-display-prompt --simple-io --verbose -r "${stop_string}" \
 			-n "${number_of_tokens}" \
 			-p "${prompt}" \
-			"${additional_args[@]}" #2>/dev/null || true
+			"${additional_args[@]}" 2>/dev/null || true
 		return
 	fi
 
@@ -162,7 +162,7 @@ llama_infer() {
 		-n "${number_of_tokens}" \
 		-no-cnv --no-display-prompt --simple-io --verbose \
 		-p "${prompt}" \
-		"${additional_args[@]}" #2>/dev/null || true
+		"${additional_args[@]}" 2>/dev/null || true
 }
 
 format_tool_descriptions() {
@@ -212,42 +212,42 @@ format_tool_example_line() {
 }
 
 append_final_answer_step() {
-        # Ensures the plan includes a final step with the final_answer tool.
-        # Arguments:
-        #   $1 - plan JSON array (string)
-        local plan_json has_final updated_plan
-        plan_json="${1:-[]}" 
+	# Ensures the plan includes a final step with the final_answer tool.
+	# Arguments:
+	#   $1 - plan JSON array (string)
+	local plan_json has_final updated_plan
+	plan_json="${1:-[]}"
 
-        if ! jq -e 'type == "array"' <<<"${plan_json}" >/dev/null 2>&1; then
-                log "ERROR" "Planner plan is not a JSON array" "${plan_json}" >&2
-                printf '%s' "${plan_json}"
-                return 0
-        fi
+	if ! jq -e 'type == "array"' <<<"${plan_json}" >/dev/null 2>&1; then
+		log "ERROR" "Planner plan is not a JSON array" "${plan_json}" >&2
+		printf '%s' "${plan_json}"
+		return 0
+	fi
 
-        has_final="$(jq -r 'map(ascii_downcase | contains("final_answer")) | any' <<<"${plan_json}" 2>/dev/null || echo false)"
-        if [[ "${has_final}" == "true" ]]; then
-                printf '%s' "${plan_json}"
-                return 0
-        fi
+	has_final="$(jq -r 'map(ascii_downcase | contains("final_answer")) | any' <<<"${plan_json}" 2>/dev/null || echo false)"
+	if [[ "${has_final}" == "true" ]]; then
+		printf '%s' "${plan_json}"
+		return 0
+	fi
 
-        updated_plan="$(jq -c '. + ["Use final_answer to summarize the result for the user."]' <<<"${plan_json}" 2>/dev/null || printf '%s' "${plan_json}")"
-        printf '%s' "${updated_plan}"
+	updated_plan="$(jq -c '. + ["Use final_answer to summarize the result for the user."]' <<<"${plan_json}" 2>/dev/null || printf '%s' "${plan_json}")"
+	printf '%s' "${updated_plan}"
 }
 
 plan_json_to_outline() {
-        # Converts a JSON array of plan steps into a numbered outline string.
-        # Arguments:
-        #   $1 - plan JSON array (string)
-        local plan_json
-        plan_json="${1:-[]}" 
+	# Converts a JSON array of plan steps into a numbered outline string.
+	# Arguments:
+	#   $1 - plan JSON array (string)
+	local plan_json
+	plan_json="${1:-[]}"
 
-        if ! jq -e 'type == "array"' <<<"${plan_json}" >/dev/null 2>&1; then
-                log "ERROR" "Planner plan is not a JSON array" "${plan_json}" >&2
-                printf '%s' "${plan_json}"
-                return 0
-        fi
+	if ! jq -e 'type == "array"' <<<"${plan_json}" >/dev/null 2>&1; then
+		log "ERROR" "Planner plan is not a JSON array" "${plan_json}" >&2
+		printf '%s' "${plan_json}"
+		return 0
+	fi
 
-        jq -r 'to_entries | map("\(.key + 1). \(.value)") | join("\n")' <<<"${plan_json}"
+	jq -r 'to_entries | map("\(.key + 1). \(.value)") | join("\n")' <<<"${plan_json}"
 }
 
 generate_plan_outline() {
@@ -256,21 +256,21 @@ generate_plan_outline() {
 	local user_query
 	user_query="$1"
 
-        if [[ "${LLAMA_AVAILABLE}" != true ]]; then
-                log "WARN" "Using static plan outline because llama is unavailable" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
-                printf '1. Use final_answer to respond directly to the user request.'
-                return 0
-        fi
+	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
+		log "WARN" "Using static plan outline because llama is unavailable" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
+		printf '1. Use final_answer to respond directly to the user request.'
+		return 0
+	fi
 
-        local prompt raw_plan planner_grammar_path plan_outline_json
-        local tool_lines
-        tool_lines="$(format_tool_descriptions "$(printf '%s\n' "${TOOLS[@]}")" format_tool_summary_line)"
-        planner_grammar_path="$(grammar_path planner_plan)"
+	local prompt raw_plan planner_grammar_path plan_outline_json
+	local tool_lines
+	tool_lines="$(format_tool_descriptions "$(printf '%s\n' "${TOOLS[@]}")" format_tool_summary_line)"
+	planner_grammar_path="$(grammar_path planner_plan)"
 
-        prompt="$(build_planner_prompt "${user_query}" "${tool_lines}")"
-        raw_plan="$(llama_infer "${prompt}" '' 512 "${planner_grammar_path}")" || raw_plan="[]"
-        plan_outline_json="$(append_final_answer_step "${raw_plan}")" || plan_outline_json="${raw_plan}"
-        plan_json_to_outline "${plan_outline_json}" || printf '%s' "${plan_outline_json}"
+	prompt="$(build_planner_prompt "${user_query}" "${tool_lines}")"
+	raw_plan="$(llama_infer "${prompt}" '' 512 "${planner_grammar_path}")" || raw_plan="[]"
+	plan_outline_json="$(append_final_answer_step "${raw_plan}")" || plan_outline_json="${raw_plan}"
+	plan_json_to_outline "${plan_outline_json}" || printf '%s' "${plan_outline_json}"
 }
 
 tool_query_deriver() {
@@ -342,26 +342,26 @@ emit_plan_json() {
 extract_tools_from_plan() {
 	# Arguments:
 	#   $1 - plan outline text (string)
-        local plan_text lower_line tool tool_list
-        local seen
-        seen=""
-        local -a required=()
-        plan_text="$1"
-        tool_list="$(tool_names)"
+	local plan_text lower_line tool tool_list
+	local seen
+	seen=""
+	local -a required=()
+	plan_text="$1"
+	tool_list="$(tool_names)"
 
-        while IFS= read -r line; do
-                lower_line="$(lowercase "${line}")"
-                while IFS= read -r tool; do
-                        [[ -z "${tool}" ]] && continue
-                        if grep -Fxq "${tool}" <<<"${seen}"; then
-                                continue
-                        fi
-                        if [[ "${lower_line}" == *"$(lowercase "${tool}")"* ]]; then
-                                required+=("${tool}")
-                                seen+="${tool}"$'\n'
-                        fi
-                done <<<"${tool_list}"
-        done <<<"${plan_text}"
+	while IFS= read -r line; do
+		lower_line="$(lowercase "${line}")"
+		while IFS= read -r tool; do
+			[[ -z "${tool}" ]] && continue
+			if grep -Fxq "${tool}" <<<"${seen}"; then
+				continue
+			fi
+			if [[ "${lower_line}" == *"$(lowercase "${tool}")"* ]]; then
+				required+=("${tool}")
+				seen+="${tool}"$'\n'
+			fi
+		done <<<"${tool_list}"
+	done <<<"${plan_text}"
 
 	if ! grep -Fxq "final_answer" <<<"${seen}"; then
 		required+=("final_answer")
@@ -476,22 +476,22 @@ execute_tool_with_query() {
 }
 
 initialize_react_state() {
-        # Arguments:
-        #   $1 - state prefix to populate
-        #   $2 - user query
-        #   $3 - allowed tools (newline delimited)
-        #   $4 - ranked plan entries
-        #   $5 - plan outline text
-        local state_prefix
-        state_prefix="$1"
+	# Arguments:
+	#   $1 - state prefix to populate
+	#   $2 - user query
+	#   $3 - allowed tools (newline delimited)
+	#   $4 - ranked plan entries
+	#   $5 - plan outline text
+	local state_prefix
+	state_prefix="$1"
 
-        state_set_json_document "${state_prefix}" "$(jq -c -n \
-                --arg user_query "$2" \
-                --arg allowed_tools "$3" \
-                --arg plan_entries "$4" \
-                --arg plan_outline "$5" \
-                --argjson max_steps "${MAX_STEPS:-6}" \
-                '{
+	state_set_json_document "${state_prefix}" "$(jq -c -n \
+		--arg user_query "$2" \
+		--arg allowed_tools "$3" \
+		--arg plan_entries "$4" \
+		--arg plan_outline "$5" \
+		--argjson max_steps "${MAX_STEPS:-6}" \
+		'{
                         user_query: $user_query,
                         allowed_tools: $allowed_tools,
                         plan_entries: $plan_entries,
@@ -546,16 +546,16 @@ select_next_action() {
 		return
 	fi
 
-        plan_index="$(state_get "${state_name}" "plan_index")"
-        plan_index=${plan_index:-0}
-        planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
+	plan_index="$(state_get "${state_name}" "plan_index")"
+	plan_index=${plan_index:-0}
+	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-        if [[ -n "${planned_entry}" ]]; then
-                tool="${planned_entry%%|*}"
-                query="${planned_entry#*|}"
-                query="${query%%|*}"
-                state_increment "${state_name}" "plan_index" 1 >/dev/null
-                next_action_payload="$(jq -n --arg tool "${tool}" --arg query "${query}" '{type:"tool", tool:$tool, query:$query}')"
+	if [[ -n "${planned_entry}" ]]; then
+		tool="${planned_entry%%|*}"
+		query="${planned_entry#*|}"
+		query="${query%%|*}"
+		state_increment "${state_name}" "plan_index" 1 >/dev/null
+		next_action_payload="$(jq -n --arg tool "${tool}" --arg query "${query}" '{type:"tool", tool:$tool, query:$query}')"
 	else
 		local final_query
 		final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"

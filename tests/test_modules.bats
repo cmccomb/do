@@ -78,10 +78,10 @@ EOF
 }
 
 @test "init_tool_registry clears previous tools" {
-        run bash -lc 'source ./src/tools/registry.sh; register_tool alpha "desc" "cmd" "safe" handler; init_tool_registry; echo "$(tool_names)"; echo "$(tool_description alpha)"'
-        [ "$status" -eq 0 ]
-        [ -z "${lines[0]}" ]
-        [ -z "${lines[1]}" ]
+	run bash -lc 'source ./src/tools/registry.sh; register_tool alpha "desc" "cmd" "safe" handler; init_tool_registry; echo "$(tool_names)"; echo "$(tool_description alpha)"'
+	[ "$status" -eq 0 ]
+	[ -z "${lines[0]}" ]
+	[ -z "${lines[1]}" ]
 }
 
 @test "assert_osascript_available warns and exits when not on macOS" {
@@ -119,11 +119,11 @@ EOF
 }
 
 @test "initialize_tools registers each module" {
-        run bash -lc 'source ./src/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
-        [ "$status" -eq 0 ]
-        [ "${#lines[@]}" -eq 22 ]
-        [[ "${lines[*]}" == *"terminal"* ]]
-        [[ "${lines[*]}" == *"final_answer"* ]]
+	run bash -lc 'source ./src/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 22 ]
+	[[ "${lines[*]}" == *"terminal"* ]]
+	[[ "${lines[*]}" == *"final_answer"* ]]
 }
 
 @test "log emits JSON with escaped fields" {
@@ -242,7 +242,7 @@ exit ${status}
 }
 
 @test "execute_tool_with_query logs confirmation before prompt" {
-        run bash -lc '
+	run bash -lc '
 tmpdir=$(mktemp -d)
 cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'
 #!/usr/bin/env bash
@@ -261,15 +261,15 @@ DRY_RUN=false
 PLAN_ONLY=false
 execute_tool_with_query "terminal" "echo hi"
 '
-        [ "$status" -eq 0 ]
-        [[ "${lines[0]}" == *"Requesting tool confirmation"* ]]
-        [ "$(echo "${lines[0]}" | jq -r '.detail')" = "tool=terminal query=echo hi" ]
-        [ "${lines[1]}" = "PROMPT:confirm --affirmative Run --negative Skip Execute tool \"terminal\"?" ]
-        [ "${lines[2]}" = "ran echo hi" ]
+	[ "$status" -eq 0 ]
+	[[ "${lines[0]}" == *"Requesting tool confirmation"* ]]
+	[ "$(echo "${lines[0]}" | jq -r '.detail')" = "tool=terminal query=echo hi" ]
+	[ "${lines[1]}" = "PROMPT:confirm --affirmative Run --negative Skip Execute tool \"terminal\"?" ]
+	[ "${lines[2]}" = "ran echo hi" ]
 }
 
 @test "execute_tool_with_query skips confirmation logging in preview modes" {
-        run bash -lc '
+	run bash -lc '
 source ./src/planner.sh
 demo_handler() { echo "ran ${TOOL_QUERY}"; }
 init_tool_registry
@@ -280,8 +280,8 @@ DRY_RUN=false
 PLAN_ONLY=true
 execute_tool_with_query "terminal" "noop"
 '
-        [ "$status" -eq 0 ]
-        [[ "${output}" != *"Requesting tool confirmation"* ]]
+	[ "$status" -eq 0 ]
+	[[ "${output}" != *"Requesting tool confirmation"* ]]
 	[ "$(echo "${output}" | jq -r '.message')" = "Skipping execution in preview mode" ]
 }
 
@@ -357,23 +357,23 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "generate_plan_outline uses shared planner grammar" {
-        source ./src/planner.sh
-        initialize_tools
-        LLAMA_AVAILABLE=true
+	source ./src/planner.sh
+	initialize_tools
+	LLAMA_AVAILABLE=true
 
-        llama_grammar_file="$(mktemp)"
-        llama_infer() {
-                printf "%s" "$4" >"${llama_grammar_file}"
-                printf '["Inspect repo", "Use terminal"]'
-        }
+	llama_grammar_file="$(mktemp)"
+	llama_infer() {
+		printf "%s" "$4" >"${llama_grammar_file}"
+		printf '["Inspect repo", "Use terminal"]'
+	}
 
-        plan_text="$(generate_plan_outline "list files")"
+	plan_text="$(generate_plan_outline "list files")"
 
-        expected_grammar="$(cd src && pwd)/grammars/planner_plan.schema.json"
-        [ "$(cat "${llama_grammar_file}")" = "${expected_grammar}" ]
-        [[ "${plan_text}" == *"1. Inspect repo"* ]]
-        [[ "${plan_text}" == *"2. Use terminal"* ]]
-        [[ "${plan_text}" == *"3. Use final_answer to summarize the result for the user."* ]]
+	expected_grammar="$(cd src && pwd)/grammars/planner_plan.schema.json"
+	[ "$(cat "${llama_grammar_file}")" = "${expected_grammar}" ]
+	[[ "${plan_text}" == *"1. Inspect repo"* ]]
+	[[ "${plan_text}" == *"2. Use terminal"* ]]
+	[[ "${plan_text}" == *"3. Use final_answer to summarize the result for the user."* ]]
 }
 
 @test "generate_plan_outline short-circuits when llama unavailable" {
@@ -470,7 +470,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "validate_tool_permission records history for disallowed tool" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 state_prefix=state
                 state_set "${state_prefix}" "allowed_tools" $'"'"'terminal\nnotes_create'"'"'
@@ -478,12 +478,12 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 echo "$?"
                 printf "%s" "$(state_get "${state_prefix}" "history")"
         '
-        [ "${lines[0]}" -eq 1 ]
-        [ "${lines[1]}" = "Tool mail_send not permitted." ]
+	[ "${lines[0]}" -eq 1 ]
+	[ "${lines[1]}" = "Tool mail_send not permitted." ]
 }
 
 @test "state json helpers preserve ordering and counters" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/planner.sh
                 state_prefix=state
                 initialize_react_state "${state_prefix}" "question" "terminal" "" "1. terminal"
@@ -493,10 +493,10 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 printf "%s\n%s\n" "$(state_get "${state_prefix}" "history")" "$(state_get "${state_prefix}" "plan_index")"
         '
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "first" ]
-        [ "${lines[1]}" = "second" ]
-        [ "${lines[2]}" = "2" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "first" ]
+	[ "${lines[1]}" = "second" ]
+	[ "${lines[2]}" = "2" ]
 }
 
 @test "finalize_react_result generates answer when none provided" {

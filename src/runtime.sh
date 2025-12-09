@@ -49,77 +49,77 @@ source "${BASH_SOURCE[0]%/runtime.sh}/errors.sh"
 # associative-array dependencies on macOS's legacy Bash 3.2. All values are
 # stored on ${namespace}_json and accessed via jq for durability.
 settings_namespace_json_var() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        printf '%s_json' "$1"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	printf '%s_json' "$1"
 }
 
 settings_get_json_document() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        local json_var
-        json_var=$(settings_namespace_json_var "$1")
-        if [[ -z "${!json_var+x}" ]]; then
-                printf '{}'
-                return
-        fi
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	local json_var
+	json_var=$(settings_namespace_json_var "$1")
+	if [[ -z "${!json_var+x}" ]]; then
+		printf '{}'
+		return
+	fi
 
-        printf '%s' "${!json_var}"
+	printf '%s' "${!json_var}"
 }
 
 settings_set_json_document() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        #   $2 - JSON document (string)
-        local json_var sanitized
-        json_var=$(settings_namespace_json_var "$1")
-        sanitized=$(printf '%s' "$2" | jq -c '.') || return 1
-        printf -v "${json_var}" '%s' "${sanitized}"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	#   $2 - JSON document (string)
+	local json_var sanitized
+	json_var=$(settings_namespace_json_var "$1")
+	sanitized=$(printf '%s' "$2" | jq -c '.') || return 1
+	printf -v "${json_var}" '%s' "${sanitized}"
 }
 
 settings_clear_namespace() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        settings_set_json_document "$1" '{}'
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	settings_set_json_document "$1" '{}'
 }
 
 settings_set() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        #   $2 - logical key (string)
-        #   $3 - value (string)
-        settings_set_json "$1" "$2" "$3"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	#   $2 - logical key (string)
+	#   $3 - value (string)
+	settings_set_json "$1" "$2" "$3"
 }
 
 settings_get() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        #   $2 - logical key (string)
-        settings_get_json "$1" "$2"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	#   $2 - logical key (string)
+	settings_get_json "$1" "$2"
 }
 
 settings_set_json() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        #   $2 - logical key (string)
-        #   $3 - value (string)
-        local settings_prefix key value current updated
-        settings_prefix="$1"
-        key="$2"
-        value="$3"
-        current="$(settings_get_json_document "${settings_prefix}")"
-        updated=$(jq -c --arg key "${key}" --arg value "${value}" '.[$key] = $value' <<<"${current}")
-        settings_set_json_document "${settings_prefix}" "${updated}"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	#   $2 - logical key (string)
+	#   $3 - value (string)
+	local settings_prefix key value current updated
+	settings_prefix="$1"
+	key="$2"
+	value="$3"
+	current="$(settings_get_json_document "${settings_prefix}")"
+	updated=$(jq -c --arg key "${key}" --arg value "${value}" '.[$key] = $value' <<<"${current}")
+	settings_set_json_document "${settings_prefix}" "${updated}"
 }
 
 settings_get_json() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        #   $2 - logical key (string)
-        local settings_prefix key
-        settings_prefix="$1"
-        key="$2"
-        jq -r --arg key "${key}" '.[$key] // ""' <<<"$(settings_get_json_document "${settings_prefix}")"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	#   $2 - logical key (string)
+	local settings_prefix key
+	settings_prefix="$1"
+	key="$2"
+	jq -r --arg key "${key}" '.[$key] // ""' <<<"$(settings_get_json_document "${settings_prefix}")"
 }
 
 set_by_name() {
@@ -130,29 +130,29 @@ set_by_name() {
 }
 
 create_default_settings() {
-        # Arguments:
-        #   $1 - settings namespace prefix
-        local settings_prefix config_dir default_model_file config_file model_spec new_settings_json
-        settings_prefix="$1"
+	# Arguments:
+	#   $1 - settings namespace prefix
+	local settings_prefix config_dir default_model_file config_file model_spec new_settings_json
+	settings_prefix="$1"
 
-        settings_clear_namespace "${settings_prefix}"
+	settings_clear_namespace "${settings_prefix}"
 
-        config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
-        default_model_file="${DEFAULT_MODEL_FILE_BASE:-Qwen_Qwen3-4B-Q4_K_M.gguf}"
-        config_file="${config_dir}/config.env"
-        model_spec="${DEFAULT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:${default_model_file}}"
+	config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
+	default_model_file="${DEFAULT_MODEL_FILE_BASE:-Qwen_Qwen3-4B-Q4_K_M.gguf}"
+	config_file="${config_dir}/config.env"
+	model_spec="${DEFAULT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:${default_model_file}}"
 
-        new_settings_json=$(jq -c -n \
-                --arg version "0.1.0" \
-                --arg llama_bin "${LLAMA_BIN:-llama-cli}" \
-                --arg default_model_file "${default_model_file}" \
-                --arg config_dir "${config_dir}" \
-                --arg config_file "${config_file}" \
-                --arg model_spec "${model_spec}" \
-                --arg model_branch "${DEFAULT_MODEL_BRANCH_BASE:-main}" \
-                --arg notes_dir "${HOME}/.okso" \
-                --arg use_react_llama "${USE_REACT_LLAMA:-false}" \
-                '{
+	new_settings_json=$(jq -c -n \
+		--arg version "0.1.0" \
+		--arg llama_bin "${LLAMA_BIN:-llama-cli}" \
+		--arg default_model_file "${default_model_file}" \
+		--arg config_dir "${config_dir}" \
+		--arg config_file "${config_file}" \
+		--arg model_spec "${model_spec}" \
+		--arg model_branch "${DEFAULT_MODEL_BRANCH_BASE:-main}" \
+		--arg notes_dir "${HOME}/.okso" \
+		--arg use_react_llama "${USE_REACT_LLAMA:-false}" \
+		'{
                         version: $version,
                         llama_bin: $llama_bin,
                         default_model_file: $default_model_file,
@@ -175,11 +175,11 @@ create_default_settings() {
                         user_query: ""
                 }')
 
-        settings_set_json_document "${settings_prefix}" "${new_settings_json}"
+	settings_set_json_document "${settings_prefix}" "${new_settings_json}"
 }
 
 settings_field_mappings() {
-        cat <<'EOF'
+	cat <<'EOF'
 version VERSION
 llama_bin LLAMA_BIN
 default_model_file DEFAULT_MODEL_FILE
@@ -204,33 +204,33 @@ EOF
 }
 
 apply_settings_to_globals() {
-        # Arguments:
-        #   $1 - settings namespace prefix
-        local settings_prefix
-        settings_prefix="$1"
+	# Arguments:
+	#   $1 - settings namespace prefix
+	local settings_prefix
+	settings_prefix="$1"
 
-        local json mapping key var value
-        json="$(settings_get_json_document "${settings_prefix}")"
+	local json mapping key var value
+	json="$(settings_get_json_document "${settings_prefix}")"
 
-        while read -r key var; do
-                [[ -z "${key}" ]] && continue
-                value=$(jq -r --arg key "${key}" '.[$key] // ""' <<<"${json}")
-                set_by_name "${var}" "${value}"
-        done <<<"$(settings_field_mappings)"
+	while read -r key var; do
+		[[ -z "${key}" ]] && continue
+		value=$(jq -r --arg key "${key}" '.[$key] // ""' <<<"${json}")
+		set_by_name "${var}" "${value}"
+	done <<<"$(settings_field_mappings)"
 }
 
 capture_globals_into_settings() {
-        # Arguments:
-        #   $1 - settings namespace prefix
-        local settings_prefix
-        settings_prefix="$1"
+	# Arguments:
+	#   $1 - settings namespace prefix
+	local settings_prefix
+	settings_prefix="$1"
 
-        local mapping key var value
-        while read -r key var; do
-                [[ -z "${key}" ]] && continue
-                value="${!var-}"
-                settings_set_json "${settings_prefix}" "${key}" "${value}"
-        done <<<"$(settings_field_mappings)"
+	local mapping key var value
+	while read -r key var; do
+		[[ -z "${key}" ]] && continue
+		value="${!var-}"
+		settings_set_json "${settings_prefix}" "${key}" "${value}"
+	done <<<"$(settings_field_mappings)"
 }
 
 load_runtime_settings() {
