@@ -33,6 +33,7 @@
 #   settings_ref[is_macos] (bool string): detected macOS flag.
 #   settings_ref[command] (string): operational mode.
 #   settings_ref[user_query] (string): provided user query.
+#   settings_ref[mcp_endpoint] (string): MCP endpoint command for remote tools.
 #
 # Dependencies:
 #   - bash 5+
@@ -43,6 +44,8 @@
 
 # shellcheck source=./errors.sh disable=SC1091
 source "${BASH_SOURCE[0]%/runtime.sh}/errors.sh"
+# shellcheck source=./mcp.sh disable=SC1091
+source "${BASH_SOURCE[0]%/runtime.sh}/mcp.sh"
 
 create_default_settings() {
 	# Arguments:
@@ -72,10 +75,11 @@ create_default_settings() {
 	settings_ref[verbosity]="1"
 	settings_ref[notes_dir]="${HOME}/.okso"
 	settings_ref[llama_available]="true"
-	settings_ref[use_react_llama]="${USE_REACT_LLAMA:-false}"
-	settings_ref[is_macos]="false"
-	settings_ref[command]="run"
-	settings_ref[user_query]=""
+        settings_ref[use_react_llama]="${USE_REACT_LLAMA:-false}"
+        settings_ref[is_macos]="false"
+        settings_ref[command]="run"
+        settings_ref[user_query]=""
+        settings_ref[mcp_endpoint]="${MCP_ENDPOINT:-}"
 }
 
 apply_settings_to_globals() {
@@ -99,10 +103,11 @@ apply_settings_to_globals() {
 	VERBOSITY="${settings_ref[verbosity]}"
 	NOTES_DIR="${settings_ref[notes_dir]}"
 	LLAMA_AVAILABLE="${settings_ref[llama_available]}"
-	USE_REACT_LLAMA="${settings_ref[use_react_llama]}"
-	IS_MACOS="${settings_ref[is_macos]}"
-	COMMAND="${settings_ref[command]}"
-	USER_QUERY="${settings_ref[user_query]}"
+        USE_REACT_LLAMA="${settings_ref[use_react_llama]}"
+        IS_MACOS="${settings_ref[is_macos]}"
+        COMMAND="${settings_ref[command]}"
+        USER_QUERY="${settings_ref[user_query]}"
+        MCP_ENDPOINT="${settings_ref[mcp_endpoint]}"
 }
 
 capture_globals_into_settings() {
@@ -126,10 +131,11 @@ capture_globals_into_settings() {
 	settings_ref[verbosity]="${VERBOSITY}"
 	settings_ref[notes_dir]="${NOTES_DIR}"
 	settings_ref[llama_available]="${LLAMA_AVAILABLE}"
-	settings_ref[use_react_llama]="${USE_REACT_LLAMA}"
-	settings_ref[is_macos]="${IS_MACOS}"
-	settings_ref[command]="${COMMAND}"
-	settings_ref[user_query]="${USER_QUERY}"
+        settings_ref[use_react_llama]="${USE_REACT_LLAMA}"
+        settings_ref[is_macos]="${IS_MACOS}"
+        settings_ref[command]="${COMMAND}"
+        settings_ref[user_query]="${USER_QUERY}"
+        settings_ref[mcp_endpoint]="${MCP_ENDPOINT}"
 }
 
 load_runtime_settings() {
@@ -156,19 +162,68 @@ load_runtime_settings() {
 }
 
 prepare_environment_with_settings() {
-	# Arguments:
-	#   $1 - name of associative array to use and update
-	local settings_name
-	settings_name="$1"
-	local -n settings_ref=$settings_name
+        # Arguments:
+        #   $1 - name of associative array to use and update
+        local settings_name
+        settings_name="$1"
+        local -n settings_ref=$settings_name
 
-	apply_settings_to_globals "${settings_name}"
-	init_environment
-	init_tool_registry
-	initialize_tools
-	# Capture any mutations (e.g., resolved model paths, OS flags) back into the
-	# settings structure for downstream consumers.
-	capture_globals_into_settings "${settings_name}"
+        apply_settings_to_globals "${settings_name}"
+        init_environment
+        init_tool_registry
+        initialize_tools
+        # Capture any mutations (e.g., resolved model paths, OS flags) back into the
+        # settings structure for downstream consumers.
+        capture_globals_into_settings "${settings_name}"
+}
+
+mcp_build_runtime_catalog() {
+        # Emits combined MCP descriptors for local tools and the configured remote endpoint.
+        # Arguments: none; uses MCP_ENDPOINT and TOOLS globals.
+        local local_catalog remote_catalog
+        local_catalog="$(mcp_local_tool_descriptors)"
+        remote_catalog="[]"
+
+        if [[ -n "${MCP_ENDPOINT:-}" ]]; then
+                if ! remote_catalog="$(mcp_client_list_tools "${MCP_ENDPOINT}")"; then
+                        log "WARN" "Failed to list remote MCP tools" "${MCP_ENDPOINT}" || true
+                        remote_catalog="[]"
+                fi
+        fi
+
+        jq -cs '.[0] + .[1]' <(printf '%s' "${local_catalog}") <(printf '%s' "${remote_catalog}")
+}
+
+describe_remote_mcp_tool() {
+        # Describes a remote MCP tool using the configured endpoint.
+        # Arguments:
+        #   $1 - tool name (string)
+        local tool_name
+        tool_name="$1"
+
+        if [[ -z "${MCP_ENDPOINT:-}" ]]; then
+                mcp_error_payload "runtime" "usage" "MCP endpoint not configured" >&2
+                return 1
+        fi
+
+        mcp_client_describe_tool "${MCP_ENDPOINT}" "${tool_name}"
+}
+
+invoke_remote_mcp_tool() {
+        # Invokes a remote MCP tool with JSON arguments.
+        # Arguments:
+        #   $1 - tool name (string)
+        #   $2 - arguments JSON fragment (string)
+        local tool_name arguments
+        tool_name="$1"
+        arguments="$2"
+
+        if [[ -z "${MCP_ENDPOINT:-}" ]]; then
+                mcp_error_payload "runtime" "usage" "MCP endpoint not configured" >&2
+                return 1
+        fi
+
+        mcp_client_call_tool "${MCP_ENDPOINT}" "${tool_name}" "${arguments}"
 }
 # shellcheck disable=SC2034
 render_plan_outputs() {

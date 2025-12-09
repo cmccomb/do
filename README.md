@@ -42,6 +42,10 @@ All prompts used by the assistant are centralized in [`src/prompts.sh`](src/prom
 
 Structured outputs are enforced with shared [GBNF grammars](src/grammars/) referenced by the prompt builders and passed directly to `llama.cpp` during inference. Each grammar file name documents its purpose (e.g., `planner_plan.gbnf`, `react_action.gbnf`, `concise_response.gbnf`) so contributors can update schemas without hunting through inline prompt text.
 
+### MCP tool contracts
+
+The runtime maps every registered tool to MCP-compatible descriptors and can query remote MCP endpoints for additional capabilities. Descriptor fields, request/response shapes, and a reference echo endpoint live in the [MCP specification](docs/mcp.md).
+
 ## Structured error envelopes
 
 Shared helpers in [`src/errors.sh`](src/errors.sh) emit JSON envelopes for fatal and warning paths while ensuring non-zero exit
