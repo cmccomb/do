@@ -13,7 +13,7 @@
 #   Inherits Bats semantics; individual tests assert helper outcomes.
 
 @test "extract_tools_from_plan dedupes and enforces final_answer" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 source ./src/planner.sh
                 initialize_tools
@@ -24,7 +24,7 @@
                 [[ "${tools[1]}" == "notes_create" ]]
                 [[ "${tools[2]}" == "final_answer" ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "append_final_answer_step emits array with final step" {
