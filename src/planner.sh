@@ -211,6 +211,40 @@ format_tool_example_line() {
 	printf -- '- %s: %s (example query: %s)' "${tool}" "$(tool_description "${tool}")" "$(tool_command "${tool}")"
 }
 
+# Normalize noisy planner output into a clean PlannerPlan JSON array.
+# Reads from stdin, writes clean JSON array to stdout.
+normalize_planner_plan() {
+	local raw plan
+
+	raw="$(cat)"
+
+	# Extract the first bracketed JSON array (non-greedy) across newlines.
+	plan="$(
+		printf '%s' "$raw" |
+			perl -0777 -ne 'if (/\[[\s\S]*?\]/) { print $& }'
+	)"
+
+	if [[ -z "${plan:-}" ]]; then
+		log "ERROR" "normalize_planner_plan: no JSON array found in planner output" "" >&2
+		return 1
+	fi
+
+	# Validate shape: array, >=1 items, every item non-empty string.
+	# Then re-emit in compact canonical form.
+	printf '%s' "$plan" |
+		jq -ec '
+        type == "array" and length >= 1 and
+        all(.[]; type == "string" and length >= 1)
+      ' >/dev/null ||
+		{
+			echo "normalize_planner_plan: extracted array does not match PlannerPlan schema intent" >&2
+			echo "$plan" >&2
+			return 1
+		}
+
+	printf '%s' "$plan" | jq -c '.'
+}
+
 append_final_answer_step() {
 	# Ensures the plan includes a final step with the final_answer tool.
 	# Arguments:
@@ -218,19 +252,15 @@ append_final_answer_step() {
 	local plan_json has_final updated_plan
 	plan_json="${1:-[]}"
 
-	if ! jq -e 'type == "array"' <<<"${plan_json}" >/dev/null 2>&1; then
-		log "ERROR" "Planner plan is not a JSON array" "${plan_json}" >&2
-		printf '%s' "${plan_json}"
-		return 0
-	fi
+	plan_clean="$(printf '%s' "$plan_json" | normalize_planner_plan)"
 
-	has_final="$(jq -r 'map(ascii_downcase | contains("final_answer")) | any' <<<"${plan_json}" 2>/dev/null || echo false)"
+	has_final="$(jq -r 'map(ascii_downcase | contains("final_answer")) | any' <<<"${plan_clean}" 2>/dev/null || echo false)"
 	if [[ "${has_final}" == "true" ]]; then
-		printf '%s' "${plan_json}"
+		printf '%s' "${plan_clean}"
 		return 0
 	fi
 
-	updated_plan="$(jq -c '. + ["Use final_answer to summarize the result for the user."]' <<<"${plan_json}" 2>/dev/null || printf '%s' "${plan_json}")"
+	updated_plan="$(jq -c '. + ["Use final_answer to summarize the result for the user."]' <<<"${plan_clean}" 2>/dev/null || printf '%s' "${plan_json}")"
 	printf '%s' "${updated_plan}"
 }
 
@@ -241,13 +271,9 @@ plan_json_to_outline() {
 	local plan_json
 	plan_json="${1:-[]}"
 
-	if ! jq -e 'type == "array"' <<<"${plan_json}" >/dev/null 2>&1; then
-		log "ERROR" "Planner plan is not a JSON array" "${plan_json}" >&2
-		printf '%s' "${plan_json}"
-		return 0
-	fi
+	plan_clean="$(printf '%s' "$plan_json" | normalize_planner_plan)"
 
-	jq -r 'to_entries | map("\(.key + 1). \(.value)") | join("\n")' <<<"${plan_json}"
+	jq -r 'to_entries | map("\(.key + 1). \(.value)") | join("\n")' <<<"${plan_clean}"
 }
 
 generate_plan_outline() {
