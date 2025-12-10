@@ -31,26 +31,26 @@ EOF
 load helpers/log_parsing
 
 @test "shows CLI help" {
-	run ./src/main.sh --help -- "example query"
+	run ./src/bin/okso --help -- "example query"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Usage: ./src/main.sh"* ]]
+	[[ "$output" == *"Usage: ./src/bin/okso"* ]]
 }
 
 @test "prints version" {
-	run ./src/main.sh --version -- "query"
+	run ./src/bin/okso --version -- "query"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"okso assistant"* ]]
 }
 
 @test "prompts in supervised mode and respects decline" {
-	run bash -lc "printf 'n\\n' | ./src/main.sh --config '${CONFIG_FILE}' --confirm -- 'list files'"
+	run bash -lc "printf 'n\\n' | ./src/bin/okso --config '${CONFIG_FILE}' --confirm -- 'list files'"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'Execute tool "terminal"? [y/N]:'* ]]
 	[[ "$output" == *"[terminal skipped]"* ]]
 }
 
 @test "warns when llama.cpp dependency is missing but continues" {
-	run env LLAMA_BIN=/definitely/missing ./src/main.sh --config "${CONFIG_FILE}" --yes -- "search files"
+	run env LLAMA_BIN=/definitely/missing ./src/bin/okso --config "${CONFIG_FILE}" --yes -- "search files"
 	[ "$status" -eq 0 ]
 	missing_detail="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="llama.cpp binary not found")) | .[0].detail) catch ""')"
 	execution_detail="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Execution summary")) | .[0].detail) catch ""')"

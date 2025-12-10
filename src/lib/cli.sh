@@ -17,16 +17,19 @@
 # Exit codes:
 #   0 for help/version responses; 1 for argument errors.
 
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # shellcheck source=./logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/cli.sh}/logging.sh"
+source "${LIB_DIR}/logging.sh"
 
 build_usage_text() {
-	local default_model_spec default_model_branch
+	local default_model_spec default_model_branch entrypoint_display
 	default_model_spec="${DEFAULT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf}"
 	default_model_branch="${DEFAULT_MODEL_BRANCH_BASE:-main}"
+	entrypoint_display="${OKSO_ENTRYPOINT:-./src/bin/okso}"
 
 	cat <<USAGE
-Usage: ./src/main.sh [OPTIONS] -- "user query"
+Usage: ${entrypoint_display} [OPTIONS] -- "user query"
 
 Options:
   -h, --help            Show help text.
@@ -47,7 +50,7 @@ The script orchestrates a llama.cpp-backed planner with a registry of
 machine-checkable tools (MCP-style). Provide a natural language query after
 "--" to trigger planning, ranking, and execution.
 
-Use "./src/main.sh init" with the same options to write a config file without
+Use "${entrypoint_display} init" with the same options to write a config file without
 running a query. The config file stores model defaults and approval behavior
 for future runs.
 USAGE

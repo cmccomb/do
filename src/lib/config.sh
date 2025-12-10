@@ -24,8 +24,10 @@
 #   1 when required arguments are missing during flag parsing.
 #   2 when model resolution fails.
 
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # shellcheck source=./logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/config.sh}/logging.sh"
+source "${LIB_DIR}/logging.sh"
 
 readonly DEFAULT_MODEL_REPO_BASE="bartowski/Qwen_Qwen3-4B-GGUF"
 readonly DEFAULT_MODEL_FILE_BASE="Qwen_Qwen3-4B-Q4_K_M.gguf"

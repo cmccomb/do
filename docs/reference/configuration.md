@@ -3,7 +3,7 @@
 The CLI stores defaults in `${XDG_CONFIG_HOME:-~/.config}/okso/config.env`. Initialize or update that file without running a query via:
 
 ```bash
-./src/main.sh init --model your-org/your-model:custom.gguf --model-branch main
+./src/bin/okso init --model your-org/your-model:custom.gguf --model-branch main
 ```
 
 The config file is a simple `key="value"` env-style document. Supported keys:

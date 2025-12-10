@@ -4,7 +4,7 @@
 # Entrypoint for the local MCP-inspired assistant harness.
 #
 # Usage:
-#   ./src/main.sh [OPTIONS] -- "user query"
+#   ./src/bin/okso [OPTIONS] -- "user query"
 #
 # Options:
 #   -h, --help            Show help text.
@@ -48,22 +48,26 @@ resolve_script_dir() {
 }
 
 SCRIPT_DIR=$(resolve_script_dir)
-# shellcheck source=./errors.sh disable=SC1091
-source "${SCRIPT_DIR}/errors.sh"
-# shellcheck source=./logging.sh disable=SC1091
-source "${SCRIPT_DIR}/logging.sh"
-# shellcheck source=./config.sh disable=SC1091
-source "${SCRIPT_DIR}/config.sh"
-# shellcheck source=./tools.sh disable=SC1091
-source "${SCRIPT_DIR}/tools.sh"
-# shellcheck source=./planner.sh disable=SC1091
-source "${SCRIPT_DIR}/planner.sh"
-# shellcheck source=./respond.sh disable=SC1091
-source "${SCRIPT_DIR}/respond.sh"
-# shellcheck source=./cli.sh disable=SC1091
-source "${SCRIPT_DIR}/cli.sh"
-# shellcheck source=./runtime.sh disable=SC1091
-source "${SCRIPT_DIR}/runtime.sh"
+SRC_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
+LIB_DIR="${SRC_ROOT}/lib"
+export OKSO_ENTRYPOINT="${OKSO_ENTRYPOINT:-./src/bin/okso}"
+
+# shellcheck source=../lib/errors.sh disable=SC1091
+source "${LIB_DIR}/errors.sh"
+# shellcheck source=../lib/logging.sh disable=SC1091
+source "${LIB_DIR}/logging.sh"
+# shellcheck source=../lib/config.sh disable=SC1091
+source "${LIB_DIR}/config.sh"
+# shellcheck source=../lib/tools.sh disable=SC1091
+source "${LIB_DIR}/tools.sh"
+# shellcheck source=../lib/planner.sh disable=SC1091
+source "${LIB_DIR}/planner.sh"
+# shellcheck source=../lib/respond.sh disable=SC1091
+source "${LIB_DIR}/respond.sh"
+# shellcheck source=../lib/cli.sh disable=SC1091
+source "${LIB_DIR}/cli.sh"
+# shellcheck source=../lib/runtime.sh disable=SC1091
+source "${LIB_DIR}/runtime.sh"
 
 main() {
 	local settings_prefix

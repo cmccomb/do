@@ -33,7 +33,7 @@ PY
 )"
 
                 PATH="${tmpdir}:${PATH}" bash -lc "
-                        source \"${repo_root}/src/tools.sh\"
+                        source \"${repo_root}/src/lib/tools.sh\"
                         cd \"${repo_root}\"
                         tools_normalize_path \"README.md\"
                 " >"${tmpdir}/actual"

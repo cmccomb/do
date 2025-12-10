@@ -1,6 +1,6 @@
 # Test Fixtures
 
-- `sample.env`: example environment configuration for running `./src/main.sh`.
+- `sample.env`: example environment configuration for running `./src/bin/okso`.
   When exported, it defaults to a debug-friendly unsupervised mode with a mock llama
   binary and emits a tool prompt highlighting the notes tool for reminder-style
   queries.

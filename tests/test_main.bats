@@ -18,29 +18,29 @@ EOF
 load helpers/log_parsing
 
 @test "shows help text" {
-	run ./src/main.sh --help -- "example query"
+	run ./src/bin/okso --help -- "example query"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Usage: ./src/main.sh"* ]]
+	[[ "$output" == *"Usage: ./src/bin/okso"* ]]
 	[[ "$output" != *"DO_MODEL"* ]]
 }
 
 @test "includes default model spec in help" {
 	local default_spec
-	default_spec="$(bash -c 'source ./src/config.sh; printf "%s" "${DEFAULT_MODEL_SPEC_BASE}"')"
+	default_spec="$(bash -c 'source ./src/lib/config.sh; printf "%s" "${DEFAULT_MODEL_SPEC_BASE}"')"
 
-	run ./src/main.sh --help -- "example query"
+	run ./src/bin/okso --help -- "example query"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"${default_spec}"* ]]
 }
 
 @test "prints version" {
-	run ./src/main.sh --version -- "query"
+	run ./src/bin/okso --version -- "query"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"okso assistant"* ]]
 }
 
 @test "prompts before executing when approval is required" {
-	run bash -lc "printf 'n\\n' | ./src/main.sh --config '${CONFIG_FILE}' -- 'list files'"
+	run bash -lc "printf 'n\\n' | ./src/bin/okso --config '${CONFIG_FILE}' -- 'list files'"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'Execute tool "terminal"? [y/N]:'* ]]
 
@@ -49,7 +49,7 @@ load helpers/log_parsing
 }
 
 @test "--yes bypasses prompts" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --yes -- "note something"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --yes -- "note something"
 	[ "$status" -eq 0 ]
 	suggested_tools="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Suggested tools")) | .[0].detail) catch ""')"
 
@@ -57,7 +57,7 @@ load helpers/log_parsing
 }
 
 @test "--dry-run prints plan without execution" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --dry-run --yes -- "note something"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --dry-run --yes -- "note something"
 	[ "$status" -eq 0 ]
 	dry_run_plan="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Dry run plan")) | .[0].detail) catch ""')"
 	[[ "${dry_run_plan}" == *"notes_create"* ]]
@@ -65,7 +65,7 @@ load helpers/log_parsing
 }
 
 @test "--plan-only emits JSON plan" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --plan-only -- "note something"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --plan-only -- "note something"
 	[ "$status" -eq 0 ]
 	plan_json="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Plan JSON")) | .[0].detail) catch ""')"
 	[[ "${plan_json}" == *"\"tool\""* ]]
@@ -73,21 +73,21 @@ load helpers/log_parsing
 }
 
 @test "casual prompts still finish with final_answer" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --yes -- "tell me a joke"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --yes -- "tell me a joke"
 	[ "$status" -eq 0 ]
 	suggested_tools="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Suggested tools")) | .[0].detail) catch ""')"
 	[[ "${suggested_tools}" == *"final_answer"* ]]
 }
 
 @test "conversational phrasing suggests terminal tool" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --yes -- "could you take a quick look at the files in this folder?"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --yes -- "could you take a quick look at the files in this folder?"
 	[ "$status" -eq 0 ]
 	suggested_tools="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Suggested tools")) | .[0].detail) catch ""')"
 	[[ "${suggested_tools}" == *"terminal"* ]]
 }
 
 @test "reminder intent builds reminder plan" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --plan-only -- "remind me to submit grades tomorrow"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --plan-only -- "remind me to submit grades tomorrow"
 	[ "$status" -eq 0 ]
 	plan_json="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Plan JSON")) | .[0].detail) catch ""')"
 	[[ "${plan_json}" == *"reminders_create"* ]]
@@ -95,14 +95,14 @@ load helpers/log_parsing
 }
 
 @test "terminal plan uses targeted query" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --plan-only -- "list files"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --plan-only -- "list files"
 	[ "$status" -eq 0 ]
 	plan_json="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Plan JSON")) | .[0].detail) catch ""')"
 	[[ "${plan_json}" == *"ls -la"* ]]
 }
 
 @test "todo search plans grep step" {
-	run ./src/main.sh --config "${CONFIG_FILE}" --dry-run --yes -- "find TODOs in this repo and summarize"
+	run ./src/bin/okso --config "${CONFIG_FILE}" --dry-run --yes -- "find TODOs in this repo and summarize"
 	[ "$status" -eq 0 ]
 	parse_json_logs <<<"${output}" | jq -e 'map(select(.message=="Planned query") | .detail | contains("rg -n \"TODO\" .")) | any'
 }
@@ -110,7 +110,7 @@ load helpers/log_parsing
 @test "init writes configuration" {
 	local new_config
 	new_config="${BATS_TMPDIR}/fresh-config.env"
-	run ./src/main.sh init --config "${new_config}" --model "example/repo:demo.gguf" --model-branch dev
+	run ./src/bin/okso init --config "${new_config}" --model "example/repo:demo.gguf" --model-branch dev
 	[ "$status" -eq 0 ]
 	[ -f "${new_config}" ]
 	grep -q "MODEL_BRANCH=\"dev\"" "${new_config}"
@@ -123,7 +123,7 @@ load helpers/log_parsing
 
 	mkdir -p "${prefix}"
 	cp -R src "${prefix}"
-	ln -sf "${prefix}/src/main.sh" "${link_path}"
+	ln -sf "${prefix}/src/bin/okso" "${link_path}"
 
 	run "${link_path}" --config "${CONFIG_FILE}" --yes -- "note something"
 	[ "$status" -eq 0 ]

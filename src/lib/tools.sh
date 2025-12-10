@@ -20,12 +20,15 @@
 # Exit codes:
 #   Functions emit errors via log and return non-zero when misused.
 
-TOOLS_DIR="${BASH_SOURCE[0]%/tools.sh}/tools"
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+SRC_ROOT=$(cd -- "${LIB_DIR}/.." && pwd)
+TOOLS_DIR="${SRC_ROOT}/tools"
+
 # shellcheck source=./errors.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools.sh}/errors.sh"
+source "${LIB_DIR}/errors.sh"
 # shellcheck source=./logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools.sh}/logging.sh"
-# shellcheck source=./tools/registry.sh disable=SC1091
+source "${LIB_DIR}/logging.sh"
+# shellcheck source=../tools/registry.sh disable=SC1091
 source "${TOOLS_DIR}/registry.sh"
 # shellcheck disable=SC2034
 TOOL_NAME_ALLOWLIST=(

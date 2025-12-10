@@ -24,24 +24,26 @@
 # Exit codes:
 #   Functions return non-zero on misuse; fatal errors logged by caller.
 
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # shellcheck source=./errors.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/errors.sh"
+source "${LIB_DIR}/errors.sh"
 # shellcheck source=./logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/logging.sh"
+source "${LIB_DIR}/logging.sh"
 # shellcheck source=./tools.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/tools.sh"
+source "${LIB_DIR}/tools.sh"
 # shellcheck source=./respond.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/respond.sh"
+source "${LIB_DIR}/respond.sh"
 # shellcheck source=./prompts.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/prompts.sh"
+source "${LIB_DIR}/prompts.sh"
 # shellcheck source=./grammar.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/grammar.sh"
-# shellcheck source=./lib/state.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/lib/state.sh"
-# shellcheck source=./lib/llama_client.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/lib/llama_client.sh"
-# shellcheck source=./lib/formatting.sh disable=SC1091
-source "${BASH_SOURCE[0]%/planner.sh}/lib/formatting.sh"
+source "${LIB_DIR}/grammar.sh"
+# shellcheck source=./state.sh disable=SC1091
+source "${LIB_DIR}/state.sh"
+# shellcheck source=./llama_client.sh disable=SC1091
+source "${LIB_DIR}/llama_client.sh"
+# shellcheck source=./formatting.sh disable=SC1091
+source "${LIB_DIR}/formatting.sh"
 
 lowercase() {
 	# Arguments:

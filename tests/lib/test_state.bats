@@ -13,7 +13,7 @@
 #   Inherits Bats semantics; individual tests assert helper behaviour.
 
 @test "state helpers persist values and history" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 source ./src/lib/state.sh
                 prefix=state_case
@@ -26,5 +26,5 @@
                 state_append_history "${prefix}" "entry two"
                 [[ "$(state_get "${prefix}" "history")" == $'"'"'entry one\nentry two'"'"' ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }

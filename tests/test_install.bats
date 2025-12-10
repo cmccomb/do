@@ -73,9 +73,9 @@ EOM_BREW
 
 	run env PATH="${mock_path}:${PATH}" ./scripts/install.sh --prefix "${TEST_ROOT}/prefix"
 	[ "$status" -eq 0 ]
-	[ -f "${TEST_ROOT}/prefix/main.sh" ]
+	[ -f "${TEST_ROOT}/prefix/bin/okso" ]
 	[ -L "${DO_LINK_DIR}/okso" ]
-	[ "$(readlink "${DO_LINK_DIR}/okso")" = "${TEST_ROOT}/prefix/main.sh" ]
+	[ "$(readlink "${DO_LINK_DIR}/okso")" = "${TEST_ROOT}/prefix/bin/okso" ]
 	[[ "$output" == *"installer completed (install)"* ]]
 }
 
@@ -111,7 +111,7 @@ EOM_BREW
 
 	run env PATH="${mock_path}:${PATH}" DO_INSTALLER_BASE_URL="file://${bundle_dir}" bash "${remote_root}/scripts/install.sh" --prefix "${TEST_ROOT}/prefix"
 	[ "$status" -eq 0 ]
-	[ -f "${TEST_ROOT}/prefix/main.sh" ]
+	[ -f "${TEST_ROOT}/prefix/bin/okso" ]
 	[ -L "${DO_LINK_DIR}/okso" ]
 }
 

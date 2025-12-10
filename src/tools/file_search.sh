@@ -19,8 +19,8 @@
 # Exit codes:
 #   Returns non-zero only when registration is misused.
 
-# shellcheck source=../logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/file_search.sh}/logging.sh"
+# shellcheck source=../lib/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/file_search.sh}/lib/logging.sh"
 # shellcheck source=./registry.sh disable=SC1091
 source "${BASH_SOURCE[0]%/file_search.sh}/registry.sh"
 

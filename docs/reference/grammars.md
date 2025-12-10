@@ -12,4 +12,4 @@ are passed directly to `llama.cpp` during inference to keep outputs predictable.
 
 Each schema file documents its shape and intent inline so contributors can update fields without editing prompt text. When
 adding a new tool or output type, create an accompanying schema in `src/grammars/` and reference it from the prompt builders in
-`src/prompts.sh`.
+`src/lib/prompts.sh`.

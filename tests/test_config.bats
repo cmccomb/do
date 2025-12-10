@@ -20,7 +20,7 @@ setup() {
 
 @test "parse_model_spec falls back to provided default file" {
 	cd "${REPO_ROOT}" || exit 1
-	source ./src/config.sh
+	source ./src/lib/config.sh
 	mapfile -t parts < <(parse_model_spec "demo/model" "custom.gguf")
 	[[ "${parts[0]}" == "demo/model" ]]
 	[[ "${parts[1]}" == "custom.gguf" ]]
@@ -28,7 +28,7 @@ setup() {
 
 @test "normalize_approval_flags coerces invalid inputs" {
 	cd "${REPO_ROOT}" || exit 1
-	source ./src/config.sh
+	source ./src/lib/config.sh
 	APPROVE_ALL="maybe"
 	FORCE_CONFIRM="0"
 	normalize_approval_flags
@@ -38,7 +38,7 @@ setup() {
 
 @test "init_environment disables llama when binary is missing" {
 	cd "${REPO_ROOT}" || exit 1
-	source ./src/config.sh
+	source ./src/lib/config.sh
 	CONFIG_FILE="${BATS_TEST_TMPDIR}/config.env"
 	MODEL_SPEC="demo/model"
 	DEFAULT_MODEL_FILE="demo.gguf"
@@ -54,7 +54,7 @@ setup() {
 
 @test "load_config honors DO_MODEL overrides" {
 	cd "${REPO_ROOT}" || exit 1
-	source ./src/config.sh
+	source ./src/lib/config.sh
 	CONFIG_FILE="${BATS_TEST_TMPDIR}/config.env"
 	printf "MODEL_SPEC=base/model\nMODEL_BRANCH=dev\n" >"${CONFIG_FILE}"
 	DO_MODEL="override/model" DO_MODEL_BRANCH="release" load_config

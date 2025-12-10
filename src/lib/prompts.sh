@@ -15,8 +15,10 @@
 # Exit codes:
 #   Functions print prompts and return 0 on success.
 
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # shellcheck source=./grammar.sh disable=SC1091
-source "${BASH_SOURCE[0]%/prompts.sh}/grammar.sh"
+source "${LIB_DIR}/grammar.sh"
 
 build_concise_response_prompt() {
 	# Arguments:

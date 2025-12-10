@@ -27,7 +27,7 @@
 	run bash -lc '
                 VERBOSITY=1
                 NOTES_DIR="/tmp/okso/../../etc"
-                source ./src/tools.sh
+                source ./src/lib/tools.sh
                 initialize_tools
         '
 

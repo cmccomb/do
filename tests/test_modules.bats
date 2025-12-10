@@ -22,7 +22,7 @@ setup() {
 }
 
 @test "parse_model_spec falls back to default file" {
-	run bash -lc 'source ./src/config.sh; parts=(); mapfile -t parts < <(parse_model_spec "example/repo" "fallback.gguf"); echo "${parts[0]}"; echo "${parts[1]}"'
+	run bash -lc 'source ./src/lib/config.sh; parts=(); mapfile -t parts < <(parse_model_spec "example/repo" "fallback.gguf"); echo "${parts[0]}"; echo "${parts[1]}"'
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "example/repo" ]
 	[ "${lines[1]}" = "fallback.gguf" ]
@@ -36,7 +36,7 @@ setup() {
                 APPROVE_ALL=false
                 FORCE_CONFIRM=false
                 NOTES_DIR="$(mktemp -d)"
-                source ./src/config.sh
+                source ./src/lib/config.sh
                 init_environment
                 printf "%s" "${LLAMA_AVAILABLE}"
         '
@@ -53,7 +53,7 @@ setup() {
                 APPROVE_ALL=false
                 FORCE_CONFIRM=false
                 NOTES_DIR="$(mktemp -d)"
-                source ./src/config.sh
+                source ./src/lib/config.sh
                 init_environment
                 printf "%s" "${LLAMA_AVAILABLE}"
         '
@@ -72,7 +72,7 @@ echo "invoked" >>"${TMP_LOG}" 2>/dev/null
 EOF
                 chmod +x "${LLAMA_BIN}"
                 TMP_LOG="${tmpdir}/log"
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 log() { :; }
                 llama_infer "demo prompt" "" 4
                 infer_status=$?
@@ -129,7 +129,7 @@ EOF
 }
 
 @test "initialize_tools registers each module" {
-	run bash -lc 'source ./src/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
+	run bash -lc 'source ./src/lib/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq 22 ]
 	[[ "${lines[*]}" == *"terminal"* ]]
@@ -137,7 +137,7 @@ EOF
 }
 
 @test "log emits JSON with escaped fields" {
-	run bash -lc $'VERBOSITY=2; source ./src/logging.sh; log "INFO" $'"'"'quote\nline'"'"' "detail"'
+	run bash -lc $'VERBOSITY=2; source ./src/lib/logging.sh; log "INFO" $'"'"'quote\nline'"'"' "detail"'
 	[ "$status" -eq 0 ]
 	logs_json="$(printf '%s' "${output}" | parse_json_logs)"
 	message=$(printf '%s' "${logs_json}" | jq -r 'try (.[0].message) catch ""')
@@ -146,7 +146,7 @@ EOF
 
 @test "generate_plan_outline adds final answer step" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 initialize_tools
                 VERBOSITY=0
                 LLAMA_AVAILABLE=true
@@ -166,7 +166,7 @@ EOF
 tmpdir=$(mktemp -d)
 export MOCK_LLAMA_LOG="${tmpdir}/llama.log"
 export LLAMA_BIN="./tests/fixtures/mock_llama.sh"
-source ./src/planner.sh
+source ./src/lib/planner.sh
 initialize_tools
 LLAMA_AVAILABLE=false
 plan="$(generate_plan_outline "offline request")"
@@ -184,7 +184,7 @@ printf "%s" "${plan}"
 
 @test "extract_tools_from_plan returns ordered list" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 initialize_tools
                 plan_text=$'"'"'1. Use notes_create to capture details.\n2. Use terminal to list files.\n3. Use final_answer to wrap up.'"'"'
                 extract_tools_from_plan "${plan_text}"
@@ -196,7 +196,7 @@ printf "%s" "${plan}"
 }
 
 @test "emit_plan_json builds valid array" {
-	run bash -lc $'source ./src/planner.sh; plan=$'"'"'terminal|echo "hi"|4\nnotes_create|add note|3'"'"'; emit_plan_json "${plan}"'
+	run bash -lc $'source ./src/lib/planner.sh; plan=$'"'"'terminal|echo "hi"|4\nnotes_create|add note|3'"'"'; emit_plan_json "${plan}"'
 	[ "$status" -eq 0 ]
 	[ "$(echo "${output}" | jq -r '.[0].tool')" = "terminal" ]
 	[ "$(echo "${output}" | jq -r '.[0].query')" = 'echo "hi"' ]
@@ -218,7 +218,7 @@ FORCE_CONFIRM=true
 APPROVE_ALL=false
 DRY_RUN=false
 PLAN_ONLY=false
-source ./src/planner.sh
+source ./src/lib/planner.sh
 confirm_tool "terminal"
 cat "${LOG_FILE}"
 '
@@ -241,7 +241,7 @@ FORCE_CONFIRM=true
 APPROVE_ALL=false
 DRY_RUN=false
 PLAN_ONLY=false
-source ./src/planner.sh
+source ./src/lib/planner.sh
 confirm_tool "terminal"
 status=$?
 cat "${LOG_FILE}"
@@ -263,7 +263,7 @@ EOF
 chmod +x "${tmpdir}/gum"
 PATH="${tmpdir}:$PATH"
 VERBOSITY=1
-source ./src/planner.sh
+source ./src/lib/planner.sh
 demo_handler() { echo "ran ${TOOL_QUERY}"; }
 init_tool_registry
 register_tool terminal "demo" "echo" "safe" demo_handler
@@ -283,7 +283,7 @@ execute_tool_with_query "terminal" "echo hi"
 @test "execute_tool_with_query skips confirmation logging in preview modes" {
 	run bash -lc '
 VERBOSITY=1
-source ./src/planner.sh
+source ./src/lib/planner.sh
 demo_handler() { echo "ran ${TOOL_QUERY}"; }
 init_tool_registry
 register_tool terminal "demo" "echo" "safe" demo_handler
@@ -310,7 +310,7 @@ cat
 EOF
 chmod +x "${tmpdir}/gum"
 PATH="${tmpdir}:$PATH"
-source ./src/cli.sh
+source ./src/lib/cli.sh
 show_help
 printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 '
@@ -321,7 +321,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 
 @test "select_next_action follows plan entries before finalizing" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 respond_text() { printf "offline response"; }
                 state_prefix=state
                 initialize_react_state "${state_prefix}" "list files" $'"'"'terminal\nfinal_answer'"'"' $'"'"'terminal|echo hi|4'"'"' $'"'"'1. terminal -> echo hi\n2. final_answer -> respond'"'"'
@@ -338,7 +338,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 
 @test "select_next_action uses llama grammar and captures output" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
 
                 llama_arg_file="$(mktemp)"
                 llama_grammar_file="$(mktemp)"
@@ -371,7 +371,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "generate_plan_outline uses shared planner grammar" {
-	source ./src/planner.sh
+	source ./src/lib/planner.sh
 	initialize_tools
 	LLAMA_AVAILABLE=true
 
@@ -393,7 +393,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 @test "generate_plan_outline short-circuits when llama unavailable" {
 	run bash -lc '
                 tmpdir=$(mktemp -d)
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 llama_infer() { printf "called" >"${tmpdir}/llama.called"; }
                 log() { :; }
                 initialize_tools
@@ -411,7 +411,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 
 @test "respond_text forwards concise response grammar" {
 	run bash -lc '
-                source ./src/respond.sh
+                source ./src/lib/respond.sh
                 LLAMA_AVAILABLE=true
                 LLAMA_BIN=""
 
@@ -442,9 +442,9 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 NOTES_DIR="${tmpdir}/notes"
                 APPROVE_ALL=false
                 FORCE_CONFIRM=false
-                source ./src/config.sh
+                source ./src/lib/config.sh
                 init_environment
-                source ./src/respond.sh
+                source ./src/lib/respond.sh
                 log() { :; }
                 response_output="$(respond_text "offline question" 8)"
                 printf "OUTPUT:%s\nLOG:%s\nAVAILABLE:%s\n" "${response_output}" "$(cat "${tmpdir}/llama.log" 2>/dev/null || true)" "${LLAMA_AVAILABLE}"
@@ -458,7 +458,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 
 @test "select_next_action logs and fails on invalid llama output" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
 
                 llama_infer() {
                         printf "invalid json"
@@ -486,7 +486,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 
 @test "validate_tool_permission records history for disallowed tool" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 state_prefix=state
                 state_set "${state_prefix}" "allowed_tools" $'"'"'terminal\nnotes_create'"'"'
                 validate_tool_permission "${state_prefix}" "mail_send"
@@ -499,7 +499,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 
 @test "state json helpers preserve ordering and counters" {
 	run bash -lc '
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 state_prefix=state
                 initialize_react_state "${state_prefix}" "question" "terminal" "" "1. terminal"
                 state_append_history "${state_prefix}" "first"
@@ -517,7 +517,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 @test "finalize_react_result generates answer when none provided" {
 	run bash -lc '
                 VERBOSITY=1
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 respond_text() { printf "%s" "stubbed response"; }
                 state_prefix=state
                 initialize_react_state "${state_prefix}" "demo question" "terminal" "" $'"'"'1. terminal -> list'"'"'
@@ -541,7 +541,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 @test "react_loop returns final_answer tool output" {
 	run bash -lc '
                 VERBOSITY=1
-                source ./src/planner.sh
+                source ./src/lib/planner.sh
                 execute_tool_action() { printf "%s" "${2}"; }
                 react_loop "question" $'"'"'final_answer'"'"' "final_answer|done|5" $'"'"'1. final_answer -> done'"'"'
         '

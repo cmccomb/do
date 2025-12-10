@@ -17,8 +17,8 @@
 # Exit codes:
 #   Functions emit errors via log and return non-zero when misused.
 
-# shellcheck source=../logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/registry.sh}/logging.sh"
+# shellcheck source=../lib/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/registry.sh}/lib/logging.sh"
 
 if [[ -z "${TOOL_REGISTRY_JSON:-}" ]]; then
 	TOOL_REGISTRY_JSON='{"names":[],"registry":{}}'
