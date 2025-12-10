@@ -29,8 +29,12 @@ build_concise_response_prompt() {
 Provide a short, concise answer (two to three sentences) to the user.
 Follow this JSON schema:
 ${concise_grammar}
-USER REQUEST: ${user_query}.
+
+USER REQUEST:
+${user_query}
+
 CONCISE RESPONSE:
+
 PROMPT
 }
 
@@ -51,7 +55,12 @@ ${planner_grammar}
 
 Available tools:
 ${tool_lines}
-User request: ${user_query}
+
+User request:
+${user_query}
+
+Plan:
+
 PROMPT
 }
 
@@ -74,11 +83,20 @@ Respond ONLY with a single JSON object per turn.
 
 Action schema (JSON Schema enforced):
 ${react_grammar}
+
 High-level plan:
 ${plan_outline}
-User request: ${user_query}
+
+User request:
+${user_query}
+
+Allowed tools:
 ${allowed_tools}
+
 Previous steps:
 ${history}
+
+Next Action:
+
 PROMPT
 }
