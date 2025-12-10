@@ -44,9 +44,9 @@ source "${BASH_SOURCE[0]%/planner.sh}/lib/llama_client.sh"
 source "${BASH_SOURCE[0]%/planner.sh}/lib/formatting.sh"
 
 lowercase() {
-        # Arguments:
-        #   $1 - input string
-        printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+	# Arguments:
+	#   $1 - input string
+	printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }
 
 # Normalize noisy planner output into a clean PlannerPlan JSON array.
