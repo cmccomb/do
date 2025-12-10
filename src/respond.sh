@@ -22,6 +22,8 @@ source "${BASH_SOURCE[0]%/respond.sh}/logging.sh"
 source "${BASH_SOURCE[0]%/respond.sh}/prompts.sh"
 # shellcheck source=./grammar.sh disable=SC1091
 source "${BASH_SOURCE[0]%/respond.sh}/grammar.sh"
+# shellcheck source=./lib/llama_client.sh disable=SC1091
+source "${BASH_SOURCE[0]%/respond.sh}/lib/llama_client.sh"
 
 respond_text() {
 	# Arguments:
