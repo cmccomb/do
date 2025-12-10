@@ -4,6 +4,7 @@ class Okso < Formula
   version "0.0.0-main"
   url "https://github.com/cmccomb/okso/archive/refs/heads/main.tar.gz"
   sha256 "d644d11f5d35343fcf9864b7c4517cb721ace2a529ad71815157c6302d808739"
+  license "MIT"
 
   depends_on "llama.cpp"
   depends_on "tesseract"

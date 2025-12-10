@@ -94,8 +94,22 @@ ensure_homebrew() {
 }
 
 install_with_brew() {
+	local help_output
+	help_output="$(brew help install 2>/dev/null || true)"
+
 	local brew_args
-	brew_args=(install --formula --force --overwrite "${FORMULA_PATH}")
+	brew_args=(install --formula)
+
+	case "${help_output}" in
+	*"--force"*) brew_args+=(--force) ;;
+	esac
+
+	case "${help_output}" in
+	*"--overwrite"*) brew_args+=(--overwrite) ;;
+	esac
+
+	brew_args+=("${FORMULA_PATH}")
+
 	log "INFO" "Installing ${APP_NAME} via Homebrew formula ${FORMULA_PATH}"
 	if ! HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew "${brew_args[@]}"; then
 		log "ERROR" "Failed to install ${APP_NAME} with Homebrew."
