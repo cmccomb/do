@@ -20,8 +20,10 @@
 # Exit codes:
 #   Returns non-zero when llama.cpp is unavailable; otherwise mirrors llama.cpp.
 
-# shellcheck source=../logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/llama_client.sh}/../logging.sh"
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# shellcheck source=./logging.sh disable=SC1091
+source "${LIB_DIR}/logging.sh"
 
 llama_infer() {
 	# Runs llama.cpp with HF caching enabled for the configured model.

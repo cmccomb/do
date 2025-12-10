@@ -15,24 +15,33 @@ Use the macOS installer to bootstrap dependencies and set up the CLI. See [insta
 Prompted run (default):
 
 ```bash
-./src/main.sh -- "inspect project layout and search notes"
+./src/bin/okso -- "inspect project layout and search notes"
 ```
 
 Auto-approval with a specific model selection:
 
 ```bash
-./src/main.sh --yes --model your-org/your-model:custom.gguf -- "save reminder"
+./src/bin/okso --yes --model your-org/your-model:custom.gguf -- "save reminder"
 ```
 
 Write a config file up front with a custom model branch (defaults to `bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf` on `main`):
 
 ```bash
-./src/main.sh init --model your-org/your-model:custom.gguf --model-branch release
+./src/bin/okso init --model your-org/your-model:custom.gguf --model-branch release
 ```
 
 More scenarios and approval modes live in the [usage guide](docs/user-guides/usage.md). Configuration keys are covered in [configuration](docs/reference/configuration.md), and available tools are listed in [tools](docs/reference/tools.md). Development and testing steps are in [contributor docs](docs/contributor/development.md).
 
 See the [documentation index](docs/index.md) for a complete map of guides, references, and contributor notes.
+
+## Project layout
+
+- `src/bin/`: CLI entrypoints (the `okso` script orchestrates runtime wiring and shared modules).
+- `src/lib/`: shared runtime modules, including configuration, logging, planner/respond helpers, grammar utilities, and the llama client wrappers.
+- `src/tools/`: tool-specific handlers plus the registry wiring used by the planner.
+- `src/grammars/`: JSON schemas consumed by prompt builders and `llama.cpp` grammars.
+- `scripts/`: installer and automation helpers.
+- `tests/`: Bats suites, fixtures, and helper functions for the CLI and tools.
 
 ### Offline and testing behavior
 
@@ -40,17 +49,17 @@ Set `TESTING_PASSTHROUGH=true` to disable llama.cpp calls during tests or offlin
 
 ### Logging-first output
 
-Runtime output is emitted as structured JSON logs from [`src/logging.sh`](src/logging.sh). Planning summaries, dry-run previews, and final answers all use the log channel, with INFO-level entries detailing suggested tools and execution flow and ERROR entries marking fallbacks or unexpected gaps. The final answer is pretty-printed for readability so operators can scan it without additional tooling while still benefiting from structured log parsing.
+Runtime output is emitted as structured JSON logs from [`src/lib/logging.sh`](src/lib/logging.sh). Planning summaries, dry-run previews, and final answers all use the log channel, with INFO-level entries detailing suggested tools and execution flow and ERROR entries marking fallbacks or unexpected gaps. The final answer is pretty-printed for readability so operators can scan it without additional tooling while still benefiting from structured log parsing.
 
 ## Prompt catalogue
 
-All prompts used by the assistant are centralized in [`src/prompts.sh`](src/prompts.sh) for easier maintenance. The file exposes prompt builders for direct responses, plan generation, and ReAct steps so updates to tone, structure, or schema can be made in one place.
+All prompts used by the assistant are centralized in [`src/lib/prompts.sh`](src/lib/prompts.sh) for easier maintenance. The file exposes prompt builders for direct responses, plan generation, and ReAct steps so updates to tone, structure, or schema can be made in one place.
 
 Structured outputs are enforced with shared [JSON schemas](src/grammars/) referenced by the prompt builders and passed directly to `llama.cpp` during inference. Each schema file name documents its purpose (e.g., `planner_plan.schema.json`, `react_action.schema.json`, `concise_response.schema.json`) so contributors can update the shapes without hunting through inline prompt text.
 
 ## Structured error envelopes
 
-Shared helpers in [`src/errors.sh`](src/errors.sh) emit JSON envelopes for fatal and warning paths while ensuring non-zero exit
+Shared helpers in [`src/lib/errors.sh`](src/lib/errors.sh) emit JSON envelopes for fatal and warning paths while ensuring non-zero exit
 codes from pipelines and subshells. The envelope format is consistent across runtime and tool scripts:
 
 ```json

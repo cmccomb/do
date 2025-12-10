@@ -16,8 +16,10 @@
 # Exit codes:
 #   Functions return non-zero on misuse.
 
-# shellcheck source=../logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/formatting.sh}/../logging.sh"
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# shellcheck source=./logging.sh disable=SC1091
+source "${LIB_DIR}/logging.sh"
 
 format_tool_descriptions() {
 	# Arguments:

@@ -13,7 +13,7 @@
 #   Inherits Bats semantics; individual tests assert helper outcomes.
 
 @test "llama_infer short-circuits when unavailable" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 export LLAMA_AVAILABLE=false
                 export LLAMA_BIN=/nonexistent
@@ -22,11 +22,11 @@
                 source ./src/lib/llama_client.sh
                 llama_infer "prompt" "" 10
         '
-        [ "$status" -eq 1 ]
+	[ "$status" -eq 1 ]
 }
 
 @test "llama_infer forwards grammar and stop arguments" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 args_dir="$(mktemp -d)"
                 args_file="${args_dir}/args.txt"
@@ -48,11 +48,11 @@ SCRIPT
                 [[ "${args[*]}" == *"-r"* ]]
                 [[ "${args[*]}" == *"STOP"* ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "llama_infer uses grammar file flag for non-JSON grammars" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 args_dir="$(mktemp -d)"
                 args_file="${args_dir}/args.txt"
@@ -73,5 +73,5 @@ SCRIPT
                 [[ "${args[*]}" == *"${args_dir}/grammar.gbnf"* ]]
                 [[ " ${args[*]} " != *" -r "* ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }

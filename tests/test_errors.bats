@@ -14,7 +14,7 @@
 @test "die surfaces exit codes from failed pipelines" {
 	run bash -lc '
                 set -o pipefail
-                source ./src/errors.sh
+                source ./src/lib/errors.sh
                 ERROR_CONTEXT="runtime"
 
                 { false | true; } || die "${ERROR_CONTEXT}" "pipeline" "upstream pipeline failure" 17
@@ -28,7 +28,7 @@
 
 @test "die exits from subshells with serialized envelope" {
 	run bash -lc '
-                source ./src/errors.sh
+                source ./src/lib/errors.sh
 
                 (die "tool_runner" "fatal" "subshell explosion" 23)
         '

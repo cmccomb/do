@@ -42,8 +42,10 @@
 # Exit codes:
 #   0 for success, non-zero bubbled from downstream helpers.
 
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # shellcheck source=./errors.sh disable=SC1091
-source "${BASH_SOURCE[0]%/runtime.sh}/errors.sh"
+source "${LIB_DIR}/errors.sh"
 
 # Simple namespaced settings helpers backed by JSON blobs to avoid
 # associative-array dependencies on macOS's legacy Bash 3.2. All values are

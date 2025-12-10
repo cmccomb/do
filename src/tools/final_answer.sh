@@ -17,8 +17,8 @@
 # Exit codes:
 #   Returns 0 after echoing the supplied TOOL_QUERY.
 
-# shellcheck source=../logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/final_answer.sh}/logging.sh"
+# shellcheck source=../lib/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/final_answer.sh}/lib/logging.sh"
 # shellcheck source=./registry.sh disable=SC1091
 source "${BASH_SOURCE[0]%/final_answer.sh}/registry.sh"
 

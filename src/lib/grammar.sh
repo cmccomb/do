@@ -15,11 +15,11 @@
 # Exit codes:
 #   Functions return non-zero when an unknown grammar name is requested.
 
+LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 # Returns the absolute path to the grammar directory.
 grammar_root_dir() {
-	local script_dir
-	script_dir="${BASH_SOURCE[0]%/grammar.sh}"
-	cd "${script_dir}/grammars" && pwd
+	cd "${LIB_DIR}/../grammars" && pwd
 }
 
 # Resolves a grammar name to its schema file path.

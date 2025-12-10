@@ -257,8 +257,10 @@ verify_download_integrity() {
 	rm -f "${checksum_path}" "${signature_path}"
 }
 
+ENTRYPOINT_RELATIVE="bin/okso"
+
 prepare_source_payload() {
-	if [ -d "${SRC_DIR}" ] && [ -f "${SRC_DIR}/main.sh" ]; then
+	if [ -d "${SRC_DIR}" ] && [ -f "${SRC_DIR}/${ENTRYPOINT_RELATIVE}" ]; then
 		SOURCE_PAYLOAD_DIR="${SRC_DIR}"
 		return 0
 	fi
@@ -452,7 +454,7 @@ create_symlink() {
 	# $1: target prefix, $2: link path
 	local prefix="$1"
 	local link_path="$2"
-	local target="${prefix}/main.sh"
+	local target="${prefix}/${ENTRYPOINT_RELATIVE}"
 
 	if [ ! -f "${target}" ]; then
 		log "ERROR" "Entrypoint missing at ${target}"
@@ -509,8 +511,8 @@ self_test_install() {
 
 	log "INFO" "Running installer self-test"
 
-	if [ ! -x "${prefix}/main.sh" ]; then
-		log "ERROR" "Installed main.sh is missing or not executable"
+	if [ ! -x "${prefix}/${ENTRYPOINT_RELATIVE}" ]; then
+		log "ERROR" "Installed entrypoint is missing or not executable"
 		exit 2
 	fi
 
@@ -519,7 +521,7 @@ self_test_install() {
 		exit 2
 	fi
 
-	grammar_path_output="$(bash -c "source \"${prefix}/grammar.sh\" && grammar_path planner_plan" 2>/dev/null || true)"
+	grammar_path_output="$(bash -c "source \"${prefix}/lib/grammar.sh\" && grammar_path planner_plan" 2>/dev/null || true)"
 	if [ "${grammar_path_output}" != "${prefix}/grammars/planner_plan.schema.json" ]; then
 		log "ERROR" "Grammar resolution failed during self-test"
 		exit 2
@@ -533,7 +535,7 @@ self_test_install() {
 		DEFAULT_MODEL_SPEC_BASE="self/test:model.gguf" \
 		DEFAULT_MODEL_BRANCH_BASE="main" \
 		DEFAULT_MODEL_FILE_BASE="model.gguf" \
-		"${prefix}/main.sh" --plan-only -- "Self-test query" 2>&1 || true)
+		"${prefix}/${ENTRYPOINT_RELATIVE}" --plan-only -- "Self-test query" 2>&1 || true)
 
 	if [ -z "${query_output}" ]; then
 		log "ERROR" "Self-test query produced no output"

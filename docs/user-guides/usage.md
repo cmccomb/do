@@ -17,26 +17,26 @@ Model defaults live in `${XDG_CONFIG_HOME:-~/.config}/okso/config.env`. Override
 Prompted run (default):
 
 ```bash
-./src/main.sh -- "inspect project layout and search notes"
+./src/bin/okso -- "inspect project layout and search notes"
 ```
 
 Auto-approval with a specific model selection:
 
 ```bash
-./src/main.sh --yes --model your-org/your-model:custom.gguf -- "save reminder"
+./src/bin/okso --yes --model your-org/your-model:custom.gguf -- "save reminder"
 ```
 
 Write a config file without running a plan to persist model overrides:
 
 ```bash
-./src/main.sh init --config ~/.config/okso/config.env --model your-org/your-model:custom.gguf --model-branch beta
+./src/bin/okso init --config ~/.config/okso/config.env --model your-org/your-model:custom.gguf --model-branch beta
 ```
 
 Tool helpers for macOS clipboard access:
 
 ```bash
-./src/main.sh -- tool clipboard_copy "temporary text"
-./src/main.sh -- tool clipboard_paste
+./src/bin/okso -- tool clipboard_copy "temporary text"
+./src/bin/okso -- tool clipboard_paste
 ```
 
 Refer to [configuration](../reference/configuration.md) for tuning defaults and [tools](../reference/tools.md) for supported handlers.

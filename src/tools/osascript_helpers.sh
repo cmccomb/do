@@ -19,8 +19,8 @@
 # Exit codes:
 #   Functions emit warnings and return non-zero when requirements are unmet.
 
-# shellcheck source=./logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/osascript_helpers.sh}/logging.sh"
+# shellcheck source=../lib/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/osascript_helpers.sh}/lib/logging.sh"
 
 assert_osascript_available() {
 	# Ensures osascript-based tools only run on macOS with the binary available.
