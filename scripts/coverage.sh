@@ -44,35 +44,17 @@ bashcov --root "${ROOT_DIR}" --command-name "bats" -- bats "${coverage_files[@]}
 
 coverage_source=""
 if [[ -f "${COVERAGE_DIR}/coverage.json" ]]; then
-        coverage_source="${COVERAGE_DIR}/coverage.json"
+	coverage_source="${COVERAGE_DIR}/coverage.json"
 elif [[ -f "${COVERAGE_DIR}/.resultset.json" ]]; then
-        coverage_source="${COVERAGE_DIR}/.resultset.json"
+	coverage_source="${COVERAGE_DIR}/.resultset.json"
 fi
 
 coverage_summary=$(
-        if [[ -n "${coverage_source}" ]]; then
-                jq -er '
-                        def tally($hits):
-                                reduce $hits[]? as $hit ({total: 0, covered: 0};
-                                        if $hit == null then .
-                                        else .total += 1 | .covered += (if $hit > 0 then 1 else 0 end) end);
-
-                        def from_coverage($coverage):
-                                reduce $coverage[]? as $file ({total: 0, covered: 0};
-                                        ($file.lines // $file) as $lines |
-                                        (tally($lines)) as $stats |
-                                        .total += $stats.total | .covered += $stats.covered);
-
-                        def from_resultset:
-                                ([.[]? | select(.coverage?) | .coverage][0] // {}) | from_coverage(.);
-
-                        (if has("coverage") then from_coverage(.coverage) else from_resultset end) as $stats
-                        | if $stats.total > 0 then ($stats.covered / $stats.total * 100) else 0 end
-                        | tostring
-                ' "${coverage_source}"
-        else
-                echo "0"
-        fi
+	if [[ -n "${coverage_source}" ]]; then
+		jq -er 'if has("metrics") then (.metrics.line.percent // .metrics.covered_percent // 0) else ([.[]? | select(.coverage?) | .coverage][0] // {}) as $coverage | reduce $coverage[]? as $file ({t: 0, c: 0}; ($file.lines // $file) as $lines | .t += ($lines|length) | .c += ($lines|map(select(. != null and . > 0))|length)) | if .t > 0 then (.c / .t * 100) else 0 end end' "${coverage_source}"
+	else
+		echo "0"
+	fi
 )
 coverage_summary=$(printf '%.2f' "${coverage_summary}")
 
