@@ -14,15 +14,15 @@
 #   Inherits Bats semantics; individual tests assert script exit codes.
 
 setup() {
-        TEST_ROOT="${BATS_TMPDIR}/okso-install"
-        mkdir -p "${TEST_ROOT}"
-        if [ "$(uname -s)" != "Darwin" ]; then
-                skip "Installer tests require macOS"
-        fi
-        export DO_INSTALLER_ASSUME_OFFLINE=true
-        export DO_INSTALLER_SKIP_SELF_TEST=true
-        export DO_LINK_DIR="${TEST_ROOT}/bin"
-        mkdir -p "${DO_LINK_DIR}"
+	TEST_ROOT="${BATS_TMPDIR}/okso-install"
+	mkdir -p "${TEST_ROOT}"
+	if [ "$(uname -s)" != "Darwin" ]; then
+		skip "Installer tests require macOS"
+	fi
+	export DO_INSTALLER_ASSUME_OFFLINE=true
+	export DO_INSTALLER_SKIP_SELF_TEST=true
+	export DO_LINK_DIR="${TEST_ROOT}/bin"
+	mkdir -p "${DO_LINK_DIR}"
 }
 
 teardown() {
@@ -48,59 +48,59 @@ teardown() {
 }
 
 @test "fails fast on non-macOS" {
-        local mock_path="${TEST_ROOT}/mock-non-mac"
-        mkdir -p "${mock_path}"
+	local mock_path="${TEST_ROOT}/mock-non-mac"
+	mkdir -p "${mock_path}"
 
-        cat >"${mock_path}/uname" <<'EOM_UNAME'
+	cat >"${mock_path}/uname" <<'EOM_UNAME'
 #!/usr/bin/env bash
 echo "Linux"
 EOM_UNAME
-        chmod +x "${mock_path}/uname"
+	chmod +x "${mock_path}/uname"
 
-        run env PATH="${mock_path}:${PATH}" ./scripts/install.sh --prefix "${TEST_ROOT}/prefix"
-        [ "$status" -eq 3 ]
-        [[ "$output" == *"supports macOS"* ]]
+	run env PATH="${mock_path}:${PATH}" ./scripts/install.sh --prefix "${TEST_ROOT}/prefix"
+	[ "$status" -eq 3 ]
+	[[ "$output" == *"supports macOS"* ]]
 }
 
 @test "installs when Homebrew is available" {
-        run ./scripts/install.sh --prefix "${TEST_ROOT}/prefix"
-        [ "$status" -eq 0 ]
-        [ -f "${TEST_ROOT}/prefix/bin/okso" ]
-        [ -L "${DO_LINK_DIR}/okso" ]
-        [ "$(readlink "${DO_LINK_DIR}/okso")" = "${TEST_ROOT}/prefix/bin/okso" ]
-        [[ "$output" == *"installer completed (install)"* ]]
+	run ./scripts/install.sh --prefix "${TEST_ROOT}/prefix"
+	[ "$status" -eq 0 ]
+	[ -f "${TEST_ROOT}/prefix/bin/okso" ]
+	[ -L "${DO_LINK_DIR}/okso" ]
+	[ "$(readlink "${DO_LINK_DIR}/okso")" = "${TEST_ROOT}/prefix/bin/okso" ]
+	[[ "$output" == *"installer completed (install)"* ]]
 }
 
 @test "downloads project archive when sources are missing" {
-        local remote_root="${TEST_ROOT}/remote"
-        local bundle_dir="${TEST_ROOT}/bundle"
-        local tarball="${bundle_dir}/okso.tar.gz"
+	local remote_root="${TEST_ROOT}/remote"
+	local bundle_dir="${TEST_ROOT}/bundle"
+	local tarball="${bundle_dir}/okso.tar.gz"
 
-        mkdir -p "${remote_root}/scripts" "${bundle_dir}" "${TEST_ROOT}/prefix"
+	mkdir -p "${remote_root}/scripts" "${bundle_dir}" "${TEST_ROOT}/prefix"
 
-        tar -czf "${tarball}" -C . src scripts README.md LICENSE
+	tar -czf "${tarball}" -C . src scripts README.md LICENSE
 
-        cp scripts/install.sh "${remote_root}/scripts/install.sh"
+	cp scripts/install.sh "${remote_root}/scripts/install.sh"
 
-        run env DO_INSTALLER_BASE_URL="file://${bundle_dir}" bash "${remote_root}/scripts/install.sh" --prefix "${TEST_ROOT}/prefix"
-        [ "$status" -eq 0 ]
-        [ -f "${TEST_ROOT}/prefix/bin/okso" ]
-        [ -L "${DO_LINK_DIR}/okso" ]
+	run env DO_INSTALLER_BASE_URL="file://${bundle_dir}" bash "${remote_root}/scripts/install.sh" --prefix "${TEST_ROOT}/prefix"
+	[ "$status" -eq 0 ]
+	[ -f "${TEST_ROOT}/prefix/bin/okso" ]
+	[ -L "${DO_LINK_DIR}/okso" ]
 }
 
 @test "defaults to published installer base when downloading archive" {
-        local remote_root="${TEST_ROOT}/remote"
-        local bundle_dir="${TEST_ROOT}/bundle"
-        local tarball="${bundle_dir}/okso.tar.gz"
-        local log_path="${TEST_ROOT}/curl.log"
+	local remote_root="${TEST_ROOT}/remote"
+	local bundle_dir="${TEST_ROOT}/bundle"
+	local tarball="${bundle_dir}/okso.tar.gz"
+	local log_path="${TEST_ROOT}/curl.log"
 
-        mkdir -p "${remote_root}/scripts" "${bundle_dir}" "${TEST_ROOT}/prefix"
+	mkdir -p "${remote_root}/scripts" "${bundle_dir}" "${TEST_ROOT}/prefix"
 
-        tar -czf "${tarball}" -C . src scripts README.md LICENSE
+	tar -czf "${tarball}" -C . src scripts README.md LICENSE
 
-        cp scripts/install.sh "${remote_root}/scripts/install.sh"
+	cp scripts/install.sh "${remote_root}/scripts/install.sh"
 
-        cat >"${remote_root}/curl" <<EOM_CURL
+	cat >"${remote_root}/curl" <<EOM_CURL
 #!/usr/bin/env bash
 printf 'curl %s\n' "$*" >>"${log_path}"
 printf 'args:' >>"${log_path}"
@@ -136,9 +136,9 @@ if [ -n "${dest}" ]; then
         cp "${tarball}" "${dest}"
 fi
 EOM_CURL
-        chmod +x "${remote_root}/curl"
+	chmod +x "${remote_root}/curl"
 
-        run env PATH="${remote_root}:${PATH}" DO_INSTALLER_ASSUME_OFFLINE=false bash "${remote_root}/scripts/install.sh" --prefix "${TEST_ROOT}/prefix"
-        [ "$status" -eq 0 ]
-        grep -q "okso.tar.gz" "${log_path}"
+	run env PATH="${remote_root}:${PATH}" DO_INSTALLER_ASSUME_OFFLINE=false bash "${remote_root}/scripts/install.sh" --prefix "${TEST_ROOT}/prefix"
+	[ "$status" -eq 0 ]
+	grep -q "okso.tar.gz" "${log_path}"
 }
