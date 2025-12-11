@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Bats suite with coverage
         run: |
-          find tests -type f \( -name '*.sh' -o -name '*.bats' \) -print0 \
+          find tests -type f \( -name 'test_*.sh' -o -name 'test_*.bats' \) -print0 \
             | sort -z \
             | xargs -0 bats
           ./scripts/coverage.sh

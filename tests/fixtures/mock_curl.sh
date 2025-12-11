@@ -7,6 +7,7 @@ args="$*"
 # Simulate curl for installer metadata and connectivity checks.
 [[ "$args" == *"brew.sh"* ]] && exit 0
 
+# Simulate curl for installer downloads and checksum retrievals.
 case "$arg1" in
 -sI)
 	printf 'HTTP/1.1 200 OK\nContent-Length: 15\n'
