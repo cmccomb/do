@@ -22,9 +22,9 @@ LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${LIB_DIR}/logging.sh"
 
 format_tool_descriptions() {
-        # Arguments:
-        #   $1 - newline-delimited allowed tool names (string)
-        #   $2 - callback to format a single tool line (function name)
+	# Arguments:
+	#   $1 - newline-delimited allowed tool names (string)
+	#   $2 - callback to format a single tool line (function name)
 	local allowed_tools formatter tool_lines tool formatted_line
 	allowed_tools="$1"
 	formatter="$2"
@@ -48,44 +48,44 @@ format_tool_descriptions() {
 		fi
 	done <<<"${allowed_tools}"
 
-        printf '%s' "${tool_lines%$'\n'}"
+	printf '%s' "${tool_lines%$'\n'}"
 }
 
 format_tool_details() {
-        # Arguments:
-        #   $1 - tool name (string)
-        local tool description command safety
-        local -a details=()
-        local detail_text=""
-        tool="$1"
-        description="$(tool_description "${tool}")"
-        command="$(tool_command "${tool}")"
-        safety="$(tool_safety "${tool}")"
+	# Arguments:
+	#   $1 - tool name (string)
+	local tool description command safety
+	local -a details=()
+	local detail_text=""
+	tool="$1"
+	description="$(tool_description "${tool}")"
+	command="$(tool_command "${tool}")"
+	safety="$(tool_safety "${tool}")"
 
-        if [[ -n "${description}" ]]; then
-                details+=("${description}")
-        fi
+	if [[ -n "${description}" ]]; then
+		details+=("${description}")
+	fi
 
-        if [[ -n "${command}" ]]; then
-                details+=("Example: ${command}")
-        fi
+	if [[ -n "${command}" ]]; then
+		details+=("Example: ${command}")
+	fi
 
-        if [[ -n "${safety}" ]]; then
-                details+=("Safety: ${safety}")
-        fi
+	if [[ -n "${safety}" ]]; then
+		details+=("Safety: ${safety}")
+	fi
 
-        if ((${#details[@]} == 0)); then
-                return 0
-        fi
+	if ((${#details[@]} == 0)); then
+		return 0
+	fi
 
-        for i in "${!details[@]}"; do
-                if ((i > 0)); then
-                        detail_text+=' | '
-                fi
-                detail_text+="${details[i]}"
-        done
+	for i in "${!details[@]}"; do
+		if ((i > 0)); then
+			detail_text+=' | '
+		fi
+		detail_text+="${details[i]}"
+	done
 
-        printf '%s' "${detail_text}"
+	printf '%s' "${detail_text}"
 }
 
 render_box() {
@@ -183,31 +183,31 @@ emit_boxed_summary() {
 }
 
 format_tool_summary_line() {
-        # Arguments:
-        #   $1 - tool name (string)
-        local tool detail_text
-        tool="$1"
-        detail_text="$(format_tool_details "${tool}")"
+	# Arguments:
+	#   $1 - tool name (string)
+	local tool detail_text
+	tool="$1"
+	detail_text="$(format_tool_details "${tool}")"
 
-        if [[ -n "${detail_text}" ]]; then
-                printf -- '- %s: %s' "${tool}" "${detail_text}"
-                return 0
-        fi
+	if [[ -n "${detail_text}" ]]; then
+		printf -- '- %s: %s' "${tool}" "${detail_text}"
+		return 0
+	fi
 
-        printf -- '- %s' "${tool}"
+	printf -- '- %s' "${tool}"
 }
 
 format_tool_example_line() {
-        # Arguments:
-        #   $1 - tool name (string)
-        local tool detail_text
-        tool="$1"
-        detail_text="$(format_tool_details "${tool}")"
+	# Arguments:
+	#   $1 - tool name (string)
+	local tool detail_text
+	tool="$1"
+	detail_text="$(format_tool_details "${tool}")"
 
-        if [[ -n "${detail_text}" ]]; then
-                printf -- '- %s: %s' "${tool}" "${detail_text}"
-                return 0
-        fi
+	if [[ -n "${detail_text}" ]]; then
+		printf -- '- %s: %s' "${tool}" "${detail_text}"
+		return 0
+	fi
 
-        printf -- '- %s' "${tool}"
+	printf -- '- %s' "${tool}"
 }

@@ -13,7 +13,7 @@
 #   Inherits Bats semantics; individual tests assert helper outcomes.
 
 @test "format_tool_descriptions filters empty lines and applies formatter" {
-        run bash -s <<'EOF'
+	run bash -s <<'EOF'
 cd "$(git rev-parse --show-toplevel)" || exit 1
 source ./src/lib/formatting.sh
 tool_description() { printf "desc-%s" "$1"; }
@@ -24,11 +24,11 @@ output="$(format_tool_descriptions "${input}" format_tool_summary_line)"
 expected=$'- alpha: desc-alpha | Example: cmd-alpha | Safety: safe-alpha\n- beta: desc-beta | Example: cmd-beta | Safety: safe-beta'
 [[ "${output}" == "${expected}" ]]
 EOF
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "format_tool_example_line includes command examples" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 source ./src/lib/formatting.sh
                 tool_description() { printf "describe-%s" "$1"; }
@@ -37,7 +37,7 @@ EOF
                 line="$(format_tool_example_line "demo")"
                 [[ "${line}" == "- demo: describe-demo | Example: run-demo | Safety: limit-demo" ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "format_tool_descriptions rejects unknown formatter" {
