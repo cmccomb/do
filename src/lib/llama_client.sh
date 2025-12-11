@@ -98,7 +98,7 @@ llama_infer() {
 
 	llama_args+=("${additional_args[@]}")
 
-	llama_args+=("-p ${prompt}")
+	llama_args+=(-p "${prompt}")
 
 	llama_arg_string=$(printf '%s ' "${llama_args[@]:1}")
 	llama_arg_string=${llama_arg_string% }
