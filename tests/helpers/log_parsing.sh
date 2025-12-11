@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bats
 # Utilities for extracting structured JSON logs from mixed stdout/stderr streams.
 #
 # Usage:
