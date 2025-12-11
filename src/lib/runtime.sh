@@ -48,7 +48,7 @@ LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${LIB_DIR}/errors.sh"
 
 if ! command -v jq >/dev/null 2>&1; then
-        die runtime dependency "Missing jq dependency. Install jq with your package manager (e.g., apt-get install jq or brew install jq) and re-run."
+	die runtime dependency "Missing jq dependency. Install jq with your package manager (e.g., apt-get install jq or brew install jq) and re-run."
 fi
 
 # Simple namespaced settings helpers backed by JSON blobs to avoid

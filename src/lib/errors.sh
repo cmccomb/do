@@ -20,37 +20,37 @@
 #   log_debug returns 0.
 
 emit_error_envelope() {
-        # Emits a JSON error envelope with consistent metadata.
-        # Arguments:
-        #   $1 - context (string; optional; defaults to ERROR_CONTEXT/TOOL_NAME/runtime)
-        #   $2 - category (string; required)
-        #   $3 - message (string; required)
-        local context category message escaped_context escaped_category escaped_message
-        context=${1:-${ERROR_CONTEXT:-${TOOL_NAME:-runtime}}}
-        category="$2"
-        message="$3"
+	# Emits a JSON error envelope with consistent metadata.
+	# Arguments:
+	#   $1 - context (string; optional; defaults to ERROR_CONTEXT/TOOL_NAME/runtime)
+	#   $2 - category (string; required)
+	#   $3 - message (string; required)
+	local context category message escaped_context escaped_category escaped_message
+	context=${1:-${ERROR_CONTEXT:-${TOOL_NAME:-runtime}}}
+	category="$2"
+	message="$3"
 
-        if command -v jq >/dev/null 2>&1; then
-                jq -cn \
-                        --arg name "${context}" \
-                        --arg category "${category}" \
-                        --arg message "${message}" \
-                        '{name:$name, category:$category, message:$message}'
-                return
-        fi
+	if command -v jq >/dev/null 2>&1; then
+		jq -cn \
+			--arg name "${context}" \
+			--arg category "${category}" \
+			--arg message "${message}" \
+			'{name:$name, category:$category, message:$message}'
+		return
+	fi
 
-        escaped_context=${context//\\/\\\\}
-        escaped_context=${escaped_context//"/\\"}
-        escaped_context=${escaped_context//$'\n'/\\n}
-        escaped_category=${category//\\/\\\\}
-        escaped_category=${escaped_category//"/\\"}
-        escaped_category=${escaped_category//$'\n'/\\n}
-        escaped_message=${message//\\/\\\\}
-        escaped_message=${escaped_message//"/\\"}
-        escaped_message=${escaped_message//$'\n'/\\n}
+	escaped_context=${context//\\/\\\\}
+	escaped_context=${escaped_context//"/\\"/}
+	escaped_context=${escaped_context//$'\n'/\\n}
+	escaped_category=${category//\\/\\\\}
+	escaped_category=${escaped_category//"/\\"/}
+	escaped_category=${escaped_category//$'\n'/\\n}
+	escaped_message=${message//\\/\\\\}
+	escaped_message=${escaped_message//"/\\"/}
+	escaped_message=${escaped_message//$'\n'/\\n}
 
-        printf '{"name":"%s","category":"%s","message":"%s"}\n' \
-                "${escaped_context}" "${escaped_category}" "${escaped_message}"
+	printf '{"name":"%s","category":"%s","message":"%s"}\n' \
+		"${escaped_context}" "${escaped_category}" "${escaped_message}"
 }
 
 die() {
