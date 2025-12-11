@@ -12,6 +12,8 @@ bats tests/cli/test_all.sh tests/cli/test_install.sh tests/cli/test_main.sh test
 
 The Bats suite covers CLI help/version output, confirmation prompts, deterministic mock scoring via `tests/fixtures/mock_llama.sh`, and graceful handling when `LLAMA_BIN` is missing.
 
+Sourcing runtime helpers now enforces the presence of `jq` and will exit with a structured dependency error when the binary is unavailable; ensure your development environment installs `jq` before running the scripts.
+
 Set `TESTING_PASSTHROUGH=true` when running the suite to disable llama.cpp invocation and surface test-only code paths without muting runtime errors that depend on llama availability.
 
 ### Coverage collection
