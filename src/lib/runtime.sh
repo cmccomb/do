@@ -345,17 +345,17 @@ select_response_strategy() {
 
 	apply_settings_to_globals "${settings_prefix}"
 
-        if [[ -z "${required_tools}" ]]; then
-                # The planner may occasionally decline tools; fall back to direct text
-                # responses so the user still receives output.
-                log "ERROR" "No tools selected; responding directly" "${USER_QUERY}"
-                log "INFO" "Planner emitted no tools; using direct response" "${USER_QUERY}"
-                direct_response="$(respond_text "${USER_QUERY}" 256)"
-                log_pretty "INFO" "Final answer" "${direct_response}"
-                log "INFO" "Execution summary" "No tool runs"
-                emit_boxed_summary "${USER_QUERY}" "${plan_outline}" "" "${direct_response}"
-                return 0
-        fi
+	if [[ -z "${required_tools}" ]]; then
+		# The planner may occasionally decline tools; fall back to direct text
+		# responses so the user still receives output.
+		log "ERROR" "No tools selected; responding directly" "${USER_QUERY}"
+		log "INFO" "Planner emitted no tools; using direct response" "${USER_QUERY}"
+		direct_response="$(respond_text "${USER_QUERY}" 256)"
+		log_pretty "INFO" "Final answer" "${direct_response}"
+		log "INFO" "Execution summary" "No tool runs"
+		emit_boxed_summary "${USER_QUERY}" "${plan_outline}" "" "${direct_response}"
+		return 0
+	fi
 
 	react_loop "${USER_QUERY}" "${required_tools}" "${plan_entries}" "${plan_outline}"
 }

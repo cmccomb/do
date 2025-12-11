@@ -10,7 +10,7 @@
 #   - bash 5+
 
 @test "finalize_react_result emits boxed summary" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 source ./src/lib/planner.sh
                 # Silence structured logs for assertion clarity.
@@ -28,5 +28,5 @@
                 [[ "${output}" == *"tool-a did work"* ]]
                 [[ "${output}" == *"All done"* ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
