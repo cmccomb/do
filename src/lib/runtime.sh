@@ -46,6 +46,8 @@ LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # shellcheck source=./errors.sh disable=SC1091
 source "${LIB_DIR}/errors.sh"
+# shellcheck source=./formatting.sh disable=SC1091
+source "${LIB_DIR}/formatting.sh"
 
 if ! command -v jq >/dev/null 2>&1; then
 	die runtime dependency "Missing jq dependency. Install jq with your package manager (e.g., apt-get install jq or brew install jq) and re-run."
@@ -351,6 +353,7 @@ select_response_strategy() {
 		direct_response="$(respond_text "${USER_QUERY}" 256)"
 		log_pretty "INFO" "Final answer" "${direct_response}"
 		log "INFO" "Execution summary" "No tool runs"
+		emit_boxed_summary "${USER_QUERY}" "${plan_outline}" "" "${direct_response}"
 		return 0
 	fi
 

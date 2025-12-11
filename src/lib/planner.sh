@@ -505,6 +505,12 @@ finalize_react_result() {
 	else
 		log_pretty "INFO" "Execution summary" "$(state_get "${state_name}" "history")"
 	fi
+
+	emit_boxed_summary \
+		"$(state_get "${state_name}" "user_query")" \
+		"$(state_get "${state_name}" "plan_outline")" \
+		"$(state_get "${state_name}" "history")" \
+		"$(state_get "${state_name}" "final_answer")"
 }
 
 react_loop() {
