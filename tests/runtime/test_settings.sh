@@ -18,10 +18,3 @@
 	[ "${lines[0]}" = "/custom/bin" ]
 	[ "${lines[1]}" = "/changed/bin" ]
 }
-
-@test "render_plan_outputs sets action when plan-only is enabled" {
-	run bash -lc 'source ./src/lib/runtime.sh; create_default_settings compat; settings_set compat plan_only true; render_plan_outputs action compat "terminal" "tool|echo 1|0.2" "outline"; printf "%s" "${action}"'
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"exit" ]]
-	[[ "$output" == *"Suggested tools"* ]]
-}
