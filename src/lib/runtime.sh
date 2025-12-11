@@ -47,6 +47,10 @@ LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=./errors.sh disable=SC1091
 source "${LIB_DIR}/errors.sh"
 
+if ! command -v jq >/dev/null 2>&1; then
+        die runtime dependency "Missing jq dependency. Install jq with your package manager (e.g., apt-get install jq or brew install jq) and re-run."
+fi
+
 # Simple namespaced settings helpers backed by JSON blobs to avoid
 # associative-array dependencies on macOS's legacy Bash 3.2. All values are
 # stored on ${namespace}_json and accessed via jq for durability.
