@@ -4,18 +4,18 @@
   "type": "array",
   "items": {
     "type": "string",
-    "minLength": 1
+    "minLength": 10
   },
   "minItems": 1,
   "description": "Ordered list of high-level plan steps. Each item will be numbered downstream before execution.",
   "examples": [
     [
-      "Inspect repository layout",
-      "Use final_answer to summarize"
+      "Use note_create to jot down key points",
+      "Use final_answer to summarize for user"
     ],
     [
-      "Run tests",
-      "Review failures",
+      "Use terminal to run tests",
+      "Use terminal to review failures",
       "Use final_answer to report findings"
     ]
   ]
