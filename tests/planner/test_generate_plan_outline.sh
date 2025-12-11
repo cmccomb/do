@@ -10,7 +10,7 @@
 #   - bash 5+
 
 @test "generate_plan_outline works when mapfile builtin is unavailable" {
-        run bash -lc '
+	run bash -lc '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 enable -n mapfile 2>/dev/null || true
 
@@ -22,5 +22,5 @@
                 output="$(generate_plan_outline "Summarize request")"
                 [[ "${output}" == "1. Use final_answer to respond directly to the user request." ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
