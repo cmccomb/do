@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2154
 #
 # Usage: bats tests/cli/test_install.bats
 #
