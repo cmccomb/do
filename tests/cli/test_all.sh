@@ -28,7 +28,7 @@ FORCE_CONFIRM=false
 EOF
 }
 
-load ../helpers/log_parsing
+load ../helpers/log_parsing.sh
 
 @test "shows CLI help" {
 	run ./src/bin/okso --help -- "example query"

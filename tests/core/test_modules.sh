@@ -12,7 +12,7 @@
 #   Inherits Bats semantics; individual tests assert script exit codes.
 
 bats_require_minimum_version 1.5.0
-load ../helpers/log_parsing
+load ../helpers/log_parsing.sh
 
 setup() {
 	export HOME="${BATS_TMPDIR}/okso-modules"

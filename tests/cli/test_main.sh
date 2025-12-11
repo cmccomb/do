@@ -15,7 +15,7 @@ APPROVE_ALL=false
 FORCE_CONFIRM=false
 EOF
 }
-load ../helpers/log_parsing
+load ../helpers/log_parsing.sh
 
 @test "shows help text" {
 	run ./src/bin/okso --help -- "example query"
