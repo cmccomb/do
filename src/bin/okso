@@ -31,10 +31,10 @@
 # Exit codes:
 #   0 on success, non-zero on argument or runtime errors.
 
+# Enforce minimum bash version (3.2+) for macOS compatibility.
 MIN_BASH_MAJOR=3
 MIN_BASH_MINOR=2
 MIN_BASH_VERSION_STRING="${MIN_BASH_MAJOR}.${MIN_BASH_MINOR}"
-
 if [[ -n "${OKSO_BASH_VERSION_OVERRIDE:-}" ]]; then
 	if [[ "${OKSO_BASH_VERSION_OVERRIDE}" =~ ^([0-9]+)\.([0-9]+) ]]; then
 		current_bash_major="${BASH_REMATCH[1]}"
@@ -53,6 +53,7 @@ else
 	current_bash_minor="${BASH_VERSINFO[1]}"
 fi
 
+# Compare versions and exit if the current bash is too old.
 if ((current_bash_major < MIN_BASH_MAJOR || (current_bash_major == MIN_BASH_MAJOR && current_bash_minor < MIN_BASH_MINOR))); then
 	printf 'okso requires bash %s or newer (documented baseline for macOS system shells); detected %s.%s. Please upgrade bash or run with the supported version.\n' "${MIN_BASH_VERSION_STRING}" "${current_bash_major}" "${current_bash_minor}" >&2
 	exit 1
