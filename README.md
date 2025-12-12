@@ -43,3 +43,14 @@ Initialize a config file with your preferred model settings:
 ```
 
 More scenarios and reference material live in the [docs/](docs/index.md).
+
+## Execution model
+
+okso separates high-level planning from step-by-step execution:
+
+- **Planner pass:** drafts a numbered outline that mentions the tools to use.
+- **ReAct loop:** by default, llama.cpp is queried before each step to pick the next tool
+  and craft an appropriate call based on prior observations.
+
+If llama.cpp is unavailable or `USE_REACT_LLAMA=false` is set, okso falls back to a
+deterministic sequence that feeds the original user query to each planned tool.
