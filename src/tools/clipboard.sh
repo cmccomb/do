@@ -66,7 +66,7 @@ register_clipboard_copy() {
 	register_tool \
 		"clipboard_copy" \
 		"Copy the provided text into the macOS clipboard." \
-		"clipboard_copy <text>" \
+		"clipboard_copy <text_to_be_copied>" \
 		"Clipboard contents may expose sensitive data; avoid copying secrets." \
 		tool_clipboard_copy
 }

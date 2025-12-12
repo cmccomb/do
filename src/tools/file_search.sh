@@ -44,7 +44,7 @@ register_file_search() {
 	register_tool \
 		"file_search" \
 		"Search project files by name and content using fd/rg." \
-		"fd or find combined with ripgrep." \
+		"file_search <terms_to_be_searched>" \
 		"May read many files; avoid leaking secrets." \
 		tool_file_search
 }

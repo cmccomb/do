@@ -94,7 +94,7 @@ register_reminders_create() {
 	register_tool \
 		"reminders_create" \
 		"Create a new Apple Reminder using the first line as the title." \
-		"osascript -e 'make new reminder with {name:<title>, body:<body>}'" \
+		"reminders_create 'first-line title\nmultiline reminder'" \
 		"Requires macOS Apple Reminders access; content is sent to Reminders." \
 		tool_reminders_create
 }

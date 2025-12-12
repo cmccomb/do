@@ -64,7 +64,7 @@ register_reminders_complete() {
 	register_tool \
 		"reminders_complete" \
 		"Mark a reminder complete by title in the configured list." \
-		"osascript -e 'set completed of reminder <title> to true'" \
+		"reminders_complete '<title_of_reminder_to_complete>'" \
 		"Requires macOS Apple Reminders access; titles are sent to Reminders." \
 		tool_reminders_complete
 }

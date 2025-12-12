@@ -48,7 +48,7 @@ register_applescript() {
 	register_tool \
 		"applescript" \
 		"Execute AppleScript snippets on macOS." \
-		"osascript -e '<script>'" \
+		"applescript '<script>'" \
 		"Only available on macOS; disabled elsewhere." \
 		tool_applescript
 }
