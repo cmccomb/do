@@ -150,7 +150,7 @@ create_default_settings() {
 	config_file="${config_dir}/config.env"
 	model_spec="${DEFAULT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:${default_model_file}}"
 
-	new_settings_json=$(jq -c -n \
+        new_settings_json=$(jq -c -n \
 		--arg version "0.1.0" \
 		--arg llama_bin "${LLAMA_BIN:-llama-cli}" \
 		--arg default_model_file "${default_model_file}" \
@@ -159,7 +159,7 @@ create_default_settings() {
 		--arg model_spec "${model_spec}" \
 		--arg model_branch "${DEFAULT_MODEL_BRANCH_BASE:-main}" \
 		--arg notes_dir "${HOME}/.okso" \
-		--arg use_react_llama "${USE_REACT_LLAMA:-false}" \
+                --arg use_react_llama "${USE_REACT_LLAMA:-true}" \
 		'{
                         version: $version,
                         llama_bin: $llama_bin,
