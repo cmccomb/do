@@ -53,6 +53,7 @@ TOOL_NAME_ALLOWLIST=(
 	"mail_list_inbox"
 	"mail_list_unread"
 	"applescript"
+	"python_repl"
 	"final_answer"
 )
 TOOL_WRITABLE_DIRECTORY_ALLOWLIST=(
@@ -63,6 +64,8 @@ TOOL_WRITABLE_DIRECTORY_ALLOWLIST=(
 source "${TOOLS_DIR}/terminal.sh"
 # shellcheck source=./tools/file_search.sh disable=SC1091
 source "${TOOLS_DIR}/file_search.sh"
+# shellcheck source=./tools/python_repl.sh disable=SC1091
+source "${TOOLS_DIR}/python_repl.sh"
 # shellcheck source=./tools/clipboard.sh disable=SC1091
 source "${TOOLS_DIR}/clipboard.sh"
 # shellcheck source=./tools/notes/index.sh disable=SC1091
@@ -132,10 +135,10 @@ initialize_tools() {
 		return 1
 	fi
 
-        register_terminal
-        register_python_repl
-        register_file_search
-        register_clipboard_copy
+	register_terminal
+	register_python_repl
+	register_file_search
+	register_clipboard_copy
 	register_clipboard_paste
 	register_notes_suite
 	register_reminders_suite
