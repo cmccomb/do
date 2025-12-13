@@ -46,7 +46,7 @@ readonly DEFAULT_MODEL_SPEC_BASE="${DEFAULT_MODEL_REPO_BASE}:${DEFAULT_MODEL_FIL
 readonly DEFAULT_MODEL_BRANCH_BASE="main"
 
 mcp_default_endpoints_toml() {
-        cat <<EOF
+	cat <<EOF
 [[mcp.endpoints]]
 name = "mcp_huggingface"
 provider = "huggingface"
@@ -69,12 +69,12 @@ EOF
 }
 
 mcp_endpoints_json_from_toml() {
-        # Arguments:
-        #   $1 - TOML document describing MCP endpoints
-        local toml_payload
-        toml_payload="$1"
+	# Arguments:
+	#   $1 - TOML document describing MCP endpoints
+	local toml_payload
+	toml_payload="$1"
 
-        MCP_ENDPOINTS_TOML_PAYLOAD="${toml_payload}" python3 - <<'PY'
+	MCP_ENDPOINTS_TOML_PAYLOAD="${toml_payload}" python3 - <<'PY'
 import json
 import os
 import sys
@@ -192,21 +192,21 @@ load_config() {
 	VERBOSITY=${VERBOSITY:-1}
 	APPROVE_ALL=${APPROVE_ALL:-false}
 	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
-        MCP_HUGGINGFACE_URL=${MCP_HUGGINGFACE_URL:-""}
-        MCP_HUGGINGFACE_TOKEN_ENV=${MCP_HUGGINGFACE_TOKEN_ENV:-"HUGGINGFACEHUB_API_TOKEN"}
-        MCP_LOCAL_SOCKET=${MCP_LOCAL_SOCKET:-"${TMPDIR:-/tmp}/okso-mcp.sock"}
+	MCP_HUGGINGFACE_URL=${MCP_HUGGINGFACE_URL:-""}
+	MCP_HUGGINGFACE_TOKEN_ENV=${MCP_HUGGINGFACE_TOKEN_ENV:-"HUGGINGFACEHUB_API_TOKEN"}
+	MCP_LOCAL_SOCKET=${MCP_LOCAL_SOCKET:-"${TMPDIR:-/tmp}/okso-mcp.sock"}
 
-        MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT=${MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT:-false}
-        if [[ -z "${MCP_ENDPOINTS_TOML:-}" ]]; then
-                MCP_ENDPOINTS_TOML="$(mcp_default_endpoints_toml)"
-                MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT=true
-        fi
+	MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT=${MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT:-false}
+	if [[ -z "${MCP_ENDPOINTS_TOML:-}" ]]; then
+		MCP_ENDPOINTS_TOML="$(mcp_default_endpoints_toml)"
+		MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT=true
+	fi
 
-        if [[ -z "${MCP_ENDPOINTS_JSON:-}" ]]; then
-                if ! MCP_ENDPOINTS_JSON="$(mcp_endpoints_json_from_toml "${MCP_ENDPOINTS_TOML}")"; then
-                        die config validation "Failed to parse MCP endpoint configuration"
-                fi
-        fi
+	if [[ -z "${MCP_ENDPOINTS_JSON:-}" ]]; then
+		if ! MCP_ENDPOINTS_JSON="$(mcp_endpoints_json_from_toml "${MCP_ENDPOINTS_TOML}")"; then
+			die config validation "Failed to parse MCP endpoint configuration"
+		fi
+	fi
 
 	if [[ -n "${OKSO_MODEL:-}" ]]; then
 		model_spec_override="${OKSO_MODEL}"
@@ -239,7 +239,7 @@ ${MCP_ENDPOINTS_TOML}
 EOF_MCP
 )
 EOF_CONFIG
-        printf 'Wrote config to %s\n' "${CONFIG_FILE}"
+	printf 'Wrote config to %s\n' "${CONFIG_FILE}"
 }
 
 parse_model_spec() {

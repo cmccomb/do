@@ -50,14 +50,14 @@ TOOL_NAME_ALLOWLIST_STATIC=(
 	"mail_draft"
 	"mail_send"
 	"mail_search"
-        "mail_list_inbox"
-        "mail_list_unread"
-        "applescript"
-        "python_repl"
-        "feedback"
-        "final_answer"
-        "mcp_huggingface"
-        "mcp_local_server"
+	"mail_list_inbox"
+	"mail_list_unread"
+	"applescript"
+	"python_repl"
+	"feedback"
+	"final_answer"
+	"mcp_huggingface"
+	"mcp_local_server"
 )
 TOOL_NAME_ALLOWLIST=("${TOOL_NAME_ALLOWLIST_STATIC[@]}")
 TOOL_WRITABLE_DIRECTORY_ALLOWLIST=(
@@ -170,9 +170,9 @@ initialize_tools() {
 	register_notes_suite
 	register_reminders_suite
 	register_calendar_suite
-        register_mail_suite
-        register_applescript
-        register_mcp_endpoints
-        register_feedback
-        register_final_answer
+	register_mail_suite
+	register_applescript
+	register_mcp_endpoints
+	register_feedback
+	register_final_answer
 }
