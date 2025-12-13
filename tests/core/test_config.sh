@@ -64,15 +64,15 @@ setup() {
 }
 
 @test "load_config applies okso-branded supervised toggle" {
-        cd "${REPO_ROOT}" || exit 1
-        source ./src/lib/config.sh
-        CONFIG_FILE="${BATS_TEST_TMPDIR}/config-supervised.env"
-        printf "MODEL_SPEC=base/model\nMODEL_BRANCH=dev\nAPPROVE_ALL=true\n" >"${CONFIG_FILE}"
-        OKSO_SUPERVISED=false load_config
-        [[ "${MODEL_SPEC}" == "base/model" ]]
-        [[ "${MODEL_BRANCH}" == "dev" ]]
-        [[ "${APPROVE_ALL}" == "true" ]]
-        [[ "${FORCE_CONFIRM}" == "false" ]]
+	cd "${REPO_ROOT}" || exit 1
+	source ./src/lib/config.sh
+	CONFIG_FILE="${BATS_TEST_TMPDIR}/config-supervised.env"
+	printf "MODEL_SPEC=base/model\nMODEL_BRANCH=dev\nAPPROVE_ALL=true\n" >"${CONFIG_FILE}"
+	OKSO_SUPERVISED=false load_config
+	[[ "${MODEL_SPEC}" == "base/model" ]]
+	[[ "${MODEL_BRANCH}" == "dev" ]]
+	[[ "${APPROVE_ALL}" == "true" ]]
+	[[ "${FORCE_CONFIRM}" == "false" ]]
 }
 
 @test "load_config wires default MCP settings" {
