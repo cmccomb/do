@@ -131,7 +131,7 @@ EOF
 @test "initialize_tools registers each module" {
 	run bash -lc 'source ./src/lib/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
 	[ "$status" -eq 0 ]
-	[ "${#lines[@]}" -eq 22 ]
+        [ "${#lines[@]}" -eq 25 ]
 	[[ "${lines[*]}" == *"terminal"* ]]
 	[[ "${lines[*]}" == *"final_answer"* ]]
 }

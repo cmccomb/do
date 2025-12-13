@@ -13,8 +13,14 @@
 # Exit codes:
 #   Inherits Bats semantics; individual tests assert helper outcomes.
 
+setup() {
+        export HOME="${BATS_TMPDIR}/llama_client_home"
+        mkdir -p "${HOME}/.cargo"
+        : >"${HOME}/.cargo/env"
+}
+
 @test "llama_infer short-circuits when unavailable" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 export LLAMA_AVAILABLE=false
                 export LLAMA_BIN=/nonexistent
@@ -27,7 +33,7 @@
 }
 
 @test "llama_infer forwards JSON grammar content and stop arguments" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 args_dir="$(mktemp -d)"
                 args_file="${args_dir}/args.txt"
@@ -55,7 +61,7 @@ SCRIPT
 }
 
 @test "llama_infer uses grammar file flag for non-JSON grammars" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 args_dir="$(mktemp -d)"
                 args_file="${args_dir}/args.txt"
@@ -80,7 +86,7 @@ SCRIPT
 }
 
 @test "llama_infer returns llama exit code and logs stderr" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 args_dir="$(mktemp -d)"
                 mock_binary="${args_dir}/mock_llama.sh"
@@ -108,7 +114,7 @@ SCRIPT
 }
 
 @test "llama_infer interrupts hung llama when timeout configured" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 args_dir="$(mktemp -d)"
                 mock_binary="${args_dir}/mock_llama.sh"
@@ -135,7 +141,7 @@ SCRIPT
 }
 
 @test "llama_infer fails when JSON schema cannot be read" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
 	        cd "$(git rev-parse --show-toplevel)" || exit 1
 	        args_dir="$(mktemp -d)"
 	        missing_schema="${args_dir}/missing.json"
@@ -161,7 +167,7 @@ SCRIPT
 }
 
 @test "llama_infer sanitizes whitespace and stop markers" {
-	run bash -lc '
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
 	        cd "$(git rev-parse --show-toplevel)" || exit 1
 	        args_dir="$(mktemp -d)"
 	        mock_binary="${args_dir}/mock_llama.sh"
@@ -180,6 +186,7 @@ SCRIPT
 	        sanitized_output="$(llama_infer "prompt" "" 4)"
 	        printf "OUTPUT:%s" "${sanitized_output}"
 	'
-	[ "$status" -eq 0 ]
-	[ "${output}" = "OUTPUT:response" ]
+        [ "$status" -eq 0 ]
+        cleaned_output=$(printf '%s' "${output}" | tr -d '\r\n')
+        [ "${cleaned_output}" = "OUTPUT:response" ]
 }
