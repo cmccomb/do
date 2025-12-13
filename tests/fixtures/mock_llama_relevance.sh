@@ -47,6 +47,27 @@ if [[ "${prompt_lower}" == *"concise response"* ]]; then
 	exit 0
 fi
 
+if [[ "${prompt_lower}" == *"action schema"* ]]; then
+	python3 - "$user_request" <<'PY'
+import json
+import sys
+
+user_request = sys.argv[1]
+request_lower = user_request.lower()
+
+tool = "final_answer"
+if "file" in request_lower or "folder" in request_lower or "todo" in request_lower:
+    tool = "terminal"
+elif "note" in request_lower:
+    tool = "notes_create"
+elif "remind" in request_lower:
+    tool = "reminders_create"
+
+print(json.dumps({"type": "tool", "tool": tool, "query": user_request}))
+PY
+	exit 0
+fi
+
 if [[ "${prompt_lower}" == *"json array of strings"* || "${prompt_lower}" == *"available tools"* ]]; then
 	if [[ "${user_request_lower}" == *"remind"* ]]; then
 		printf '["Use reminders_create to schedule the reminder.","Use final_answer to confirm for the user."]'
