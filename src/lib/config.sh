@@ -15,6 +15,9 @@
 #   FORCE_CONFIRM (bool): always prompt when true.
 #   VERBOSITY (int): logging verbosity; may be overridden by OKSO_VERBOSITY.
 #   DEFAULT_MODEL_FILE (string): fallback file name for parsing model spec.
+#   MCP_HUGGINGFACE_URL (string): remote MCP endpoint for Hugging Face tools.
+#   MCP_HUGGINGFACE_TOKEN_ENV (string): env var holding the Hugging Face token.
+#   MCP_LOCAL_SOCKET (string): path or socket for a local MCP server.
 #
 #   The following okso-branded variables take precedence over legacy aliases:
 #     OKSO_MODEL, OKSO_MODEL_BRANCH, OKSO_SUPERVISED, OKSO_VERBOSITY
@@ -130,10 +133,10 @@ detect_config_file() {
 }
 
 load_config() {
-	# Load file-backed configuration first so environment overrides and CLI flags
-	# can layer on top in a predictable order.
-	local model_spec_override model_branch_override
-	if [[ -f "${CONFIG_FILE}" ]]; then
+        # Load file-backed configuration first so environment overrides and CLI flags
+        # can layer on top in a predictable order.
+        local model_spec_override model_branch_override
+        if [[ -f "${CONFIG_FILE}" ]]; then
 		# shellcheck source=/dev/null
 		source "${CONFIG_FILE}"
 	fi
@@ -142,7 +145,10 @@ load_config() {
 	MODEL_BRANCH=${MODEL_BRANCH:-${DEFAULT_MODEL_BRANCH_BASE}}
 	VERBOSITY=${VERBOSITY:-1}
 	APPROVE_ALL=${APPROVE_ALL:-false}
-	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
+        FORCE_CONFIRM=${FORCE_CONFIRM:-false}
+        MCP_HUGGINGFACE_URL=${MCP_HUGGINGFACE_URL:-""}
+        MCP_HUGGINGFACE_TOKEN_ENV=${MCP_HUGGINGFACE_TOKEN_ENV:-"HUGGINGFACEHUB_API_TOKEN"}
+        MCP_LOCAL_SOCKET=${MCP_LOCAL_SOCKET:-"${TMPDIR:-/tmp}/okso-mcp.sock"}
 
 	if model_spec_override=$(resolve_env_alias_pair OKSO_MODEL DO_MODEL); then
 		MODEL_SPEC="${model_spec_override}"
@@ -157,15 +163,18 @@ load_config() {
 }
 
 write_config_file() {
-	mkdir -p "$(dirname "${CONFIG_FILE}")"
-	cat >"${CONFIG_FILE}" <<EOF_CONFIG
-	MODEL_SPEC="${MODEL_SPEC}"
-	MODEL_BRANCH="${MODEL_BRANCH}"
+        mkdir -p "$(dirname "${CONFIG_FILE}")"
+        cat >"${CONFIG_FILE}" <<EOF_CONFIG
+        MODEL_SPEC="${MODEL_SPEC}"
+        MODEL_BRANCH="${MODEL_BRANCH}"
 VERBOSITY=${VERBOSITY}
 APPROVE_ALL=${APPROVE_ALL}
 FORCE_CONFIRM=${FORCE_CONFIRM}
+MCP_HUGGINGFACE_URL="${MCP_HUGGINGFACE_URL}"
+MCP_HUGGINGFACE_TOKEN_ENV="${MCP_HUGGINGFACE_TOKEN_ENV}"
+MCP_LOCAL_SOCKET="${MCP_LOCAL_SOCKET}"
 EOF_CONFIG
-	printf 'Wrote config to %s\n' "${CONFIG_FILE}"
+        printf 'Wrote config to %s\n' "${CONFIG_FILE}"
 }
 
 parse_model_spec() {
