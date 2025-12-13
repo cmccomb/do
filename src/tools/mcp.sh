@@ -65,76 +65,76 @@ PY
 }
 
 mcp_validate_remote_config() {
-        local url token_env
-        url="$1"
-        token_env="$2"
+	local url token_env
+	url="$1"
+	token_env="$2"
 
-        if [[ -z "${url}" ]]; then
-                log "ERROR" "MCP remote endpoint not configured" ""
-                return 1
-        fi
+	if [[ -z "${url}" ]]; then
+		log "ERROR" "MCP remote endpoint not configured" ""
+		return 1
+	fi
 
-        if [[ -z "${token_env}" ]]; then
-                log "ERROR" "MCP token env var name missing" ""
-                return 1
-        fi
+	if [[ -z "${token_env}" ]]; then
+		log "ERROR" "MCP token env var name missing" ""
+		return 1
+	fi
 
-        if [[ -z "${!token_env:-}" ]]; then
-                log "ERROR" "MCP token not exported" "${token_env}"
-                return 1
-        fi
+	if [[ -z "${!token_env:-}" ]]; then
+		log "ERROR" "MCP token not exported" "${token_env}"
+		return 1
+	fi
 
-        return 0
+	return 0
 }
 
 mcp_validate_unix_config() {
-        local socket_path
-        socket_path="$1"
+	local socket_path
+	socket_path="$1"
 
-        if [[ -z "${socket_path}" ]]; then
-                log "ERROR" "Local MCP socket missing" ""
-                return 1
-        fi
+	if [[ -z "${socket_path}" ]]; then
+		log "ERROR" "Local MCP socket missing" ""
+		return 1
+	fi
 
-        return 0
+	return 0
 }
 
 mcp_dispatch_endpoint() {
-        # Arguments:
-        #   $1 - provider label (string)
-        #   $2 - transport type (string)
-        #   $3 - HTTP endpoint URL (string)
-        #   $4 - unix socket path (string)
-        #   $5 - token environment variable name (string)
-        local provider transport endpoint socket_path token_env
-        provider="$1"
-        transport="$2"
-        endpoint="$3"
-        socket_path="$4"
-        token_env="$5"
+	# Arguments:
+	#   $1 - provider label (string)
+	#   $2 - transport type (string)
+	#   $3 - HTTP endpoint URL (string)
+	#   $4 - unix socket path (string)
+	#   $5 - token environment variable name (string)
+	local provider transport endpoint socket_path token_env
+	provider="$1"
+	transport="$2"
+	endpoint="$3"
+	socket_path="$4"
+	token_env="$5"
 
-        case "${transport}" in
-        http)
-                if ! mcp_validate_remote_config "${endpoint}" "${token_env}"; then
-                        return 1
-                fi
-                mcp_print_connection_json "${provider}" "${transport}" "${endpoint}" "" "${token_env}"
-                ;;
-        unix)
-                if ! mcp_validate_unix_config "${socket_path}"; then
-                        return 1
-                fi
-                mcp_print_connection_json "${provider}" "${transport}" "" "${socket_path}" ""
-                ;;
-        *)
-                log "ERROR" "Unsupported MCP transport" "${transport}"
-                return 1
-                ;;
-        esac
+	case "${transport}" in
+	http)
+		if ! mcp_validate_remote_config "${endpoint}" "${token_env}"; then
+			return 1
+		fi
+		mcp_print_connection_json "${provider}" "${transport}" "${endpoint}" "" "${token_env}"
+		;;
+	unix)
+		if ! mcp_validate_unix_config "${socket_path}"; then
+			return 1
+		fi
+		mcp_print_connection_json "${provider}" "${transport}" "" "${socket_path}" ""
+		;;
+	*)
+		log "ERROR" "Unsupported MCP transport" "${transport}"
+		return 1
+		;;
+	esac
 }
 
 mcp_default_endpoints_json() {
-        cat <<JSON
+	cat <<JSON
 [
   {
     "name": "mcp_huggingface",
@@ -160,17 +160,17 @@ JSON
 }
 
 mcp_resolved_endpoint_definitions() {
-        local raw_json
-        raw_json="${MCP_ENDPOINTS_JSON:-}" # string JSON array
-        local allow_partial_default
-        allow_partial_default=false
+	local raw_json
+	raw_json="${MCP_ENDPOINTS_JSON:-}" # string JSON array
+	local allow_partial_default
+	allow_partial_default=false
 
-        if [[ -z "${raw_json// }" ]]; then
-                raw_json="$(mcp_default_endpoints_json)"
-                allow_partial_default=true
-        fi
+	if [[ -z "${raw_json// /}" ]]; then
+		raw_json="$(mcp_default_endpoints_json)"
+		allow_partial_default=true
+	fi
 
-        MCP_ENDPOINTS_PAYLOAD="${raw_json}" MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT="${allow_partial_default}" python3 - <<'PY'
+	MCP_ENDPOINTS_PAYLOAD="${raw_json}" MCP_ENDPOINTS_ALLOW_PARTIAL_DEFAULT="${allow_partial_default}" python3 - <<'PY'
 import json
 import os
 import re
@@ -246,44 +246,44 @@ PY
 }
 
 mcp_register_endpoint_from_definition() {
-        # Arguments:
-        #   $1 - JSON for a single endpoint definition
-        local definition_json name handler_name provider description usage safety transport endpoint socket_path token_env
-        definition_json="$1"
+	# Arguments:
+	#   $1 - JSON for a single endpoint definition
+	local definition_json name handler_name provider description usage safety transport endpoint socket_path token_env
+	definition_json="$1"
 
-        name="$(jq -r '.name' <<<"${definition_json}")"
-        provider="$(jq -r '.provider' <<<"${definition_json}")"
-        description="$(jq -r '.description' <<<"${definition_json}")"
-        usage="$(jq -r '.usage' <<<"${definition_json}")"
-        safety="$(jq -r '.safety' <<<"${definition_json}")"
-        transport="$(jq -r '.transport' <<<"${definition_json}")"
-        endpoint="$(jq -r '.endpoint' <<<"${definition_json}")"
-        socket_path="$(jq -r '.socket' <<<"${definition_json}")"
-        token_env="$(jq -r '.token_env' <<<"${definition_json}")"
+	name="$(jq -r '.name' <<<"${definition_json}")"
+	provider="$(jq -r '.provider' <<<"${definition_json}")"
+	description="$(jq -r '.description' <<<"${definition_json}")"
+	usage="$(jq -r '.usage' <<<"${definition_json}")"
+	safety="$(jq -r '.safety' <<<"${definition_json}")"
+	transport="$(jq -r '.transport' <<<"${definition_json}")"
+	endpoint="$(jq -r '.endpoint' <<<"${definition_json}")"
+	socket_path="$(jq -r '.socket' <<<"${definition_json}")"
+	token_env="$(jq -r '.token_env' <<<"${definition_json}")"
 
-        handler_name="tool_${name}"
+	handler_name="tool_${name}"
 
-        local handler_body
-        printf -v handler_body "%s" "$(printf 'mcp_dispatch_endpoint %q %q %q %q %q' "${provider}" "${transport}" "${endpoint}" "${socket_path}" "${token_env}")"
+	local handler_body
+	printf -v handler_body "%s" "$(printf 'mcp_dispatch_endpoint %q %q %q %q %q' "${provider}" "${transport}" "${endpoint}" "${socket_path}" "${token_env}")"
 
-        eval "${handler_name}() { ${handler_body}; }"
+	eval "${handler_name}() { ${handler_body}; }"
 
-        register_tool "${name}" "${description}" "${usage}" "${safety}" "${handler_name}"
+	register_tool "${name}" "${description}" "${usage}" "${safety}" "${handler_name}"
 }
 
 register_mcp_endpoints() {
-        local definitions_json definitions_count
-        if ! definitions_json="$(mcp_resolved_endpoint_definitions)"; then
-                log "ERROR" "Failed to parse MCP endpoint definitions" ""
-                return 1
-        fi
+	local definitions_json definitions_count
+	if ! definitions_json="$(mcp_resolved_endpoint_definitions)"; then
+		log "ERROR" "Failed to parse MCP endpoint definitions" ""
+		return 1
+	fi
 
-        definitions_count="$(jq 'length' <<<"${definitions_json}")"
+	definitions_count="$(jq 'length' <<<"${definitions_json}")"
 
-        local index
-        for index in $(seq 0 $((definitions_count - 1))); do
-                if ! mcp_register_endpoint_from_definition "$(jq -c --argjson i "${index}" '.[$i]' <<<"${definitions_json}")"; then
-                        return 1
-                fi
-        done
+	local index
+	for index in $(seq 0 $((definitions_count - 1))); do
+		if ! mcp_register_endpoint_from_definition "$(jq -c --argjson i "${index}" '.[$i]' <<<"${definitions_json}")"; then
+			return 1
+		fi
+	done
 }
