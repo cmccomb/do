@@ -378,8 +378,8 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action uses llama grammar and captures output" {
-        # shellcheck source=src/lib/planner.sh
-        run bash -lc '
+	# shellcheck source=src/lib/planner.sh
+	run bash -lc '
                 source ./src/lib/planner.sh
 
                 llama_arg_file="$(mktemp)"
@@ -414,12 +414,12 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "generate_plan_outline uses shared planner grammar" {
-        # shellcheck source=src/lib/planner.sh
-        # shellcheck disable=SC1091
-        source ./src/lib/planner.sh
-        initialize_tools
-        # shellcheck disable=SC2034
-        LLAMA_AVAILABLE=true
+	# shellcheck source=src/lib/planner.sh
+	# shellcheck disable=SC1091
+	source ./src/lib/planner.sh
+	initialize_tools
+	# shellcheck disable=SC2034
+	LLAMA_AVAILABLE=true
 
 	llama_grammar_file="$(mktemp)"
 	llama_infer() {
