@@ -12,7 +12,7 @@
 #   Inherits Bats semantics; individual tests assert script exit codes.
 
 @test "uses mdfind on macOS when available" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 stub_dir="$(mktemp -d)"
                 cat >"${stub_dir}/mdfind" <<"STUB"
@@ -29,12 +29,12 @@ STUB
                 tool_file_search
         '
 
-        [ "$status" -eq 0 ]
-        [[ "${lines[0]}" == mdfind:*"-onlyin"*"needle" ]]
+	[ "$status" -eq 0 ]
+	[[ "${lines[0]}" == mdfind:*"-onlyin"*"needle" ]]
 }
 
 @test "falls back to fd when Spotlight is unavailable" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 stub_dir="$(mktemp -d)"
                 cat >"${stub_dir}/fd" <<"STUB"
@@ -51,6 +51,6 @@ STUB
                 tool_file_search
         '
 
-        [ "$status" -eq 0 ]
-        [[ "${lines[0]}" == fd:*"--max-depth"*"query"*"." ]]
+	[ "$status" -eq 0 ]
+	[[ "${lines[0]}" == fd:*"--max-depth"*"query"*"." ]]
 }
