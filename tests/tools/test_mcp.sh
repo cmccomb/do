@@ -21,12 +21,15 @@ setup() {
 	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
-                TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
+                TOOL_NAME_ALLOWLIST=(mcp_huggingface_models mcp_huggingface_datasets mcp_huggingface_inference mcp_local_server)
                 init_tool_registry
                 register_mcp_endpoints
-                [[ -n "$(tool_description mcp_huggingface)" ]] && [[ -n "$(tool_description mcp_local_server)" ]]
+                [[ -n "$(tool_description mcp_huggingface_models)" ]]
+                [[ -n "$(tool_description mcp_huggingface_datasets)" ]]
+                [[ -n "$(tool_description mcp_huggingface_inference)" ]]
+                [[ -n "$(tool_description mcp_local_server)" ]]
         '
-	[ "$status" -eq 0 ]
+        [ "$status" -eq 0 ]
 }
 
 @test "register_mcp_endpoints falls back when tomllib is missing" {
@@ -34,13 +37,13 @@ setup() {
 	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
-                TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
+                TOOL_NAME_ALLOWLIST=(mcp_huggingface_models mcp_huggingface_datasets mcp_huggingface_inference mcp_local_server)
                 OKSO_FORCE_TOML_FALLBACK=1
                 init_tool_registry
                 register_mcp_endpoints
-                [[ -n "$(tool_description mcp_huggingface)" ]] && [[ -n "$(tool_description mcp_local_server)" ]]
+                [[ -n "$(tool_description mcp_huggingface_inference)" ]] && [[ -n "$(tool_description mcp_local_server)" ]]
         '
-	[ "$status" -eq 0 ]
+        [ "$status" -eq 0 ]
 }
 
 @test "tool_mcp_huggingface fails when token missing" {
@@ -48,15 +51,15 @@ setup() {
 	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
-                TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
+                TOOL_NAME_ALLOWLIST=(mcp_huggingface_models mcp_huggingface_datasets mcp_huggingface_inference mcp_local_server)
                 init_tool_registry
                 MCP_HUGGINGFACE_URL="https://example.test/mcp"
                 MCP_HUGGINGFACE_TOKEN_ENV="MCP_TOKEN"
                 register_mcp_endpoints
                 TOOL_QUERY="ping"
-                tool_mcp_huggingface
+                tool_mcp_huggingface_models
         '
-	[ "$status" -eq 1 ]
+        [ "$status" -eq 1 ]
 }
 
 @test "tool_mcp_huggingface emits connection descriptor" {
@@ -64,17 +67,17 @@ setup() {
 	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
-                TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
+                TOOL_NAME_ALLOWLIST=(mcp_huggingface_models mcp_huggingface_datasets mcp_huggingface_inference mcp_local_server)
                 init_tool_registry
                 MCP_HUGGINGFACE_URL="https://example.test/mcp"
                 MCP_HUGGINGFACE_TOKEN_ENV="MCP_TOKEN"
                 MCP_TOKEN="secret"
                 register_mcp_endpoints
                 TOOL_QUERY="list tools"
-                tool_mcp_huggingface
+                tool_mcp_huggingface_inference
         '
-	[ "$status" -eq 0 ]
-	[[ "${output}" == *'"provider":"huggingface"'* ]]
+        [ "$status" -eq 0 ]
+        [[ "${output}" == *'"provider":"huggingface"'* ]]
 	[[ "${output}" == *'"token_env":"MCP_TOKEN"'* ]]
 }
 
@@ -84,7 +87,7 @@ setup() {
 	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
-                TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
+                TOOL_NAME_ALLOWLIST=(mcp_huggingface_models mcp_huggingface_datasets mcp_huggingface_inference mcp_local_server)
                 init_tool_registry
                 MCP_LOCAL_SOCKET="${TMPDIR:-/tmp}/okso-mcp.sock"
                 register_mcp_endpoints
