@@ -17,8 +17,8 @@ setup() {
 }
 
 @test "register_mcp_endpoints registers default endpoints" {
-        cd "${REPO_ROOT}" || exit 1
-        run bash -lc '
+	cd "${REPO_ROOT}" || exit 1
+	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
                 TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
@@ -26,12 +26,12 @@ setup() {
                 register_mcp_endpoints
                 [[ -n "$(tool_description mcp_huggingface)" ]] && [[ -n "$(tool_description mcp_local_server)" ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "register_mcp_endpoints falls back when tomllib is missing" {
-        cd "${REPO_ROOT}" || exit 1
-        run bash -lc '
+	cd "${REPO_ROOT}" || exit 1
+	run bash -lc '
                 source ./src/tools/registry.sh
                 source ./src/tools/mcp.sh
                 TOOL_NAME_ALLOWLIST=(mcp_huggingface mcp_local_server)
@@ -40,7 +40,7 @@ setup() {
                 register_mcp_endpoints
                 [[ -n "$(tool_description mcp_huggingface)" ]] && [[ -n "$(tool_description mcp_local_server)" ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "tool_mcp_huggingface fails when token missing" {

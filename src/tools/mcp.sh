@@ -70,7 +70,7 @@ mcp_validate_remote_config() {
 	token_env="$2"
 
 	if [[ -z "${url}" ]]; then
-		log "ERROR" "MCP remote endpoint not configured" ""
+		log "ERROR" "MCP remote endpoint not configured" "$1"
 		return 1
 	fi
 
@@ -143,8 +143,7 @@ mcp_default_endpoints_json() {
     "usage": "mcp_huggingface <query>",
     "safety": "Requires a valid Hugging Face token; do not print secrets in tool calls.",
     "transport": "http",
-    "endpoint": "${MCP_HUGGINGFACE_URL:-}",
-    "token_env": "${MCP_HUGGINGFACE_TOKEN_ENV:-HUGGINGFACEHUB_API_TOKEN}"
+    "endpoint": "https://huggingface.co/mcp",
   },
   {
     "name": "mcp_local_server",

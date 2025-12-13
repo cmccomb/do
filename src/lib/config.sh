@@ -54,7 +54,7 @@ description = "Connect to the configured Hugging Face MCP endpoint with the prov
 usage = "mcp_huggingface <query>"
 safety = "Requires a valid Hugging Face token; do not print secrets in tool calls."
 transport = "http"
-endpoint = "${MCP_HUGGINGFACE_URL:-}"
+endpoint = "https://huggingface.co/mcp"
 token_env = "${MCP_HUGGINGFACE_TOKEN_ENV:-HUGGINGFACEHUB_API_TOKEN}"
 
 [[mcp.endpoints]]
@@ -69,12 +69,12 @@ EOF
 }
 
 mcp_endpoints_json_from_toml() {
-        # Arguments:
-        #   $1 - TOML document describing MCP endpoints
-        local toml_payload
-        toml_payload="$1"
+	# Arguments:
+	#   $1 - TOML document describing MCP endpoints
+	local toml_payload
+	toml_payload="$1"
 
-        MCP_ENDPOINTS_TOML_PAYLOAD="${toml_payload}" python3 - <<'PY'
+	MCP_ENDPOINTS_TOML_PAYLOAD="${toml_payload}" python3 - <<'PY'
 """Convert MCP endpoint TOML into JSON without requiring tomllib."""
 
 import json
