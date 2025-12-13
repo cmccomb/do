@@ -88,18 +88,18 @@ detect_source_root() {
 }
 
 download_source_bundle() {
-        local destination base_url clone_dir
+	local destination base_url clone_dir
 
-        destination="$(mktemp -d)"
-        base_url="${OKSO_INSTALLER_BASE_URL:-${DEFAULT_BASE_URL}}"
-        clone_dir="${destination}/okso"
+	destination="$(mktemp -d)"
+	base_url="${OKSO_INSTALLER_BASE_URL:-${DEFAULT_BASE_URL}}"
+	clone_dir="${destination}/okso"
 
-        if ! git clone --depth 1 "${base_url}" "${clone_dir}"; then
-                log "ERROR" "Failed to clone okso repository from ${base_url}"
-                exit 2
-        fi
+	if ! git clone --depth 1 "${base_url}" "${clone_dir}"; then
+		log "ERROR" "Failed to clone okso repository from ${base_url}"
+		exit 2
+	fi
 
-        printf '%s\n' "${clone_dir}"
+	printf '%s\n' "${clone_dir}"
 }
 
 resolve_source_root() {
