@@ -37,7 +37,7 @@
 }
 
 @test "feedback records rating and writes payload" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 cd "$(git rev-parse --show-toplevel)"
                 source ./src/lib/tools.sh
@@ -49,11 +49,11 @@
                 jq -e ".rating == 5 and .comment == \"ship it\" and .plan_item == \"draft summary\"" <<<"${payload}"
                 jq -e ".status == \"recorded\"" "${FEEDBACK_OUTPUT_PATH}"
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "feedback accepts raw string context" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 cd "$(git rev-parse --show-toplevel)"
                 source ./src/lib/tools.sh
@@ -61,5 +61,5 @@
                 FEEDBACK_NONINTERACTIVE_INPUT="4|sounds fine" payload=$(tool_feedback)
                 jq -e ".plan_item == \"that actually looks pretty good, please proceed\"" <<<"${payload}"
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
