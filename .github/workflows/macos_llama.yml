@@ -54,24 +54,24 @@ jobs:
           exec > >(tee model-download.log) 2>&1
           mkdir -p "${HF_HOME}"
           python3 - <<'PY'
-import os
-from huggingface_hub import snapshot_download
-
-model_spec = os.environ.get("MODEL_SPEC", "")
-model_branch = os.environ.get("MODEL_BRANCH", "main")
-
-if ":" not in model_spec:
-    raise SystemExit("MODEL_SPEC must be in repo:filename format")
-
-repo_id, filename = model_spec.split(":", 1)
-snapshot_download(
-    repo_id=repo_id,
-    revision=model_branch,
-    allow_patterns=[filename],
-    local_dir=None,
-    local_dir_use_symlinks=False,
-)
-PY
+            import os
+            from huggingface_hub import snapshot_download
+            
+            model_spec = os.environ.get("MODEL_SPEC", "")
+            model_branch = os.environ.get("MODEL_BRANCH", "main")
+            
+            if ":" not in model_spec:
+                raise SystemExit("MODEL_SPEC must be in repo:filename format")
+            
+            repo_id, filename = model_spec.split(":", 1)
+            snapshot_download(
+                repo_id=repo_id,
+                revision=model_branch,
+                allow_patterns=[filename],
+                local_dir=None,
+                local_dir_use_symlinks=False,
+            )
+            PY
 
       - name: Run macOS llama runtime test
         shell: bash
