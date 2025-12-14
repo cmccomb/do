@@ -795,13 +795,13 @@ select_next_action() {
 		query="${query%%|*}"
 		state_increment "${state_name}" "plan_index" 1 >/dev/null
 		args_json="$(format_tool_args "${tool}" "${query}")"
-                next_action_payload="$(jq -nc --arg thought "Following planned step" --arg tool "${tool}" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
+		next_action_payload="$(jq -nc --arg thought "Following planned step" --arg tool "${tool}" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
 	else
 		local final_query
 		final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"
 		args_json="$(format_tool_args "final_answer" "${final_query}")"
-                next_action_payload="$(jq -nc --arg thought "Providing final answer" --arg tool "final_answer" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
-        fi
+		next_action_payload="$(jq -nc --arg thought "Providing final answer" --arg tool "final_answer" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
+	fi
 
 	if [[ -n "${output_name}" ]]; then
 		printf -v "${output_name}" '%s' "${next_action_payload}"
@@ -932,7 +932,6 @@ react_loop() {
 		args_json="$(printf '%s' "${action_json}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
 		query="$(extract_tool_query "${tool}" "${args_json}")"
 		action_context="$(format_action_context "${thought}" "${tool}" "${args_json}")"
-
 
 		if ! validate_tool_permission "${state_prefix}" "${tool}"; then
 			state_set "${state_prefix}" "step" "${current_step}"
