@@ -91,10 +91,18 @@ APPLESCRIPT
 }
 
 register_reminders_create() {
+	local args_schema
+
+	args_schema=$(
+		cat <<'JSON'
+{"type":"object","required":["content"],"properties":{"content":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+	)
 	register_tool \
 		"reminders_create" \
 		"Create a new Apple Reminder using the first line as the title." \
 		"reminders_create 'first-line title\nmultiline reminder'" \
 		"Requires macOS Apple Reminders access; content is sent to Reminders." \
-		tool_reminders_create
+		tool_reminders_create \
+		"${args_schema}"
 }

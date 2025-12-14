@@ -67,10 +67,18 @@ APPLESCRIPT
 }
 
 register_mail_search() {
+	local args_schema
+
+	args_schema=$(
+		cat <<'JSON'
+{"type":"object","required":["query"],"properties":{"query":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+	)
 	register_tool \
 		"mail_search" \
 		"Search Apple Mail inbox messages by subject, sender, or content." \
 		"mail_search 'term'" \
 		"Requires macOS Apple Mail access; returns metadata only." \
-		tool_mail_search
+		tool_mail_search \
+		"${args_schema}"
 }

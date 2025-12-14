@@ -77,10 +77,18 @@ APPLESCRIPT
 }
 
 register_calendar_search() {
+	local args_schema
+
+	args_schema=$(
+		cat <<'JSON'
+{"type":"object","required":["query"],"properties":{"query":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+	)
 	register_tool \
 		"calendar_search" \
 		"Search Apple Calendar events by title or location." \
 		"calendar_search '<query>'" \
 		"Requires macOS Calendar access; read-only." \
-		tool_calendar_search
+		tool_calendar_search \
+		"${args_schema}"
 }

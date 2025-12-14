@@ -61,10 +61,18 @@ APPLESCRIPT
 }
 
 register_reminders_complete() {
+	local args_schema
+
+	args_schema=$(
+		cat <<'JSON'
+{"type":"object","required":["title"],"properties":{"title":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+	)
 	register_tool \
 		"reminders_complete" \
 		"Mark a reminder complete by title in the configured list." \
 		"reminders_complete '<title_of_reminder_to_complete>'" \
 		"Requires macOS Apple Reminders access; titles are sent to Reminders." \
-		tool_reminders_complete
+		tool_reminders_complete \
+		"${args_schema}"
 }

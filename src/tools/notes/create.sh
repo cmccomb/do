@@ -83,10 +83,18 @@ APPLESCRIPT
 }
 
 register_notes_create() {
+	local args_schema
+
+	args_schema=$(
+		cat <<'JSON'
+{"type":"object","required":["content"],"properties":{"content":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+	)
 	register_tool \
 		"notes_create" \
 		"Create a new Apple Note using the first line as the title." \
 		"notes_create 'Title\nBody' (first line is title, remaining lines are note body)" \
 		"Requires macOS Apple Notes access; content is sent to Notes." \
-		tool_notes_create
+		tool_notes_create \
+		"${args_schema}"
 }

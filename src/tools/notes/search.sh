@@ -69,10 +69,18 @@ APPLESCRIPT
 }
 
 register_notes_search() {
+	local args_schema
+
+	args_schema=$(
+		cat <<'JSON'
+{"type":"object","required":["query"],"properties":{"query":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+	)
 	register_tool \
 		"notes_search" \
 		"Search Apple Notes titles and bodies for a phrase." \
 		"notes_search 'search term' (matches titles or bodies containing the phrase)" \
 		"Requires macOS Apple Notes access; read-only." \
-		tool_notes_search
+		tool_notes_search \
+		"${args_schema}"
 }
