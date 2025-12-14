@@ -146,6 +146,38 @@ setup() {
         [[ "${output}" == *"\"provider\":\"demo\""* ]]
 }
 
+@test "register_mcp_endpoints merges allowlist implicitly" {
+	cd "${REPO_ROOT}" || exit 1
+	run bash -lc '
+                MCP_SKIP_USAGE_DISCOVERY=true
+                source ./src/tools/registry.sh
+                source ./src/tools/mcp.sh
+                TOOL_NAME_ALLOWLIST=(terminal)
+                MCP_ENDPOINTS_JSON='"'"'[
+                        {
+                                "name": "automerge_mcp",
+                                "provider": "demo",
+                                "description": "Auto-merged MCP endpoint",
+                                "usage": "automerge_mcp <query>",
+                                "safety": "Token required",
+                                "transport": "http",
+                                "endpoint": "https://example.test/mcp",
+                                "token_env": "AUTOMERGE_TOKEN"
+                        }
+                ]'"'"'
+
+                AUTOMERGE_TOKEN=token
+                init_tool_registry
+                register_mcp_endpoints
+                TOOL_QUERY="health"
+                tool_automerge_mcp
+        '
+
+	[ "$status" -eq 0 ]
+	[[ "${output}" == *"\"provider\":\"demo\""* ]]
+	[[ "${output}" != *"tool name not in allowlist"* ]]
+}
+
 @test "register_mcp_endpoints infers usage when missing" {
         cd "${REPO_ROOT}" || exit 1
         run bash -lc '
