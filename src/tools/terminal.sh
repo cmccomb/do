@@ -182,10 +182,11 @@ tool_terminal() {
 	command="${TERMINAL_CMD}"
 	args=("${TERMINAL_CMD_ARGS[@]}")
 
-	if ! terminal_allowed "${command}"; then
-		log "WARN" "Unknown terminal command; showing status" "${command}"
-		command="status"
-	fi
+        if ! terminal_allowed "${command}"; then
+                log "WARN" "Unknown terminal command; rejecting" "${command}"
+                printf 'Command "%s" is not allowed. Allowed commands: %s\n' "${command}" "${TERMINAL_ALLOWED_COMMANDS[*]}"
+                return 1
+        fi
 
 	case "${command}" in
 	status)
@@ -223,13 +224,14 @@ tool_terminal() {
 	grep)
 		terminal_run_in_workdir grep "${args[@]}"
 		;;
-	open)
-		if [[ "${IS_MACOS}" != true ]]; then
-			log "WARN" "'open' is macOS-only; skipping" "${args[*]:-""}"
-			return 0
-		fi
-		terminal_run_in_workdir open "${args[@]}"
-		;;
+        open)
+                if [[ "${IS_MACOS}" != true ]]; then
+                        log "WARN" "'open' is macOS-only; skipping" "${args[*]:-""}"
+                        printf "'open' is only available on macOS.\n"
+                        return 1
+                fi
+                terminal_run_in_workdir open "${args[@]}"
+                ;;
 	mkdir)
 		if [[ ${#args[@]} -eq 0 ]]; then
 			log "ERROR" "mkdir requires a target directory" ""

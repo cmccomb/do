@@ -320,7 +320,7 @@ execute_tool_with_query "terminal" "noop"
 }
 
 @test "execute_tool_with_query captures stdout observation without stderr noise" {
-	run bash -lc '
+        run bash -lc '
 tmpdir=$(mktemp -d)
 err_log="${tmpdir}/stderr.log"
 VERBOSITY=1
@@ -333,16 +333,72 @@ APPROVE_ALL=true
 DRY_RUN=false
 PLAN_ONLY=false
 observation="$(execute_tool_with_query "terminal" "demo" 2>"${err_log}")"
-printf "OBS:%s\n" "${observation}"
+printf "OBS:%s\n" "$(printf "%s" "${observation}" | tr "\n" "|")"
 printf "ERR:%s\n" "$(cat "${err_log}")"
 '
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "OBS:stdout payload" ]
-	[[ "${lines[1]}" == ERR:*"stderr noise"* ]]
+        [ "$status" -eq 0 ]
+        [[ "${output}" == *"OBS:stdout payload|Summary: stderr: stderr noise"* ]]
+        [[ "${output}" == *"ERR:"*"stderr noise"* ]]
+}
+
+@test "execute_tool_with_query adds failure summaries to observations" {
+        run bash -lc '
+VERBOSITY=0
+source ./src/lib/planner.sh
+failing_handler() { echo "partial"; echo "kaboom" >&2; return 9; }
+init_tool_registry
+register_tool demo_failure "demo" "echo" "safe" failing_handler
+FORCE_CONFIRM=false
+APPROVE_ALL=true
+DRY_RUN=false
+PLAN_ONLY=false
+observation="$(execute_tool_with_query "demo_failure" "demo")"
+printf "OBS:%s\n" "$(printf "%s" "${observation}" | tr "\n" "|")"
+'
+        [ "$status" -eq 0 ]
+        [[ "${output}" == *"OBS:partial|Summary: exit code 9; stderr: kaboom"* ]]
+}
+
+@test "terminal rejects disallowed commands with explicit message" {
+        run bash -lc '
+VERBOSITY=0
+source ./src/lib/planner.sh
+init_tool_registry
+register_tool terminal "demo" "echo" "safe" tool_terminal
+FORCE_CONFIRM=false
+APPROVE_ALL=true
+DRY_RUN=false
+PLAN_ONLY=false
+payload="{\"command\":\"forbidden\",\"args\":[]}"
+observation="$(execute_tool_with_query "terminal" "" "" "${payload}")"
+printf "OBS:%s\n" "$(printf "%s" "${observation}" | tr "\n" "|")"
+'
+        [ "$status" -eq 0 ]
+        [[ "${output}" == *"Command \"forbidden\" is not allowed."* ]]
+        [[ "${output}" == *"Summary: exit code "* ]]
+}
+
+@test "recorded history retains failure summaries" {
+        run bash -lc '
+VERBOSITY=0
+APPROVE_ALL=true
+source ./src/lib/planner.sh
+failing_handler() { echo ""; echo "boom" >&2; return 5; }
+init_tool_registry
+register_tool failing_tool "demo" "echo" "safe" failing_handler
+state_prefix=state
+initialize_react_state "${state_prefix}" "question" $'"'"'failing_tool\nfinal_answer'"'"' "" $'"'"'1. failing tool'"'"'
+observation="$(execute_tool_action "failing_tool" "demo")"
+record_tool_execution "${state_prefix}" "failing_tool" "thought" "{}" "${observation}" 1
+printf "%s" "$(state_get "${state_prefix}" "history")"
+'
+        [ "$status" -eq 0 ]
+        [[ "${output}" == *"exit code 5"* ]]
+        [[ "${output}" == *"stderr: boom"* ]]
 }
 
 @test "show_help renders through gum when available" {
-	run bash -lc '
+        run bash -lc '
 tmpdir=$(mktemp -d)
 export LOG_FILE="${tmpdir}/gum.log"
 cat >"${tmpdir}/gum"<<'"'"'EOF'"'"'

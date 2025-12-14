@@ -6,6 +6,7 @@
   "required": ["thought", "tool", "args"],
   "additionalProperties": false,
   "properties": {
+    "type": { "type": "string", "enum": ["tool"] },
     "thought": { "type": "string", "minLength": 1 },
     "tool": { "type": "string", "minLength": 1 },
     "args": { "type": "object" }

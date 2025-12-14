@@ -361,25 +361,45 @@ execute_tool_with_query() {
 		return 0
 	fi
 
-	local stdout_file stderr_file stderr_output
-	stdout_file="$(mktemp)"
-	stderr_file="$(mktemp)"
+        local stdout_file stderr_file stderr_output observation summary_parts summary_text stderr_snippet
+        stdout_file="$(mktemp)"
+        stderr_file="$(mktemp)"
 
 	TOOL_QUERY="${tool_query}" TOOL_ARGS="${tool_args_json}" ${handler} >"${stdout_file}" 2>"${stderr_file}"
 	status=$?
-	output="$(cat "${stdout_file}")"
-	stderr_output="$(cat "${stderr_file}")"
+        output="$(cat "${stdout_file}")"
+        stderr_output="$(cat "${stderr_file}")"
 
-	rm -f "${stdout_file}" "${stderr_file}"
+        rm -f "${stdout_file}" "${stderr_file}"
 
 	if [[ -n "${stderr_output}" ]]; then
 		log "INFO" "Tool emitted stderr" "$(printf 'tool=%s stderr=%s' "${tool_name}" "${stderr_output}")" >&2
 	fi
-	if ((status != 0)); then
-		log "WARN" "Tool reported non-zero exit" "${tool_name}" >&2
-	fi
-	printf '%s\n' "${output}"
-	return 0
+        if ((status != 0)); then
+                log "WARN" "Tool reported non-zero exit" "${tool_name}" >&2
+        fi
+
+        observation="${output}"
+        summary_parts=()
+        if ((status != 0)); then
+                summary_parts+=("exit code ${status}")
+        fi
+        if [[ -n "${stderr_output}" ]]; then
+                stderr_snippet="$(printf '%s' "${stderr_output}" | head -c 500)"
+                summary_parts+=("stderr: ${stderr_snippet}")
+        fi
+
+        if ((${#summary_parts[@]} > 0)); then
+                summary_text="$(printf '; %s' "${summary_parts[@]}")"
+                summary_text=${summary_text#'; '}
+                if [[ -n "${observation}" ]]; then
+                        observation+=$'\n'
+                fi
+                observation+="Summary: ${summary_text}"
+        fi
+
+        printf '%s\n' "${observation}"
+        return 0
 }
 
 initialize_react_state() {
@@ -668,13 +688,14 @@ except Exception as exc:  # noqa: BLE001
     sys.exit(1)
 
 required_keys = ("thought", "tool", "args")
+optional_keys = ("type",)
 for key in required_keys:
     if key not in action:
         print(f"Missing field: {key}", file=sys.stderr)
         sys.exit(1)
 
 for key in action:
-    if key not in required_keys:
+    if key not in required_keys + optional_keys:
         print(f"Unexpected field: {key}", file=sys.stderr)
         sys.exit(1)
 
@@ -686,6 +707,11 @@ if not isinstance(thought, str) or not thought.strip():
 tool = action.get("tool")
 if not isinstance(tool, str):
     print("tool must be a string", file=sys.stderr)
+    sys.exit(1)
+
+action_type = action.get("type")
+if action_type is not None and action_type != "tool":
+    print("type must be 'tool' when provided", file=sys.stderr)
     sys.exit(1)
 
 allowed_tools = schema.get("properties", {}).get("tool", {}).get("enum", [])
@@ -735,11 +761,20 @@ for key, value in args.items():
             print(f"Arg {key} must be a string", file=sys.stderr)
             sys.exit(1)
 
-print(json.dumps({
-    "thought": thought.strip(),
-    "tool": tool,
-    "args": args,
-}, separators=(",", ":")))
+output = {}
+
+if action_type is not None:
+    output["type"] = action_type
+
+output.update(
+    {
+        "thought": thought.strip(),
+        "tool": tool,
+        "args": args,
+    }
+)
+
+print(json.dumps(output, separators=(",", ":")))
 PY
 }
 
@@ -791,18 +826,24 @@ select_next_action() {
 	plan_index=${plan_index:-0}
 	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-	if [[ -n "${planned_entry}" ]]; then
-		tool="${planned_entry%%|*}"
-		query="${planned_entry#*|}"
-		query="${query%%|*}"
-		state_increment "${state_name}" "plan_index" 1 >/dev/null
-		args_json="$(format_tool_args "${tool}" "${query}")"
-		next_action_payload="$(jq -nc --arg thought "Following planned step" --arg tool "${tool}" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
-	else
-		local final_query
-		final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"
+        if [[ -n "${planned_entry}" ]]; then
+                if entry_json=$(jq -ec '.' <<<"${planned_entry}" 2>/dev/null); then
+                        tool="$(jq -r '.tool // empty' <<<"${entry_json}")"
+                        args_json="$(jq -c '.args // {}' <<<"${entry_json}")"
+                else
+                        tool="${planned_entry%%|*}"
+                        query="${planned_entry#*|}"
+                        query="${query%%|*}"
+                        args_json="$(format_tool_args "${tool}" "${query}")"
+                fi
+
+                state_increment "${state_name}" "plan_index" 1 >/dev/null
+                next_action_payload="$(jq -nc --arg thought "Following planned step" --arg tool "${tool}" --argjson args "${args_json}" '{type:"tool", thought:$thought, tool:$tool, args:$args}')"
+        else
+                local final_query
+                final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"
 		args_json="$(format_tool_args "final_answer" "${final_query}")"
-		next_action_payload="$(jq -nc --arg thought "Providing final answer" --arg tool "final_answer" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
+                next_action_payload="$(jq -nc --arg thought "Providing final answer" --arg tool "final_answer" --argjson args "${args_json}" '{type:"tool", thought:$thought, tool:$tool, args:$args}')"
 	fi
 
 	if [[ -n "${output_name}" ]]; then
