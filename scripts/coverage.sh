@@ -28,7 +28,9 @@ ROOT_DIR="$(git rev-parse --show-toplevel)"
 COVERAGE_DIR="${COVERAGE_DIR:-${ROOT_DIR}/coverage}"
 COVERAGE_THRESHOLD="${COVERAGE_THRESHOLD:-0}"
 COVERAGE_STRICT="${COVERAGE_STRICT:-false}"
-COVERAGE_TARGETS="${COVERAGE_TARGETS:-tests/core/config.bats tests/core/planner.bats}"
+if [[ -z "${COVERAGE_TARGETS:-}" ]]; then
+  COVERAGE_TARGETS="$(find tests -type f \( -name '*.bats' -o -name 'test_*.sh' \) -print | sort | tr '\n' ' ')"
+fi
 
 export COVERAGE_DIR
 export SIMPLECOV_ROOT="${ROOT_DIR}"
