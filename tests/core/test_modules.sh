@@ -215,11 +215,12 @@ printf "%s" "${plan}"
 }
 
 @test "emit_plan_json builds valid array" {
-	run bash -lc $'source ./src/lib/planner.sh; plan=$'"'"'terminal|echo "hi"|4\nnotes_create|add note|3'"'"'; emit_plan_json "${plan}"'
-	[ "$status" -eq 0 ]
-	[ "$(echo "${output}" | jq -r '.[0].tool')" = "terminal" ]
-	[ "$(echo "${output}" | jq -r '.[0].query')" = 'echo "hi"' ]
-	[ "$(echo "${output}" | jq -r '.[1].score')" = "3" ]
+        run bash -lc "source ./src/lib/planner.sh; plan=\$(jq -nc --arg tool \"terminal\" --arg command \"echo\" --arg arg0 \"hi\" '{tool:\$tool,args:{command:\$command,args:[\$arg0]}}'); plan+=$'\\n'; plan+=\$(jq -nc --arg tool \"notes_create\" --arg title \"add note\" --arg body \"\" '{tool:\$tool,args:{title:\$title,body:\$body}}'); emit_plan_json \"\${plan}\""
+        [ "$status" -eq 0 ]
+        [ "$(echo "${output}" | jq -r '.[0].tool')" = "terminal" ]
+        [ "$(echo "${output}" | jq -r '.[0].args.command')" = 'echo' ]
+        [ "$(echo "${output}" | jq -r '.[1].tool')" = "notes_create" ]
+        [ "$(echo "${output}" | jq -e '.[0] | has("score")')" = "false" ]
 }
 
 @test "confirm_tool uses gum when available" {
@@ -361,21 +362,23 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action follows plan entries before finalizing" {
-	run bash -lc '
+        run bash -lc "
                 source ./src/lib/planner.sh
-                respond_text() { printf "offline response"; }
+                respond_text() { printf \"offline response\"; }
                 state_prefix=state
-                initialize_react_state "${state_prefix}" "list files" $'"'"'terminal\nfinal_answer'"'"' $'"'"'terminal|echo hi|4'"'"' $'"'"'1. terminal -> echo hi\n2. final_answer -> respond'"'"'
-                state_set "${state_prefix}" "max_steps" 2
+                plan_entries=\$(jq -nc --arg tool \"terminal\" --arg command \"echo\" --arg arg0 \"hi\" '{tool:\$tool,args:{command:\$command,args:[\$arg0]}}')
+                initialize_react_state \"\${state_prefix}\" \"list files\" $'terminal\\nfinal_answer' \"\${plan_entries}\" $'1. terminal -> echo hi\\n2. final_answer -> respond'
+                state_set \"\${state_prefix}\" \"max_steps\" 2
                 USE_REACT_LLAMA=false
                 LLAMA_AVAILABLE=false
-                select_next_action "${state_prefix}" | jq -r ".type,.tool,.args.command,.thought"
-        '
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "tool" ]
-	[ "${lines[1]}" = "terminal" ]
-	[ "${lines[2]}" = "echo hi" ]
-	[ "${lines[3]}" = "Following planned step" ]
+                select_next_action \"\${state_prefix}\" | jq -r \".type,.tool,.args.command,.args.args[0],.thought\"
+        "
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "tool" ]
+        [ "${lines[1]}" = "terminal" ]
+        [ "${lines[2]}" = "echo" ]
+        [ "${lines[3]}" = "hi" ]
+        [ "${lines[4]}" = "Following planned step" ]
 }
 
 @test "select_next_action uses llama grammar and captures output" {
@@ -634,12 +637,12 @@ finalize_react_result "${state_prefix}"
 }
 
 @test "react_loop returns final_answer tool output" {
-	run bash -lc '
+        run bash -lc "
 VERBOSITY=1
 source ./src/lib/planner.sh
-execute_tool_action() { printf "%s" "${2}"; }
-react_loop "question" $'"'"'final_answer'"'"' "final_answer|done|5" $'"'"'1. final_answer -> done'"'"'
-'
+execute_tool_action() { printf \"%s\" \"\${2}\"; }
+ react_loop \"question\" $'final_answer' \"{\\\"tool\\\":\\\"final_answer\\\",\\\"args\\\":{\\\"message\\\":\\\"done\\\"}}\" $'1. final_answer -> done'
+"
 
 	[ "$status" -eq 0 ]
 	logs_json="$(printf '%s' "$output" | parse_json_logs)"
@@ -694,7 +697,7 @@ select_response_strategy "${settings_prefix}" "${required_tools}" "${plan_entrie
 }
 
 @test "react logging orders plan, actions, and summary" {
-	run bash -lc '
+        run bash -lc '
 VERBOSITY=1
 USE_REACT_LLAMA=false
 LLAMA_AVAILABLE=false
@@ -710,7 +713,7 @@ settings_set "${settings_prefix}" "dry_run" "false"
 settings_set "${settings_prefix}" "user_query" "demo"
 
 required_tools=$'"'"'final_answer'"'"'
-plan_entries=$'"'"'final_answer|answer|1'"'"'
+plan_entries=$(jq -nc "{\"tool\":\"final_answer\",\"args\":{\"message\":\"answer\"}}")
 plan_outline=$'"'"'1. final_answer -> answer'"'"'
 
 render_plan_outputs action "${settings_prefix}" "${required_tools}" "${plan_entries}" "${plan_outline}"

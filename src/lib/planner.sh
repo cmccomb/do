@@ -208,17 +208,17 @@ derive_tool_query() {
 }
 
 emit_plan_json() {
-	local plan_entries
-	plan_entries="$1"
+        local plan_entries
+        plan_entries="$1"
 
-	while IFS=$'|' read -r tool query score; do
-		[[ -z "${tool}" ]] && continue
-		jq -n \
-			--arg tool "${tool}" \
-			--arg query "${query}" \
-			--argjson score "${score:-0}" \
-			'{tool:$tool, query:$query, score:$score}'
-	done <<<"${plan_entries}" | jq -sc '.'
+        if [[ -z "${plan_entries}" ]]; then
+                printf '[]'
+                return 0
+        fi
+
+        printf '%s\n' "${plan_entries}" |
+                sed '/^[[:space:]]*$/d' |
+                jq -sc 'map(select(type=="object"))'
 }
 
 extract_tools_from_plan() {
@@ -253,24 +253,26 @@ extract_tools_from_plan() {
 }
 
 build_plan_entries_from_tools() {
-	# Arguments:
-	#   $1 - newline-delimited tool names
-	#   $2 - user query (string)
-	local tool_list user_query plan query
-	tool_list="$1"
-	user_query="$2"
-	plan=""
+        # Arguments:
+        #   $1 - newline-delimited tool names
+        #   $2 - user query (string)
+        local tool_list user_query plan query args_json plan_entry
+        tool_list="$1"
+        user_query="$2"
+        plan=""
 
-	while IFS= read -r tool; do
-		[[ -z "${tool}" ]] && continue
-		if [[ "${tool}" == "final_answer" ]]; then
-			continue
-		fi
-		query="$(derive_tool_query "${tool}" "${user_query}")"
-		plan+="${tool}|${query}|0"$'\n'
-	done <<<"${tool_list}"
+        while IFS= read -r tool; do
+                [[ -z "${tool}" ]] && continue
+                if [[ "${tool}" == "final_answer" ]]; then
+                        continue
+                fi
+                query="$(derive_tool_query "${tool}" "${user_query}")"
+                args_json="$(format_tool_args "${tool}" "${query}")"
+                plan_entry="$(jq -nc --arg tool "${tool}" --argjson args "${args_json}" '{tool:$tool,args:$args}')"
+                plan+="${plan_entry}"$'\n'
+        done <<<"${tool_list}"
 
-	printf '%s' "${plan}"
+        printf '%s' "${plan}"
 }
 
 should_prompt_for_tool() {
@@ -786,23 +788,22 @@ select_next_action() {
 		return
 	fi
 
-	plan_index="$(state_get "${state_name}" "plan_index")"
-	plan_index=${plan_index:-0}
-	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
+        plan_index="$(state_get "${state_name}" "plan_index")"
+        plan_index=${plan_index:-0}
+        planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-	if [[ -n "${planned_entry}" ]]; then
-		tool="${planned_entry%%|*}"
-		query="${planned_entry#*|}"
-		query="${query%%|*}"
-		state_increment "${state_name}" "plan_index" 1 >/dev/null
-		args_json="$(format_tool_args "${tool}" "${query}")"
-		next_action_payload="$(jq -nc --arg thought "Following planned step" --arg tool "${tool}" --argjson args "${args_json}" '{type:"tool", thought:$thought, tool:$tool, args:$args}')"
-	else
-		local final_query
-		final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"
-		args_json="$(format_tool_args "final_answer" "${final_query}")"
-		next_action_payload="$(jq -nc --arg thought "Providing final answer" --arg tool "final_answer" --argjson args "${args_json}" '{type:"tool", thought:$thought, tool:$tool, args:$args}')"
-	fi
+        if [[ -n "${planned_entry}" ]]; then
+                tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
+                args_json="$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
+                query="$(extract_tool_query "${tool}" "${args_json}")"
+                state_increment "${state_name}" "plan_index" 1 >/dev/null
+                next_action_payload="$(jq -nc --arg thought "Following planned step" --arg tool "${tool}" --argjson args "${args_json}" '{type:"tool", thought:$thought, tool:$tool, args:$args}')"
+        else
+                local final_query
+                final_query="$(respond_text "$(state_get "${state_name}" "user_query") $(state_get "${state_name}" "history")" 512)"
+                args_json="$(format_tool_args "final_answer" "${final_query}")"
+                next_action_payload="$(jq -nc --arg thought "Providing final answer" --arg tool "final_answer" --argjson args "${args_json}" '{type:"tool", thought:$thought, tool:$tool, args:$args}')"
+        fi
 
 	if [[ -n "${output_name}" ]]; then
 		printf -v "${output_name}" '%s' "${next_action_payload}"

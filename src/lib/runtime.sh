@@ -297,16 +297,20 @@ render_plan_outputs() {
 		return 0
 	fi
 
-	if [[ "$(settings_get "${settings_prefix}" "dry_run")" == true ]]; then
-		# Dry run prints the intended commands for operator inspection while still
-		# providing the serialized JSON plan for automation.
-		log_pretty "INFO" "Dry run plan" "${plan_json}"
-		while IFS='|' read -r _tool query _score; do
-			[[ -z "${query}" ]] && continue
-			log "INFO" "Planned query" "${query}"
-		done <<<"${plan_entries}"
-		set_by_name "${action_var}" "exit"
-	fi
+        if [[ "$(settings_get "${settings_prefix}" "dry_run")" == true ]]; then
+                # Dry run prints the intended commands for operator inspection while still
+                # providing the serialized JSON plan for automation.
+                log_pretty "INFO" "Dry run plan" "${plan_json}"
+                printf '%s\n' "${plan_entries}" | sed '/^[[:space:]]*$/d' | while IFS= read -r entry; do
+                        local tool_name args_json planned_query
+                        tool_name="$(printf '%s' "${entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
+                        args_json="$(printf '%s' "${entry}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
+                        planned_query="$(extract_tool_query "${tool_name}" "${args_json}")"
+                        [[ -z "${planned_query}" ]] && continue
+                        log "INFO" "Planned query" "${planned_query}"
+                done
+                set_by_name "${action_var}" "exit"
+        fi
 }
 
 select_response_strategy() {
