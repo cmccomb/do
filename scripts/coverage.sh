@@ -28,7 +28,7 @@ ROOT_DIR="$(git rev-parse --show-toplevel)"
 COVERAGE_DIR="${COVERAGE_DIR:-${ROOT_DIR}/coverage}"
 COVERAGE_THRESHOLD="${COVERAGE_THRESHOLD:-0}"
 COVERAGE_STRICT="${COVERAGE_STRICT:-false}"
-COVERAGE_TARGETS="${COVERAGE_TARGETS:-tests/cli/test_main.sh tests/cli/test_all.sh tests/cli/test_install.sh tests/core/test_config.sh tests/core/test_planner.sh tests/tools/test_tools_registry.sh}"
+COVERAGE_TARGETS="${COVERAGE_TARGETS:-""}"
 
 export COVERAGE_DIR
 export SIMPLECOV_ROOT="${ROOT_DIR}"
