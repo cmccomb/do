@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 @test "tools_normalize_path falls back when realpath lacks -m support" {
-        run bash -lc '
+	run bash -lc '
                 set -euo pipefail
 
                 repo_root="$(git rev-parse --show-toplevel)"
@@ -30,5 +30,5 @@ PY
                 diff -u <(printf "%s\n" "${expected}") "${tmpdir}/actual"
         '
 
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }

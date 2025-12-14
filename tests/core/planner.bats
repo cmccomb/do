@@ -1,36 +1,36 @@
 #!/usr/bin/env bats
 
 @test "normalize_planner_plan retains structured planner output" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planner.sh
 raw_plan='[{"tool":"terminal","args":{"command":"ls"},"thought":"list"}]'
 normalize_planner_plan <<<"${raw_plan}" | jq -r '.[0].tool,.[0].args.command,.[0].thought'
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "terminal" ]
-        [ "${lines[1]}" = "ls" ]
-        [ "${lines[2]}" = "list" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "terminal" ]
+	[ "${lines[1]}" = "ls" ]
+	[ "${lines[2]}" = "list" ]
 }
 
 @test "normalize_planner_plan builds react fallback from outlines" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planner.sh
 normalize_planner_plan <<<"1) first step\n- second step"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        tools=$(printf '%s' "${output}" | jq -r '.[].tool')
-        thoughts=$(printf '%s' "${output}" | jq -r '.[].thought')
-        [[ "${tools}" == *"react_fallback"* ]]
-        [[ "${thoughts}" == *"first step"* ]]
-        [[ "${thoughts}" == *"second step"* ]]
+	[ "$status" -eq 0 ]
+	tools=$(printf '%s' "${output}" | jq -r '.[].tool')
+	thoughts=$(printf '%s' "${output}" | jq -r '.[].thought')
+	[[ "${tools}" == *"react_fallback"* ]]
+	[[ "${thoughts}" == *"first step"* ]]
+	[[ "${thoughts}" == *"second step"* ]]
 }
 
 @test "append_final_answer_step adds missing summary step without duplication" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planner.sh
 without_final=$(append_final_answer_step "[{\"tool\":\"terminal\",\"args\":{},\"thought\":\"list\"}]")
@@ -38,17 +38,17 @@ with_final=$(append_final_answer_step "[{\"tool\":\"final_answer\",\"args\":{},\
 printf "%s\n---\n%s\n" "${without_final}" "${with_final}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        first_tools=$(printf '%s' "${lines[0]}" | jq -r '.[].tool')
-        [[ "${first_tools}" == *"final_answer" ]]
-        second_tools=$(printf '%s' "${lines[2]}" | jq -r '.[].tool')
-        [ "${second_tools}" = "final_answer" ]
-        second_thought=$(printf '%s' "${lines[2]}" | jq -r '.[0].thought')
-        [ "${second_thought}" = "done" ]
+	[ "$status" -eq 0 ]
+	first_tools=$(printf '%s' "${lines[0]}" | jq -r '.[].tool')
+	[[ "${first_tools}" == *"final_answer" ]]
+	second_tools=$(printf '%s' "${lines[2]}" | jq -r '.[].tool')
+	[ "${second_tools}" = "final_answer" ]
+	second_thought=$(printf '%s' "${lines[2]}" | jq -r '.[0].thought')
+	[ "${second_thought}" = "done" ]
 }
 
 @test "derive_allowed_tools_from_plan respects react fallback and final answer" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planner.sh
 tool_names() { printf "%s\n" terminal notes_create final_answer; }
@@ -57,14 +57,14 @@ mapfile -t tools < <(derive_allowed_tools_from_plan "${plan_json}")
 printf "%s\n" "${tools[@]}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "terminal" ]
-        [ "${lines[1]}" = "notes_create" ]
-        [ "${lines[2]}" = "final_answer" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "terminal" ]
+	[ "${lines[1]}" = "notes_create" ]
+	[ "${lines[2]}" = "final_answer" ]
 }
 
 @test "select_next_action uses deterministic plan when llama disabled" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planner.sh
 VERBOSITY=0
@@ -79,15 +79,15 @@ select_next_action "${state_prefix}" action_json
 printf "%s\n" "${action_json}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        action_json=$(printf '%s' "${output}" | tail -n 1)
-        tool=$(printf '%s' "${action_json}" | jq -r '.tool')
-        command=$(printf '%s' "${action_json}" | jq -r '.args.command')
-        arg0=$(printf '%s' "${action_json}" | jq -r '.args.args[0]')
-        thought=$(printf '%s' "${action_json}" | jq -r '.thought')
+	[ "$status" -eq 0 ]
+	action_json=$(printf '%s' "${output}" | tail -n 1)
+	tool=$(printf '%s' "${action_json}" | jq -r '.tool')
+	command=$(printf '%s' "${action_json}" | jq -r '.args.command')
+	arg0=$(printf '%s' "${action_json}" | jq -r '.args.args[0]')
+	thought=$(printf '%s' "${action_json}" | jq -r '.thought')
 
-        [ "${tool}" = "terminal" ]
-        [ "${command}" = "echo" ]
-        [ "${arg0}" = "hi" ]
-        [ "${thought}" = "Following planned step" ]
+	[ "${tool}" = "terminal" ]
+	[ "${command}" = "echo" ]
+	[ "${arg0}" = "hi" ]
+	[ "${thought}" = "Following planned step" ]
 }
