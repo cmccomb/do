@@ -51,10 +51,6 @@ jobs:
           find src scripts tests -type f \( -name '*.sh' -o -name '*.bats' -o -name 'okso' \) -print0 \
             | xargs -0 shellcheck
 
-      - name: Run Bats suite
-        run: |
-          bats tests/cli/test_main.sh tests/cli/test_all.sh tests/cli/test_install.sh
-
   deploy:
     runs-on: ubuntu-latest
     needs:

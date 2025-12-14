@@ -1,15 +1,4 @@
 #!/usr/bin/env bats
-#
-# Tests for tools_normalize_path behavior across platforms.
-#
-# Usage: bats tests/tools/test_tools_normalize_path.bats
-#
-# Dependencies:
-#   - bats
-#   - bash 5+
-#
-# Exit codes:
-#   Inherits Bats semantics; individual tests assert script exit codes explicitly.
 
 @test "tools_normalize_path falls back when realpath lacks -m support" {
 	run bash -lc '
