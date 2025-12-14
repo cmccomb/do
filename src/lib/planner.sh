@@ -912,7 +912,7 @@ finalize_react_result() {
 }
 
 react_loop() {
-	local user_query allowed_tools plan_entries plan_outline action_json action_type tool query observation current_step thought args_json action_context
+	local user_query allowed_tools plan_entries plan_outline action_json tool query observation current_step thought args_json action_context
 	local state_prefix
 	user_query="$1"
 	allowed_tools="$2"
@@ -927,18 +927,12 @@ react_loop() {
 		current_step=$(($(state_get "${state_prefix}" "step") + 1))
 
 		select_next_action "${state_prefix}" action_json
-		action_type="$(printf '%s' "${action_json}" | jq -r '.type // empty' 2>/dev/null || true)"
 		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
 		thought="$(printf '%s' "${action_json}" | jq -r '.thought // empty' 2>/dev/null || true)"
 		args_json="$(printf '%s' "${action_json}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
 		query="$(extract_tool_query "${tool}" "${args_json}")"
 		action_context="$(format_action_context "${thought}" "${tool}" "${args_json}")"
 
-		if [[ "${action_type}" != "tool" ]]; then
-			record_history "${state_prefix}" "$(printf 'Step %s unusable action: %s' "${current_step}" "${action_json}")"
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
 
 		if ! validate_tool_permission "${state_prefix}" "${tool}"; then
 			state_set "${state_prefix}" "step" "${current_step}"
