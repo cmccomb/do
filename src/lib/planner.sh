@@ -208,17 +208,17 @@ derive_tool_query() {
 }
 
 emit_plan_json() {
-	local plan_entries
-	plan_entries="$1"
+        local plan_entries
+        plan_entries="$1"
 
-	while IFS=$'|' read -r tool query score; do
-		[[ -z "${tool}" ]] && continue
-		jq -n \
-			--arg tool "${tool}" \
-			--arg query "${query}" \
-			--argjson score "${score:-0}" \
-			'{tool:$tool, query:$query, score:$score}'
-	done <<<"${plan_entries}" | jq -sc '.'
+        if [[ -z "${plan_entries}" ]]; then
+                printf '[]'
+                return 0
+        fi
+
+        printf '%s\n' "${plan_entries}" |
+                sed '/^[[:space:]]*$/d' |
+                jq -sc 'map(select(type=="object"))'
 }
 
 extract_tools_from_plan() {
@@ -253,24 +253,26 @@ extract_tools_from_plan() {
 }
 
 build_plan_entries_from_tools() {
-	# Arguments:
-	#   $1 - newline-delimited tool names
-	#   $2 - user query (string)
-	local tool_list user_query plan query
-	tool_list="$1"
-	user_query="$2"
-	plan=""
+        # Arguments:
+        #   $1 - newline-delimited tool names
+        #   $2 - user query (string)
+        local tool_list user_query plan query args_json plan_entry
+        tool_list="$1"
+        user_query="$2"
+        plan=""
 
-	while IFS= read -r tool; do
-		[[ -z "${tool}" ]] && continue
-		if [[ "${tool}" == "final_answer" ]]; then
-			continue
-		fi
-		query="$(derive_tool_query "${tool}" "${user_query}")"
-		plan+="${tool}|${query}|0"$'\n'
-	done <<<"${tool_list}"
+        while IFS= read -r tool; do
+                [[ -z "${tool}" ]] && continue
+                if [[ "${tool}" == "final_answer" ]]; then
+                        continue
+                fi
+                query="$(derive_tool_query "${tool}" "${user_query}")"
+                args_json="$(format_tool_args "${tool}" "${query}")"
+                plan_entry="$(jq -nc --arg tool "${tool}" --argjson args "${args_json}" '{tool:$tool,args:$args}')"
+                plan+="${plan_entry}"$'\n'
+        done <<<"${tool_list}"
 
-	printf '%s' "${plan}"
+        printf '%s' "${plan}"
 }
 
 should_prompt_for_tool() {
