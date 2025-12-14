@@ -249,7 +249,7 @@ prefix_writable() {
 	local dir="$1" probe
 	[ -d "${dir}" ] || return 1
 	probe="${dir}/.okso-installer-probe.$$"
-	if ( : >"${probe}" ) 2>/dev/null; then
+	if (: >"${probe}") 2>/dev/null; then
 		rm -f "${probe}" >/dev/null 2>&1 || true
 		return 0
 	fi
