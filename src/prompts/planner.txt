@@ -5,7 +5,14 @@ Format the output as a JSON array of strings.
 Each step must mention the tool name that will be used.
 Do NOT include fully executable shell commands; keep the guidance conceptual.
 
-Constrain your response using this JSON schema:
+# Tool Selection Rules
+Select only from the provided list of available tools.
+Each action must clearly indicate which tool will be used.
+If a query involves any kind of calculation, recommend a calculation tool.
+
+# Output Format
+Respond ONLY with a JSON array of strings.
+Specifically, constrain your response using this JSON schema:
 ${planner_grammar}
 
 # Available tools:
