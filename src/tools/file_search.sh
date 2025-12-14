@@ -48,10 +48,17 @@ tool_file_search() {
 }
 
 register_file_search() {
-	register_tool \
-		"file_search" \
-		"Search project files by name and content using fd/rg." \
-		"file_search <terms_to_be_searched>" \
-		"May read many files; avoid leaking secrets." \
-		tool_file_search
+        local args_schema
+
+        args_schema=$(cat <<'JSON'
+{"type":"object","required":["query"],"properties":{"query":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+        )
+        register_tool \
+                "file_search" \
+                "Search project files by name and content using fd/rg." \
+                "file_search <terms_to_be_searched>" \
+                "May read many files; avoid leaking secrets." \
+                tool_file_search \
+                "${args_schema}"
 }

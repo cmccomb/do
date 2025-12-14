@@ -63,19 +63,33 @@ tool_clipboard_paste() {
 }
 
 register_clipboard_copy() {
-	register_tool \
-		"clipboard_copy" \
-		"Copy the provided text into the macOS clipboard." \
-		"clipboard_copy <text_to_be_copied>" \
-		"Clipboard contents may expose sensitive data; avoid copying secrets." \
-		tool_clipboard_copy
+        local args_schema
+
+        args_schema=$(cat <<'JSON'
+{"type":"object","required":["text"],"properties":{"text":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+        )
+        register_tool \
+                "clipboard_copy" \
+                "Copy the provided text into the macOS clipboard." \
+                "clipboard_copy <text_to_be_copied>" \
+                "Clipboard contents may expose sensitive data; avoid copying secrets." \
+                tool_clipboard_copy \
+                "${args_schema}"
 }
 
 register_clipboard_paste() {
-	register_tool \
-		"clipboard_paste" \
-		"Read the current macOS clipboard contents." \
-		"clipboard_paste" \
-		"Clipboard may contain sensitive data; review before sharing or logging." \
-		tool_clipboard_paste
+        local args_schema
+
+        args_schema=$(cat <<'JSON'
+{"type":"object","properties":{},"additionalProperties":false}
+JSON
+        )
+        register_tool \
+                "clipboard_paste" \
+                "Read the current macOS clipboard contents." \
+                "clipboard_paste" \
+                "Clipboard may contain sensitive data; review before sharing or logging." \
+                tool_clipboard_paste \
+                "${args_schema}"
 }

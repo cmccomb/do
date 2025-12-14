@@ -74,10 +74,17 @@ APPLESCRIPT
 }
 
 register_mail_draft() {
-	register_tool \
-		"mail_draft" \
-		"Create an Apple Mail draft using the first line for recipients and second for the subject." \
-		"mail_draft 'to@example.com\\nSubject\\nBody'" \
-		"Requires macOS Apple Mail access; content and recipients are sent to Mail." \
-		tool_mail_draft
+        local args_schema
+
+        args_schema=$(cat <<'JSON'
+{"type":"object","required":["envelope"],"properties":{"envelope":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+        )
+        register_tool \
+                "mail_draft" \
+                "Create an Apple Mail draft using the first line for recipients and second for the subject." \
+                "mail_draft 'to@example.com\\nSubject\\nBody'" \
+                "Requires macOS Apple Mail access; content and recipients are sent to Mail." \
+                tool_mail_draft \
+                "${args_schema}"
 }

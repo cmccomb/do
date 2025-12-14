@@ -67,10 +67,17 @@ APPLESCRIPT
 }
 
 register_notes_append() {
-	register_tool \
-		"notes_append" \
-		"Append text to an existing Apple Note matched by title." \
-		"notes_append 'Title\nAdditional text' (first line is title, following lines are appended)" \
-		"Requires macOS Apple Notes access; updates existing note content." \
-		tool_notes_append
+        local args_schema
+
+        args_schema=$(cat <<'JSON'
+{"type":"object","required":["content"],"properties":{"content":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+        )
+        register_tool \
+                "notes_append" \
+                "Append text to an existing Apple Note matched by title." \
+                "notes_append 'Title\nAdditional text' (first line is title, following lines are appended)" \
+                "Requires macOS Apple Notes access; updates existing note content." \
+                tool_notes_append \
+                "${args_schema}"
 }

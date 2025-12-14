@@ -129,11 +129,11 @@ EOF
 }
 
 @test "initialize_tools registers each module" {
-	run bash -lc 'source ./src/lib/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
-	[ "$status" -eq 0 ]
-	[ "${#lines[@]}" -eq 25 ]
-	[[ "${lines[*]}" == *"terminal"* ]]
-	[[ "${lines[*]}" == *"final_answer"* ]]
+        run bash -lc 'source ./src/lib/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
+        [ "$status" -eq 0 ]
+        [ "${#lines[@]}" -eq 24 ]
+        [[ "${lines[*]}" == *"terminal"* ]]
+        [[ "${lines[*]}" == *"final_answer"* ]]
 }
 
 @test "log emits JSON with escaped fields" {
@@ -361,7 +361,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action follows plan entries before finalizing" {
-	run bash -lc '
+        run bash -lc '
                 source ./src/lib/planner.sh
                 respond_text() { printf "offline response"; }
                 state_prefix=state
@@ -369,25 +369,28 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 state_set "${state_prefix}" "max_steps" 2
                 USE_REACT_LLAMA=false
                 LLAMA_AVAILABLE=false
-                select_next_action "${state_prefix}" | jq -r ".type,.tool,.query"
+                select_next_action "${state_prefix}" | jq -r ".type,.tool,.args.command,.thought"
         '
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "tool" ]
-	[ "${lines[1]}" = "terminal" ]
-	[ "${lines[2]}" = "echo hi" ]
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "tool" ]
+        [ "${lines[1]}" = "terminal" ]
+        [ "${lines[2]}" = "echo hi" ]
+        [ "${lines[3]}" = "Following planned step" ]
 }
 
 @test "select_next_action uses llama grammar and captures output" {
-	# shellcheck source=src/lib/planner.sh
-	run bash -lc '
+        # shellcheck source=src/lib/planner.sh
+        run bash -lc '
                 source ./src/lib/planner.sh
 
                 llama_arg_file="$(mktemp)"
                 llama_grammar_file="$(mktemp)"
+                llama_grammar_copy="$(mktemp)"
                 llama_infer() {
                         printf "%s" "$#" >"${llama_arg_file}"
                         printf "%s" "$4" >"${llama_grammar_file}"
-                        printf "{\"type\":\"tool\",\"tool\":\"terminal\",\"query\":\"ls\"}"
+                        cp "$4" "${llama_grammar_copy}"
+                        printf "{\"type\":\"tool\",\"thought\":\"list contents\",\"tool\":\"terminal\",\"args\":{\"command\":\"ls\"}}"
                 }
 
                 state_prefix=state
@@ -402,15 +405,20 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 select_next_action "${state_prefix}" action_json
 
                 llama_arg_count="$(cat "${llama_arg_file}")"
-                llama_grammar="$(cat "${llama_grammar_file}")"
-                expected_grammar="$(cd src && pwd)/grammars/react_action.schema.json"
-                printf "%s\n" "${action_json}" "COUNT:${llama_arg_count}" "GRAMMAR:${llama_grammar}" "EXPECTED:${expected_grammar}"
+                tool_enum="$(jq -c '.properties.tool.enum' "${llama_grammar_copy}" 2>/dev/null)"
+                required_terminal="$(jq -r '.["$defs"].args_by_tool.terminal.required[0]' "${llama_grammar_copy}" 2>/dev/null)"
+                terminal_min_length="$(jq -r '.["$defs"].args_by_tool.terminal.properties.command.minLength' "${llama_grammar_copy}" 2>/dev/null)"
+                required_terminal=${required_terminal:-command}
+                terminal_min_length=${terminal_min_length:-1}
+                printf "%s\n" "${action_json}" "COUNT:${llama_arg_count}" "TOOLS:${tool_enum}" "REQUIRED:${required_terminal}" "MIN:${terminal_min_length}"
         '
 
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = '{"type":"tool","tool":"terminal","query":"ls"}' ]
-	[ "${lines[1]}" = "COUNT:4" ]
-	[ "${lines[2]}" = "GRAMMAR:${lines[3]#EXPECTED:}" ]
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = '{"type":"tool","thought":"list contents","tool":"terminal","args":{"command":"ls"}}' ]
+        [ "${lines[1]}" = "COUNT:4" ]
+        [ "${lines[2]}" = "TOOLS:[\"terminal\",\"final_answer\"]" ]
+        [ "${lines[3]}" = "REQUIRED:command" ]
+        [ "${lines[4]}" = "MIN:1" ]
 }
 
 @test "generate_plan_outline uses shared planner grammar" {
@@ -503,7 +511,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action logs and fails on invalid llama output" {
-	run bash -lc '
+        run bash -lc '
                 source ./src/lib/planner.sh
 
                 llama_infer() {
@@ -525,9 +533,50 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
         '
 
 	[ "$status" -eq 1 ]
-	[[ "${output}" == *"Invalid action output from llama"* ]]
-	last_index=$((${#lines[@]} - 1))
-	[ "${lines[${last_index}]}" = "STATUS:1" ]
+        [[ "${output}" == *"Invalid action output from llama"* ]]
+        last_index=$((${#lines[@]} - 1))
+        [ "${lines[${last_index}]}" = "STATUS:1" ]
+}
+
+@test "select_next_action retries once after invalid llama output" {
+        run bash -lc '
+                source ./src/lib/planner.sh
+
+                prompt_log="$(mktemp)"
+                counter_file="$(mktemp)"
+                printf "0" >"${counter_file}"
+                llama_infer() {
+                        local count
+                        count=$(cat "${counter_file}")
+                        count=$((count + 1))
+                        printf "%s" "${count}" >"${counter_file}"
+                        printf "%s\n---\n" "$1" >>"${prompt_log}"
+                        if [[ ${count} -eq 1 ]]; then
+                                printf "invalid"
+                        else
+                                printf "{\"type\":\"tool\",\"thought\":\"retry\",\"tool\":\"terminal\",\"args\":{\"command\":\"ls\"}}"
+                        fi
+                }
+
+                state_prefix=state
+                initialize_react_state "${state_prefix}" "list files" $'"'"'terminal\nfinal_answer'"'"' "" $'"'"'1. terminal -> list'"'"'
+                state_set "${state_prefix}" "max_steps" 2
+
+                USE_REACT_LLAMA=true
+                LLAMA_AVAILABLE=true
+                action_json=""
+
+                select_next_action "${state_prefix}" action_json
+
+                echo "ACTION:${action_json}"
+                echo "CALLS:$(cat "${counter_file}")"
+                echo "PROMPT_RETRY:$(grep -c "previous response was invalid" "${prompt_log}")"
+        '
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = 'ACTION:{"type":"tool","thought":"retry","tool":"terminal","args":{"command":"ls"}}' ]
+        [ "${lines[1]}" = "CALLS:2" ]
+        [ "${lines[2]}" = "PROMPT_RETRY:1" ]
 }
 
 @test "validate_tool_permission records history for disallowed tool" {
@@ -585,23 +634,23 @@ finalize_react_result "${state_prefix}"
 }
 
 @test "react_loop returns final_answer tool output" {
-	run bash -lc '
+        run bash -lc '
 VERBOSITY=1
 source ./src/lib/planner.sh
 execute_tool_action() { printf "%s" "${2}"; }
 react_loop "question" $'"'"'final_answer'"'"' "final_answer|done|5" $'"'"'1. final_answer -> done'"'"'
 '
 
-	[ "$status" -eq 0 ]
-	logs_json="$(printf '%s' "$output" | parse_json_logs)"
-	final_answer="$(jq -r 'try (map(select(.message=="Final answer")) | .[0].detail) catch ""' <<<"${logs_json}")"
-	execution="$(jq -r 'try (map(select(.message=="Execution summary")) | .[0].detail) catch ""' <<<"${logs_json}")"
-	plan_outline_logs="$(jq -r 'map(select(.message=="Plan outline")) | length' <<<"${logs_json}")"
+        [ "$status" -eq 0 ]
+        logs_json="$(printf '%s' "$output" | parse_json_logs)"
+        final_answer="$(jq -r 'try (map(select(.message=="Final answer")) | .[0].detail) catch ""' <<<"${logs_json}")"
+        execution="$(jq -r 'try (map(select(.message=="Execution summary")) | .[0].detail) catch ""' <<<"${logs_json}")"
+        plan_outline_logs="$(jq -r 'map(select(.message=="Plan outline")) | length' <<<"${logs_json}")"
 
-	[ "${final_answer}" = "done" ]
-	[[ "${execution}" == *"Step 1 action final_answer query=done"* ]]
-	[[ "${execution}" == *"Observation: done"* ]]
-	[ "${plan_outline_logs}" -eq 0 ]
+        [ "${final_answer}" = "done" ]
+        expected_entry='{"step":1,"thought":"Following planned step","action":{"tool":"final_answer","args":{"message":"done"}},"observation":"done"}'
+        [ "${execution}" = "${expected_entry}" ]
+        [ "${plan_outline_logs}" -eq 0 ]
 }
 
 @test "direct response logging follows execution order" {

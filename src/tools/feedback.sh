@@ -188,10 +188,17 @@ tool_feedback() {
 }
 
 register_feedback() {
-	register_tool \
-		"feedback" \
-		"Collect a 1-5 rating and optional comments for the current plan step." \
-		"feedback <json context>" \
-		"Prompts the user; respects FEEDBACK_ENABLED=false to skip interaction." \
-		tool_feedback
+        local args_schema
+
+        args_schema=$(cat <<'JSON'
+{"type":"object","required":["message"],"properties":{"message":{"type":"string","minLength":1}},"additionalProperties":false}
+JSON
+        )
+        register_tool \
+                "feedback" \
+                "Collect a 1-5 rating and optional comments for the current plan step." \
+                "feedback <json context>" \
+                "Prompts the user; respects FEEDBACK_ENABLED=false to skip interaction." \
+                tool_feedback \
+                "${args_schema}"
 }
