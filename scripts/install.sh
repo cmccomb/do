@@ -11,10 +11,10 @@
 #       "/usr/local/bin".
 #   OKSO_INSTALLER_SKIP_SELF_TEST (bool): Set to "true" to bypass the post-install
 #       self-test (not recommended).
-#   OKSO_INSTALLER_ASSUME_OFFLINE (bool): Allow offline install; set a bundle base
-#       URL when using this flag.
-#   OKSO_INSTALLER_BASE_URL (string): Git repository URL when installing without
-#       a local checkout.
+#   OKSO_INSTALLER_ASSUME_OFFLINE (bool): Do not attempt a network clone. Requires
+#       a local okso checkout next to this script (../src + ../README.md).
+#   OKSO_INSTALLER_BASE_URL (string): Git repository URL (or local path) to clone
+#       when no local checkout is present.
 #
 # Exit codes:
 #   0: Success
@@ -25,6 +25,7 @@
 #
 # Dependencies:
 #   - bash 5+
+#   - git
 #   - curl
 #   - Homebrew (https://brew.sh)
 
@@ -87,36 +88,35 @@ detect_source_root() {
 	printf ''
 }
 
-download_source_bundle() {
-	local destination base_url clone_dir tarball_url tarball_path
-
-	destination="$(mktemp -d)"
-	base_url="${OKSO_INSTALLER_BASE_URL:-${DEFAULT_BASE_URL}}"
-	clone_dir="${destination}/okso"
-	tarball_path="${destination}/okso.tar.gz"
-
-	if [[ "${base_url}" == *.tar.gz || "${base_url}" == *.tgz || "${base_url}" == *.tar ]]; then
-		tarball_url="${base_url}"
-	else
-		tarball_url="${base_url%/}/okso.tar.gz"
+ensure_git() {
+	if command -v git >/dev/null 2>&1; then
+		return 0
 	fi
 
-	mkdir -p "${clone_dir}"
-	if curl -fL --connect-timeout 5 --retry 2 --retry-delay 1 "${tarball_url}" -o "${tarball_path}" >/dev/null 2>&1; then
-		if tar -xzf "${tarball_path}" -C "${clone_dir}" >/dev/null 2>&1; then
-			printf '%s\n' "${clone_dir}"
-			return 0
-		fi
-	fi
+	log "ERROR" "git is required for installation (needed to clone the okso repository)."
+	log "ERROR" "Install Xcode Command Line Tools with: xcode-select --install"
+	exit 2
+}
+
+clone_source_repo() {
+	local destination base_url clone_dir marker
 
 	if [ "${OKSO_INSTALLER_ASSUME_OFFLINE:-false}" = "true" ]; then
-		log "ERROR" "Failed to retrieve source bundle from ${tarball_url}"
+		log "ERROR" "Offline mode is enabled and no local okso checkout was found."
 		exit 2
 	fi
 
-	rm -rf "${clone_dir}"
+	ensure_git
+
+	destination="$(mktemp -d "${TMPDIR:-/tmp}/okso-install-XXXXXX")"
+	base_url="${OKSO_INSTALLER_BASE_URL:-${DEFAULT_BASE_URL}}"
+	clone_dir="${destination}/repo"
+	marker="${destination}/.okso_installer_tmp"
+	: >"${marker}"
+
 	if ! git clone --depth 1 "${base_url}" "${clone_dir}"; then
 		log "ERROR" "Failed to clone okso repository from ${base_url}"
+		rm -rf "${destination}" >/dev/null 2>&1 || true
 		exit 2
 	fi
 
@@ -132,12 +132,12 @@ resolve_source_root() {
 		return 0
 	fi
 
-	if [ "${OKSO_INSTALLER_ASSUME_OFFLINE:-false}" = "true" ] && [ -z "${OKSO_INSTALLER_BASE_URL:-}" ]; then
-		log "ERROR" "No source tree present and OKSO_INSTALLER_BASE_URL not set for offline install"
+	if [ "${OKSO_INSTALLER_ASSUME_OFFLINE:-false}" = "true" ]; then
+		log "ERROR" "No source tree present and offline mode enabled; cannot proceed."
 		exit 2
 	fi
 
-	download_source_bundle
+	clone_source_repo
 }
 
 detect_macos() {
@@ -380,20 +380,26 @@ main() {
 		esac
 	done
 
-	if [ "${DRY_RUN}" = "true" ]; then
-		log "INFO" "Dry run enabled; no changes will be made."
-	fi
-
 	require_macos
 
-	if [ "${MODE}" = "uninstall" ]; then
-		if [ "${DRY_RUN}" = "true" ]; then
-			log_dry_run "Would remove symlink ${DEFAULT_LINK_PATH}"
-			log_dry_run "Would remove installation prefix ${INSTALL_PREFIX}"
-			log "INFO" "${APP_NAME} installer completed (dry-run uninstall)."
-			exit 0
-		fi
+	if [ "${DRY_RUN}" = "true" ]; then
+		local local_root base_url
+		local_root="$(detect_source_root)"
+		base_url="${OKSO_INSTALLER_BASE_URL:-${DEFAULT_BASE_URL}}"
 
+		log_dry_run "Would ensure Homebrew is available"
+		if [ -n "${local_root}" ]; then
+			log_dry_run "Would copy okso sources from ${local_root} to ${INSTALL_PREFIX}"
+		else
+			log_dry_run "Would git clone ${base_url} and copy sources to ${INSTALL_PREFIX}"
+		fi
+		log_dry_run "Would link ${APP_NAME} into ${DEFAULT_LINK_PATH}"
+		log_dry_run "Would run installer self-test"
+		log "INFO" "${APP_NAME} installer completed (dry-run ${MODE})."
+		exit 0
+	fi
+
+	if [ "${MODE}" = "uninstall" ]; then
 		remove_symlink
 		if [ -d "${INSTALL_PREFIX}" ]; then
 			rm -rf "${INSTALL_PREFIX}"
@@ -406,17 +412,11 @@ main() {
 	local source_root
 	source_root="$(resolve_source_root)"
 
-	if [ "${DRY_RUN}" = "true" ]; then
-		log_dry_run "Would ensure Homebrew is available"
-		log_dry_run "Would copy okso sources from ${source_root} to ${INSTALL_PREFIX}"
-		log_dry_run "Would link ${APP_NAME} into ${DEFAULT_LINK_PATH}"
-		log_dry_run "Would run installer self-test"
-		log "INFO" "${APP_NAME} installer completed (dry-run ${MODE})."
-		exit 0
-	fi
-
 	ensure_homebrew
 	copy_payload "${source_root}" "${INSTALL_PREFIX}"
+	if [ -f "$(dirname "${source_root}")/.okso_installer_tmp" ]; then
+		rm -rf "$(dirname "${source_root}")" >/dev/null 2>&1 || true
+	fi
 	link_binary "${INSTALL_PREFIX}"
 
 	if [ "${OKSO_INSTALLER_SKIP_SELF_TEST:-false}" != "true" ]; then
