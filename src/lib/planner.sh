@@ -596,12 +596,16 @@ tool_enum = []
 for name in allowed:
     info = registry_map.get(name, {})
     schema = info.get("args_schema") if isinstance(info, dict) else None
-    if not isinstance(schema, dict):
+    has_defined_schema = isinstance(schema, dict)
+    if not has_defined_schema:
         schema = fallback_schema
 
     normalized = {"type": "object"}
     normalized.update(schema)
-    normalized.setdefault("additionalProperties", {"type": "string"})
+    if has_defined_schema:
+        normalized.setdefault("additionalProperties", False)
+    else:
+        normalized.setdefault("additionalProperties", {"type": "string"})
 
     args_by_tool[name] = normalized
     tool_enum.append(name)
@@ -708,7 +712,9 @@ properties = tool_schema.get("properties", {})
 if not isinstance(properties, dict):
     properties = {}
 required_args = tool_schema.get("required", [])
-additional_properties = tool_schema.get("additionalProperties", False)
+additional_properties = tool_schema.get("additionalProperties")
+if additional_properties is None:
+    additional_properties = False
 
 for key in required_args:
     if key not in args:
