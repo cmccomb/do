@@ -57,8 +57,8 @@
 }
 
 @test "build_plan_entries_from_tools omits final_answer" {
-        run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/lib/planner.sh; entries=$(build_plan_entries_from_tools $'"'"'alpha\nbeta\nfinal_answer'"'"' "Tell me"); mapfile -t lines <<<"$(printf "%s" "${entries}" | sed '/^[[:space:]]*$/d')"; [[ ${#lines[@]} -eq 2 ]]; first_tool=$(printf "%s" "${lines[0]}" | jq -r ".tool"); second_tool=$(printf "%s" "${lines[1]}" | jq -r ".tool"); first_message=$(printf "%s" "${lines[0]}" | jq -r ".args.message"); second_message=$(printf "%s" "${lines[1]}" | jq -r ".args.message"); [[ "${first_tool}" == "alpha" ]]; [[ "${second_tool}" == "beta" ]]; [[ "${first_message}" == "Tell me" ]]; [[ "${second_message}" == "Tell me" ]]'
-        [ "$status" -eq 0 ]
+	run bash -lc 'cd "$(git rev-parse --show-toplevel)" && source ./src/lib/planner.sh; entries=$(build_plan_entries_from_tools $'"'"'alpha\nbeta\nfinal_answer'"'"' "Tell me"); mapfile -t lines <<<"$(printf "%s" "${entries}" | sed '/^[[:space:]]*$/d')"; [[ ${#lines[@]} -eq 2 ]]; first_tool=$(printf "%s" "${lines[0]}" | jq -r ".tool"); second_tool=$(printf "%s" "${lines[1]}" | jq -r ".tool"); first_message=$(printf "%s" "${lines[0]}" | jq -r ".args.message"); second_message=$(printf "%s" "${lines[1]}" | jq -r ".args.message"); [[ "${first_tool}" == "alpha" ]]; [[ "${second_tool}" == "beta" ]]; [[ "${first_message}" == "Tell me" ]]; [[ "${second_message}" == "Tell me" ]]'
+	[ "$status" -eq 0 ]
 }
 
 @test "should_prompt_for_tool respects execution toggles" {
@@ -67,13 +67,13 @@
 }
 
 @test "initialize_react_state seeds defaults" {
-        run bash -lc "cd \"\$(git rev-parse --show-toplevel)\" && source ./src/lib/planner.sh; state_prefix=state; plan_entry=\$(jq -nc --arg tool \"alpha\" '{tool:\$tool,args:{}}'); initialize_react_state \"\${state_prefix}\" \"answer me\" $\"alpha\" \"\${plan_entry}\" \"1. alpha\"; [[ \"\$(state_get \"\${state_prefix}\" \"user_query\")\" == \"answer me\" ]]; [[ \"\$(state_get \"\${state_prefix}\" \"allowed_tools\")\" == \"alpha\" ]]; [[ \"\$(state_get \"\${state_prefix}\" \"plan_index\")\" == \"0\" ]]; [[ \"\$(state_get \"\${state_prefix}\" \"max_steps\")\" -eq ${MAX_STEPS:-6} ]]"
-        [ "$status" -eq 0 ]
+	run bash -lc "cd \"\$(git rev-parse --show-toplevel)\" && source ./src/lib/planner.sh; state_prefix=state; plan_entry=\$(jq -nc --arg tool \"alpha\" '{tool:\$tool,args:{}}'); initialize_react_state \"\${state_prefix}\" \"answer me\" $\"alpha\" \"\${plan_entry}\" \"1. alpha\"; [[ \"\$(state_get \"\${state_prefix}\" \"user_query\")\" == \"answer me\" ]]; [[ \"\$(state_get \"\${state_prefix}\" \"allowed_tools\")\" == \"alpha\" ]]; [[ \"\$(state_get \"\${state_prefix}\" \"plan_index\")\" == \"0\" ]]; [[ \"\$(state_get \"\${state_prefix}\" \"max_steps\")\" -eq ${MAX_STEPS:-6} ]]"
+	[ "$status" -eq 0 ]
 }
 
 @test "select_next_action consumes structured plan entries" {
-        run bash -lc "cd \"\$(git rev-parse --show-toplevel)\" && source ./src/lib/planner.sh; state_prefix=state; plan_entry=\$(jq -nc --arg tool \"terminal\" --arg command \"echo\" --arg arg0 \"hi\" '{tool:\$tool,args:{command:\$command,args:[\$arg0]}}'); initialize_react_state \"\${state_prefix}\" \"answer me\" $\"terminal\" \"\${plan_entry}\" \"1. terminal\"; select_next_action \"\${state_prefix}\" action_json; tool=\$(printf \"%s\" \"\${action_json}\" | jq -r \".tool\"); command=\$(printf \"%s\" \"\${action_json}\" | jq -r \".args.command\"); arg0=\$(printf \"%s\" \"\${action_json}\" | jq -r \".args.args[0]\"); [[ \"\${tool}\" == \"terminal\" ]]; [[ \"\${command}\" == \"echo\" ]]; [[ \"\${arg0}\" == \"hi\" ]]"
-        [ "$status" -eq 0 ]
+	run bash -lc "cd \"\$(git rev-parse --show-toplevel)\" && source ./src/lib/planner.sh; state_prefix=state; plan_entry=\$(jq -nc --arg tool \"terminal\" --arg command \"echo\" --arg arg0 \"hi\" '{tool:\$tool,args:{command:\$command,args:[\$arg0]}}'); initialize_react_state \"\${state_prefix}\" \"answer me\" $\"terminal\" \"\${plan_entry}\" \"1. terminal\"; select_next_action \"\${state_prefix}\" action_json; tool=\$(printf \"%s\" \"\${action_json}\" | jq -r \".tool\"); command=\$(printf \"%s\" \"\${action_json}\" | jq -r \".args.command\"); arg0=\$(printf \"%s\" \"\${action_json}\" | jq -r \".args.args[0]\"); [[ \"\${tool}\" == \"terminal\" ]]; [[ \"\${command}\" == \"echo\" ]]; [[ \"\${arg0}\" == \"hi\" ]]"
+	[ "$status" -eq 0 ]
 }
 
 @test "validate_tool_permission records disallowed tools" {
