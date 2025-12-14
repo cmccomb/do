@@ -75,17 +75,18 @@ APPLESCRIPT
 }
 
 register_calendar_create() {
-        local args_schema
+	local args_schema
 
-        args_schema=$(cat <<'JSON'
+	args_schema=$(
+		cat <<'JSON'
 {"type":"object","required":["details"],"properties":{"details":{"type":"string","minLength":1}},"additionalProperties":false}
 JSON
-        )
-        register_tool \
-                "calendar_create" \
-                "Create a new Apple Calendar event (line 1: title; line 2: start time)." \
-                "calendar_create 'Title\\nStart time'" \
-                "Requires macOS Calendar access; event details are sent to Calendar." \
-                tool_calendar_create \
-                "${args_schema}"
+	)
+	register_tool \
+		"calendar_create" \
+		"Create a new Apple Calendar event (line 1: title; line 2: start time)." \
+		"calendar_create 'Title\\nStart time'" \
+		"Requires macOS Calendar access; event details are sent to Calendar." \
+		tool_calendar_create \
+		"${args_schema}"
 }

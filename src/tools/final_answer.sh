@@ -30,17 +30,18 @@ tool_final_answer() {
 }
 
 register_final_answer() {
-        local args_schema
+	local args_schema
 
-        args_schema=$(cat <<'JSON'
+	args_schema=$(
+		cat <<'JSON'
 {"type":"object","required":["message"],"properties":{"message":{"type":"string","minLength":1}},"additionalProperties":false}
 JSON
-        )
-        register_tool \
-                "final_answer" \
-                "Emit the final user-facing answer without performing additional actions." \
-                "final_answer <final reply>" \
-                "Returns text directly to the user; avoid exposing sensitive data." \
-                tool_final_answer \
-                "${args_schema}"
+	)
+	register_tool \
+		"final_answer" \
+		"Emit the final user-facing answer without performing additional actions." \
+		"final_answer <final reply>" \
+		"Returns text directly to the user; avoid exposing sensitive data." \
+		tool_final_answer \
+		"${args_schema}"
 }

@@ -45,17 +45,18 @@ tool_applescript() {
 }
 
 register_applescript() {
-        local args_schema
+	local args_schema
 
-        args_schema=$(cat <<'JSON'
+	args_schema=$(
+		cat <<'JSON'
 {"type":"object","required":["script"],"properties":{"script":{"type":"string","minLength":1}},"additionalProperties":false}
 JSON
-        )
-        register_tool \
-                "applescript" \
-                "Execute AppleScript snippets on macOS." \
-                "applescript '<script>'" \
-                "Only available on macOS; disabled elsewhere." \
-                tool_applescript \
-                "${args_schema}"
+	)
+	register_tool \
+		"applescript" \
+		"Execute AppleScript snippets on macOS." \
+		"applescript '<script>'" \
+		"Only available on macOS; disabled elsewhere." \
+		tool_applescript \
+		"${args_schema}"
 }

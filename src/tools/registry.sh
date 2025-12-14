@@ -21,7 +21,7 @@
 source "${BASH_SOURCE[0]%/tools/registry.sh}/lib/logging.sh"
 
 if [[ -z "${TOOL_REGISTRY_JSON:-}" ]]; then
-        TOOL_REGISTRY_JSON='{"names":[],"registry":{}}'
+	TOOL_REGISTRY_JSON='{"names":[],"registry":{}}'
 fi
 
 tool_registry_json() {
@@ -53,15 +53,15 @@ tool_safety() {
 }
 
 tool_handler() {
-        local name
-        name="$1"
-        jq -r --arg name "${name}" '.registry[$name].handler // ""' <<<"$(tool_registry_json)"
+	local name
+	name="$1"
+	jq -r --arg name "${name}" '.registry[$name].handler // ""' <<<"$(tool_registry_json)"
 }
 
 tool_args_schema() {
-        local name
-        name="$1"
-        jq -c --arg name "${name}" '.registry[$name].args_schema // {}' <<<"$(tool_registry_json)"
+	local name
+	name="$1"
+	jq -c --arg name "${name}" '.registry[$name].args_schema // {}' <<<"$(tool_registry_json)"
 }
 
 init_tool_registry() {
@@ -69,36 +69,36 @@ init_tool_registry() {
 }
 
 register_tool() {
-        # Arguments:
-        #   $1 - name
-        #   $2 - description
-        #   $3 - invocation command (string)
-        #   $4 - safety notes
-        #   $5 - handler function name
-        #   $6 - optional JSON schema describing args
-        if [[ $# -lt 5 ]]; then
-                log "ERROR" "register_tool requires five arguments" "$*"
-                return 1
-        fi
+	# Arguments:
+	#   $1 - name
+	#   $2 - description
+	#   $3 - invocation command (string)
+	#   $4 - safety notes
+	#   $5 - handler function name
+	#   $6 - optional JSON schema describing args
+	if [[ $# -lt 5 ]]; then
+		log "ERROR" "register_tool requires five arguments" "$*"
+		return 1
+	fi
 
-        local name args_schema default_args_schema
-        name="$1"
-        default_args_schema='{ "type": "object", "properties": {"message": {"type": "string"}}, "additionalProperties": {"type": "string"} }'
-        args_schema="${6:-${default_args_schema}}"
+	local name args_schema default_args_schema
+	name="$1"
+	default_args_schema='{ "type": "object", "properties": {"message": {"type": "string"}}, "additionalProperties": {"type": "string"} }'
+	args_schema="${6:-${default_args_schema}}"
 
-        if [[ ! "${name}" =~ ^[a-z0-9_]+$ ]]; then
-                log "ERROR" "tool names must be alphanumeric with underscores" "${name}" || true
-                return 1
-        fi
+	if [[ ! "${name}" =~ ^[a-z0-9_]+$ ]]; then
+		log "ERROR" "tool names must be alphanumeric with underscores" "${name}" || true
+		return 1
+	fi
 
-        TOOL_REGISTRY_JSON=$(jq -c \
-                --arg name "${name}" \
-                --arg description "$2" \
-                --arg command "$3" \
-                --arg safety "$4" \
-                --arg handler "$5" \
-                --argjson args_schema "${args_schema}" \
-                '(.names //= [])
+	TOOL_REGISTRY_JSON=$(jq -c \
+		--arg name "${name}" \
+		--arg description "$2" \
+		--arg command "$3" \
+		--arg safety "$4" \
+		--arg handler "$5" \
+		--argjson args_schema "${args_schema}" \
+		'(.names //= [])
                 | (.registry //= {})
                 | (if (.names | index($name)) == null then .names += [$name] else . end)
                 | .registry[$name] = {description:$description, command:$command, safety:$safety, handler:$handler, args_schema:$args_schema}' <<<"$(tool_registry_json)")

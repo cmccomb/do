@@ -129,11 +129,11 @@ EOF
 }
 
 @test "initialize_tools registers each module" {
-        run bash -lc 'source ./src/lib/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
-        [ "$status" -eq 0 ]
-        [ "${#lines[@]}" -eq 24 ]
-        [[ "${lines[*]}" == *"terminal"* ]]
-        [[ "${lines[*]}" == *"final_answer"* ]]
+	run bash -lc 'source ./src/lib/tools.sh; init_tool_registry; initialize_tools; mapfile -t names < <(tool_names); printf "%s\n" "${names[@]}"'
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 24 ]
+	[[ "${lines[*]}" == *"terminal"* ]]
+	[[ "${lines[*]}" == *"final_answer"* ]]
 }
 
 @test "log emits JSON with escaped fields" {
@@ -361,7 +361,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action follows plan entries before finalizing" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/lib/planner.sh
                 respond_text() { printf "offline response"; }
                 state_prefix=state
@@ -371,16 +371,16 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 LLAMA_AVAILABLE=false
                 select_next_action "${state_prefix}" | jq -r ".type,.tool,.args.command,.thought"
         '
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "tool" ]
-        [ "${lines[1]}" = "terminal" ]
-        [ "${lines[2]}" = "echo hi" ]
-        [ "${lines[3]}" = "Following planned step" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "tool" ]
+	[ "${lines[1]}" = "terminal" ]
+	[ "${lines[2]}" = "echo hi" ]
+	[ "${lines[3]}" = "Following planned step" ]
 }
 
 @test "select_next_action uses llama grammar and captures output" {
-        # shellcheck source=src/lib/planner.sh
-        run bash -lc '
+	# shellcheck source=src/lib/planner.sh
+	run bash -lc '
                 source ./src/lib/planner.sh
 
                 llama_arg_file="$(mktemp)"
@@ -413,12 +413,12 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 printf "%s\n" "${action_json}" "COUNT:${llama_arg_count}" "TOOLS:${tool_enum}" "REQUIRED:${required_terminal}" "MIN:${terminal_min_length}"
         '
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = '{"type":"tool","thought":"list contents","tool":"terminal","args":{"command":"ls"}}' ]
-        [ "${lines[1]}" = "COUNT:4" ]
-        [ "${lines[2]}" = "TOOLS:[\"terminal\",\"final_answer\"]" ]
-        [ "${lines[3]}" = "REQUIRED:command" ]
-        [ "${lines[4]}" = "MIN:1" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = '{"type":"tool","thought":"list contents","tool":"terminal","args":{"command":"ls"}}' ]
+	[ "${lines[1]}" = "COUNT:4" ]
+	[ "${lines[2]}" = "TOOLS:[\"terminal\",\"final_answer\"]" ]
+	[ "${lines[3]}" = "REQUIRED:command" ]
+	[ "${lines[4]}" = "MIN:1" ]
 }
 
 @test "generate_plan_outline uses shared planner grammar" {
@@ -511,7 +511,7 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
 }
 
 @test "select_next_action logs and fails on invalid llama output" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/lib/planner.sh
 
                 llama_infer() {
@@ -533,13 +533,13 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
         '
 
 	[ "$status" -eq 1 ]
-        [[ "${output}" == *"Invalid action output from llama"* ]]
-        last_index=$((${#lines[@]} - 1))
-        [ "${lines[${last_index}]}" = "STATUS:1" ]
+	[[ "${output}" == *"Invalid action output from llama"* ]]
+	last_index=$((${#lines[@]} - 1))
+	[ "${lines[${last_index}]}" = "STATUS:1" ]
 }
 
 @test "select_next_action retries once after invalid llama output" {
-        run bash -lc '
+	run bash -lc '
                 source ./src/lib/planner.sh
 
                 prompt_log="$(mktemp)"
@@ -573,10 +573,10 @@ printf "LOG:%s\n" "$(cat "${LOG_FILE}")"
                 echo "PROMPT_RETRY:$(grep -c "previous response was invalid" "${prompt_log}")"
         '
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = 'ACTION:{"type":"tool","thought":"retry","tool":"terminal","args":{"command":"ls"}}' ]
-        [ "${lines[1]}" = "CALLS:2" ]
-        [ "${lines[2]}" = "PROMPT_RETRY:1" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = 'ACTION:{"type":"tool","thought":"retry","tool":"terminal","args":{"command":"ls"}}' ]
+	[ "${lines[1]}" = "CALLS:2" ]
+	[ "${lines[2]}" = "PROMPT_RETRY:1" ]
 }
 
 @test "validate_tool_permission records history for disallowed tool" {
@@ -634,23 +634,23 @@ finalize_react_result "${state_prefix}"
 }
 
 @test "react_loop returns final_answer tool output" {
-        run bash -lc '
+	run bash -lc '
 VERBOSITY=1
 source ./src/lib/planner.sh
 execute_tool_action() { printf "%s" "${2}"; }
 react_loop "question" $'"'"'final_answer'"'"' "final_answer|done|5" $'"'"'1. final_answer -> done'"'"'
 '
 
-        [ "$status" -eq 0 ]
-        logs_json="$(printf '%s' "$output" | parse_json_logs)"
-        final_answer="$(jq -r 'try (map(select(.message=="Final answer")) | .[0].detail) catch ""' <<<"${logs_json}")"
-        execution="$(jq -r 'try (map(select(.message=="Execution summary")) | .[0].detail) catch ""' <<<"${logs_json}")"
-        plan_outline_logs="$(jq -r 'map(select(.message=="Plan outline")) | length' <<<"${logs_json}")"
+	[ "$status" -eq 0 ]
+	logs_json="$(printf '%s' "$output" | parse_json_logs)"
+	final_answer="$(jq -r 'try (map(select(.message=="Final answer")) | .[0].detail) catch ""' <<<"${logs_json}")"
+	execution="$(jq -r 'try (map(select(.message=="Execution summary")) | .[0].detail) catch ""' <<<"${logs_json}")"
+	plan_outline_logs="$(jq -r 'map(select(.message=="Plan outline")) | length' <<<"${logs_json}")"
 
-        [ "${final_answer}" = "done" ]
-        expected_entry='{"step":1,"thought":"Following planned step","action":{"tool":"final_answer","args":{"message":"done"}},"observation":"done"}'
-        [ "${execution}" = "${expected_entry}" ]
-        [ "${plan_outline_logs}" -eq 0 ]
+	[ "${final_answer}" = "done" ]
+	expected_entry='{"step":1,"thought":"Following planned step","action":{"tool":"final_answer","args":{"message":"done"}},"observation":"done"}'
+	[ "${execution}" = "${expected_entry}" ]
+	[ "${plan_outline_logs}" -eq 0 ]
 }
 
 @test "direct response logging follows execution order" {

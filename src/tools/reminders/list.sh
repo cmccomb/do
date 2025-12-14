@@ -54,17 +54,18 @@ APPLESCRIPT
 }
 
 register_reminders_list() {
-        local args_schema
+	local args_schema
 
-        args_schema=$(cat <<'JSON'
+	args_schema=$(
+		cat <<'JSON'
 {"type":"object","properties":{},"additionalProperties":false}
 JSON
-        )
-        register_tool \
-                "reminders_list" \
-                "List incomplete Apple Reminders in the configured list." \
-                "reminders_list" \
-                "Requires macOS Apple Reminders access; reminder titles are read." \
-                tool_reminders_list \
-                "${args_schema}"
+	)
+	register_tool \
+		"reminders_list" \
+		"List incomplete Apple Reminders in the configured list." \
+		"reminders_list" \
+		"Requires macOS Apple Reminders access; reminder titles are read." \
+		tool_reminders_list \
+		"${args_schema}"
 }
