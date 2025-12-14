@@ -72,7 +72,7 @@ Options:
   --dry-run     Print the planned actions without executing them.
   --upgrade     Refresh the installation in place.
   --uninstall   Remove the okso installation and unlink the CLI.
-  -h, --help    Show this help text.
+  -h, --help    Show this help text!
 EOF
 }
 
