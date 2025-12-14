@@ -34,24 +34,30 @@ source "${BASH_SOURCE[0]%/tools/feedback.sh}/lib/logging.sh"
 source "${BASH_SOURCE[0]%/feedback.sh}/registry.sh"
 
 feedback_normalize_context() {
-	# Parses TOOL_QUERY JSON into discrete variables.
-	# Arguments: none. Reads TOOL_QUERY.
-	local plan_item observations
+        # Parses TOOL_QUERY JSON into discrete variables.
+        # Arguments: none. Reads TOOL_QUERY.
+        local plan_item observations
 
-	if [[ -z "${TOOL_QUERY:-}" ]]; then
-		log "ERROR" "Feedback context missing" "TOOL_QUERY is empty" || true
-		return 1
-	fi
+        if [[ -z "${TOOL_QUERY:-}" ]]; then
+                log "ERROR" "Feedback context missing" "TOOL_QUERY is empty" || true
+                return 1
+        fi
 
-	if ! plan_item=$(jq -er '.plan_item' <<<"${TOOL_QUERY}" 2>/dev/null); then
-		log "ERROR" "Feedback context requires plan_item" "${TOOL_QUERY}" || true
-		return 1
-	fi
+        if ! plan_item=$(jq -er '.plan_item' <<<"${TOOL_QUERY}" 2>/dev/null); then
+                if ! plan_item=$(jq -er 'if type == "string" then . else .detail // .message // empty end' <<<"${TOOL_QUERY}" 2>/dev/null); then
+                        plan_item="${TOOL_QUERY}"
+                fi
+        fi
 
-	observations=$(jq -er '.observations' <<<"${TOOL_QUERY}" 2>/dev/null || true)
-	observations="${observations:-}" # string observation summary
+        observations=$(jq -er '.observations' <<<"${TOOL_QUERY}" 2>/dev/null || true)
+        observations="${observations:-}" # string observation summary
 
-	printf '%s\n%s' "${plan_item}" "${observations}"
+        if [[ -z "${plan_item}" ]]; then
+                log "ERROR" "Feedback context requires plan description" "${TOOL_QUERY}" || true
+                return 1
+        fi
+
+        printf '%s\n%s' "${plan_item}" "${observations}"
 }
 
 feedback_validate_output_path() {
