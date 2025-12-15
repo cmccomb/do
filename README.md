@@ -1,5 +1,5 @@
 [![CI - Unit](https://github.com/cmccomb/do/actions/workflows/ci-unit.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/ci-unit.yml)
-[![Installation](https://github.com/cmccomb/do/actions/workflows/installation.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/installation.yml)
+[![CI - Install](https://github.com/cmccomb/do/actions/workflows/ci-install.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/ci-install.yml)
 [![Deploy Installer](https://github.com/cmccomb/do/actions/workflows/deploy_installer.yml/badge.svg)](https://github.com/cmccomb/do/actions/workflows/deploy_installer.yml)
 
 # `okso`, let's go to work
