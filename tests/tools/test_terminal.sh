@@ -15,7 +15,8 @@
 	run bash -lc 'source ./src/tools/terminal.sh; VERBOSITY=0; TOOL_ARGS="{}"; tool_terminal'
 	[ "$status" -eq 0 ]
 	[[ "${lines[0]}" == Session:* ]]
-	[[ "${output}" == *"Allowed commands:"* ]]
+	[[ "${lines[1]}" == Working\ directory:* ]]
+	[[ "${lines[2]}" == Allowed\ commands:* ]]
 }
 
 @test "cd updates persistent working directory" {

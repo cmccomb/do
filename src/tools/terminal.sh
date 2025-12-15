@@ -168,8 +168,6 @@ terminal_print_status() {
 	printf 'Session: %s\n' "${TERMINAL_SESSION_ID}"
 	printf 'Working directory: %s\n' "${TERMINAL_WORKDIR}"
 	printf 'Allowed commands: %s\n' "${TERMINAL_ALLOWED_COMMANDS[*]}"
-	terminal_run_in_workdir pwd
-	terminal_run_in_workdir ls -la
 }
 
 tool_terminal() {
@@ -235,14 +233,20 @@ tool_terminal() {
 			log "ERROR" "mkdir requires a target directory" ""
 			return 1
 		fi
-		terminal_run_in_workdir mkdir -p "${args[@]}"
+		if ! terminal_run_in_workdir mkdir -p "${args[@]}" >/dev/null 2>&1; then
+			log "ERROR" "mkdir failed" "${args[*]}"
+			return 1
+		fi
 		;;
 	rmdir)
 		if [[ ${#args[@]} -eq 0 ]]; then
 			log "ERROR" "rmdir requires a target directory" ""
 			return 1
 		fi
-		terminal_run_in_workdir rmdir "${args[@]}"
+		if ! terminal_run_in_workdir rmdir "${args[@]}" >/dev/null 2>&1; then
+			log "ERROR" "rmdir failed" "${args[*]}"
+			return 1
+		fi
 		;;
 	mv)
 		if [[ ${#args[@]} -lt 2 ]]; then

@@ -41,3 +41,18 @@
 	[ "$status" -eq 0 ]
 	[ "$output" = '{"default":true}' ]
 }
+
+@test "invalid documents are cached as sanitized fallbacks" {
+	run bash -lc '
+                cd "$(git rev-parse --show-toplevel)" || exit 1
+                source ./src/lib/json_state.sh
+                prefix=invalid_cached_state_case
+                json_var=$(json_state_namespace_var "${prefix}")
+                printf -v "${json_var}" "%s" "{invalid"
+                json_state_get_document "${prefix}" "{\"ok\":true}" first >/dev/null
+                json_state_get_document "${prefix}" '{}' second >/dev/null
+                printf "%s|%s|%s" "${first}" "${second}" "${!json_var}"
+        '
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"ok":true}|{"ok":true}|{"ok":true}' ]
+}
