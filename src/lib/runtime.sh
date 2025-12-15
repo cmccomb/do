@@ -62,9 +62,9 @@ settings_namespace_json_var() {
 }
 
 settings_get_json_document() {
-        # Arguments:
-        #   $1 - settings namespace prefix (string)
-        json_state_get_document "$1"
+	# Arguments:
+	#   $1 - settings namespace prefix (string)
+	json_state_get_document "$1"
 }
 
 settings_set_json_document() {
@@ -118,8 +118,8 @@ set_by_name() {
 }
 
 create_default_settings() {
-        # Arguments:
-        #   $1 - settings namespace prefix
+	# Arguments:
+	#   $1 - settings namespace prefix
 	local settings_prefix config_dir default_model_file config_file model_spec new_settings_json
 	settings_prefix="$1"
 
@@ -163,8 +163,8 @@ create_default_settings() {
                         user_query: ""
                 }')
 
-        settings_set_json_document "${settings_prefix}" "${new_settings_json}"
-        json_state_write_cache "${settings_prefix}" "${new_settings_json}"
+	settings_set_json_document "${settings_prefix}" "${new_settings_json}"
+	json_state_write_cache "${settings_prefix}" "${new_settings_json}"
 }
 
 settings_field_mappings() {
@@ -193,33 +193,33 @@ EOF
 }
 
 apply_settings_to_globals() {
-        # Arguments:
-        #   $1 - settings namespace prefix
-        local settings_prefix
-        settings_prefix="$1"
+	# Arguments:
+	#   $1 - settings namespace prefix
+	local settings_prefix
+	settings_prefix="$1"
 
-        local json key var value
-        json="$(settings_get_json_document "${settings_prefix}")"
+	local json key var value
+	json="$(settings_get_json_document "${settings_prefix}")"
 
-        while read -r key var; do
-                [[ -z "${key}" ]] && continue
-                value=$(jq -r --arg key "${key}" '.[$key] // ""' <<<"${json}")
-                set_by_name "${var}" "${value}"
+	while read -r key var; do
+		[[ -z "${key}" ]] && continue
+		value=$(jq -r --arg key "${key}" '.[$key] // ""' <<<"${json}")
+		set_by_name "${var}" "${value}"
 	done <<<"$(settings_field_mappings)"
 }
 
 capture_globals_into_settings() {
-        # Arguments:
-        #   $1 - settings namespace prefix
-        local settings_prefix
-        settings_prefix="$1"
+	# Arguments:
+	#   $1 - settings namespace prefix
+	local settings_prefix
+	settings_prefix="$1"
 
-        local key var value
-        while read -r key var; do
-                [[ -z "${key}" ]] && continue
-                value="${!var-}"
-                settings_set_json "${settings_prefix}" "${key}" "${value}"
-        done <<<"$(settings_field_mappings)"
+	local key var value
+	while read -r key var; do
+		[[ -z "${key}" ]] && continue
+		value="${!var-}"
+		settings_set_json "${settings_prefix}" "${key}" "${value}"
+	done <<<"$(settings_field_mappings)"
 }
 
 load_runtime_settings() {

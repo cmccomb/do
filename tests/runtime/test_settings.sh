@@ -19,7 +19,7 @@
 }
 
 @test "create_default_settings wires derived defaults and react toggle" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 unset USE_REACT_LLAMA
                 source ./src/lib/runtime.sh
@@ -33,16 +33,16 @@
                         "$(jq -r ".use_react_llama" <<<"${doc}")" \
                         "$(jq -r ".use_react_llama" <"${cache_path}")"
         '
-        [ "$status" -eq 0 ]
-        config_dir_expected="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
-        [ "${lines[0]}" = "${config_dir_expected}" ]
-        [ "${lines[1]}" = "${config_dir_expected}/config.env" ]
-        [ "${lines[2]}" = "true" ]
-        [ "${lines[3]}" = "true" ]
+	[ "$status" -eq 0 ]
+	config_dir_expected="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
+	[ "${lines[0]}" = "${config_dir_expected}" ]
+	[ "${lines[1]}" = "${config_dir_expected}/config.env" ]
+	[ "${lines[2]}" = "true" ]
+	[ "${lines[3]}" = "true" ]
 }
 
 @test "use_react_llama toggle follows environment" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 export USE_REACT_LLAMA=false
                 source ./src/lib/runtime.sh
@@ -50,12 +50,12 @@
                 doc="$(settings_get_json_document compat)"
                 printf "%s" "$(jq -r ".use_react_llama" <<<"${doc}")"
         '
-        [ "$status" -eq 0 ]
-        [ "${output}" = "false" ]
+	[ "$status" -eq 0 ]
+	[ "${output}" = "false" ]
 }
 
 @test "settings json helpers round-trip through globals" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 source ./src/lib/runtime.sh
                 create_default_settings compat
@@ -71,8 +71,8 @@
                         "${after}" \
                         "$(jq -r ".llama_bin" <<<"${doc}")"
         '
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "/custom/bin" ]
-        [ "${lines[1]}" = "/changed/bin" ]
-        [ "${lines[2]}" = "/changed/bin" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "/custom/bin" ]
+	[ "${lines[1]}" = "/changed/bin" ]
+	[ "${lines[2]}" = "/changed/bin" ]
 }

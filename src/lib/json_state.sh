@@ -94,21 +94,21 @@ json_state_get_document() {
 }
 
 json_state_set_document() {
-        # Arguments:
-        #   $1 - namespace prefix (string)
-        #   $2 - JSON document (string)
-        local prefix document json_var sanitized
-        prefix="$1"
-        document="$2"
-        json_var=$(json_state_namespace_var "${prefix}")
+	# Arguments:
+	#   $1 - namespace prefix (string)
+	#   $2 - JSON document (string)
+	local prefix document json_var sanitized
+	prefix="$1"
+	document="$2"
+	json_var=$(json_state_namespace_var "${prefix}")
 
-        if ! sanitized=$(printf '%s' "${document}" | jq -c '.' 2>/dev/null); then
-                printf 'json_state_set_document: invalid JSON for namespace %s\n' "${prefix}" >&2
-                return 1
-        fi
+	if ! sanitized=$(printf '%s' "${document}" | jq -c '.' 2>/dev/null); then
+		printf 'json_state_set_document: invalid JSON for namespace %s\n' "${prefix}" >&2
+		return 1
+	fi
 
-        printf -v "${json_var}" '%s' "${sanitized}"
-        json_state_write_cache "${prefix}" "${sanitized}"
+	printf -v "${json_var}" '%s' "${sanitized}"
+	json_state_write_cache "${prefix}" "${sanitized}"
 }
 
 json_state_set_key() {
