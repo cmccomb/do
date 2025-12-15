@@ -48,6 +48,12 @@ Initialize a config file with your preferred model settings:
 ./src/bin/okso init --model your-org/your-model:custom.gguf --model-branch main
 ```
 
+Defaults land in `${XDG_CONFIG_HOME:-~/.config}/okso/config.env` and are cached
+per run so subsequent shells can reuse any overrides captured in the JSON
+settings namespace. The `USE_REACT_LLAMA` environment variable switches between
+direct responses and the React llama loop before the configuration file is
+loaded.
+
 More scenarios and reference material live in the [docs/](docs/index.md).
 
 ### MCP endpoints
