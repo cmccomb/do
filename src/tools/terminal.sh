@@ -318,10 +318,10 @@ tool_terminal() {
 		shifted_args=("${args[@]:1}")
 		case "${mode}" in
 		encode)
-			terminal_run_in_workdir base64 "${shifted_args[@]}"
+			terminal_run_in_workdir base64 <<<"${shifted_args[@]}"
 			;;
 		decode)
-			terminal_run_in_workdir base64 -d "${shifted_args[@]}"
+			terminal_run_in_workdir base64 -d <<<"${shifted_args[@]}"
 			;;
 		*)
 			log "ERROR" "base64 mode must be encode or decode" "${mode}"

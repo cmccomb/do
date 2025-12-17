@@ -139,10 +139,8 @@
                 set -e
                 source ./src/tools/terminal.sh
                 VERBOSITY=0
-                TERMINAL_WORKDIR="$(mktemp -d)"
-                printf "encode me" >"${TERMINAL_WORKDIR}/payload.txt"
-                TOOL_ARGS='"'"'{"command":"base64","args":["encode","payload.txt"]}'"'"'; tool_terminal >"${TERMINAL_WORKDIR}/encoded.txt"
-                TOOL_ARGS='"'"'{"command":"base64","args":["decode","encoded.txt"]}'"'"'; tool_terminal
+                TOOL_ARGS='"'"'{"command":"base64","args":["encode","encode me"]}'"'"'; encoded="$(tool_terminal | tail -n 1)";
+                TOOL_ARGS="{\"command\":\"base64\",\"args\":[\"decode\",\"$encoded\"]}"; tool_terminal
         '
 	[ "$status" -eq 0 ]
 	last_index=$((${#lines[@]} - 1))
