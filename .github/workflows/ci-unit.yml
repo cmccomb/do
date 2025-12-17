@@ -7,21 +7,12 @@ on:
 
 jobs:
   unit:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     env:
       GEM_HOME: ${{ github.workspace }}/.gem
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Cache apt dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/ci-unit.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-
 
       - name: Cache Ruby gems
         uses: actions/cache@v4
@@ -38,8 +29,8 @@ jobs:
         env:
           GEM_HOME: ${{ env.GEM_HOME }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt jq bc
+          brew update
+          brew install shellcheck shfmt jq bc
           gem install --no-document bashcov simplecov-cobertura
 
       - name: Add Ruby gems to PATH
