@@ -51,6 +51,8 @@ setup() {
 	final_answer="$(parse_json_logs <<<"${output}" | jq -r 'try (map(select(.message=="Final answer"))[0].detail) catch ""')"
 	tool_executions="$(parse_json_logs <<<"${output}" | jq -r 'map(select(.message=="Recorded tool execution")) | length')"
 
+	echo "${output}"
+
 	[[ -n "${planner_tools}" ]]
 	[[ -n "${final_answer}" ]]
 	[ "${tool_executions}" -ge 1 ]

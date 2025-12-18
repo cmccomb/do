@@ -12,13 +12,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bats and bats libs
-        run: brew install bats-core
-
       - name: Install dependencies
         run: |
           brew update
-          brew install shellcheck shfmt jq bc
+          brew install shellcheck shfmt jq bc bats-core
 
       - name: Check formatting
         run: |
