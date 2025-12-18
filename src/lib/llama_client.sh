@@ -121,6 +121,10 @@ llama_infer() {
 
 	start_time_ns=$(date +%s%N)
 
+	if [[ "${VERBOSITY:-0}" -ge 2 ]]; then
+		log "DEBUG" "llama prompt" "${prompt}"
+	fi
+
 	llama_output=$(llama_with_timeout "${llama_args[@]}" 2>"${stderr_file}")
 	exit_code=$?
 

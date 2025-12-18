@@ -14,6 +14,6 @@ The config file is `KEY="value"` style. Supported keys:
 - `TESTING_PASSTHROUGH`: `true` to bypass llama.cpp for offline or deterministic runs.
 - `APPROVE_ALL`: `true` to skip prompts by default.
 - `FORCE_CONFIRM`: `true` to always prompt, even when approvals are automatic.
-- `VERBOSITY`: `0` (quiet), `1` (info), `2` (debug).
+- `VERBOSITY`: `0` (quiet), `1` (info), `2` (debug). Level 2 prints the full LLM prompts.
 
 Environment variables prefixed with `OKSO_` mirror the config keys and take precedence over file values.
