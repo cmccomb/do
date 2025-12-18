@@ -58,11 +58,3 @@ jobs:
           LOG_FILE="$INSTALL_LOG_DIR/uninstall.log"
           scripts/install.sh --prefix "$INSTALL_PREFIX" --uninstall 2>&1 | tee "$LOG_FILE"
           rm -rf "$INSTALL_PREFIX"
-
-      - name: Upload installer logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-logs-${{ matrix.name }}
-          path: ${{ env.INSTALL_LOG_DIR }}
-          retention-days: 7
