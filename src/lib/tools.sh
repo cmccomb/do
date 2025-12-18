@@ -121,9 +121,9 @@ initialize_tools() {
 	register_notes_suite
 	register_reminders_suite
 	register_calendar_suite
-        register_mail_suite
-        register_applescript
-        register_feedback
-        register_final_answer
-        register_web_search
+	register_mail_suite
+	register_applescript
+	register_feedback
+	register_final_answer
+	register_web_search
 }
