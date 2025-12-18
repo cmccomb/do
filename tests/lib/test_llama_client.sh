@@ -61,7 +61,7 @@ SCRIPT
                 [[ "${joined_args}" == *" -r "* ]]
                 [[ "${joined_args}" == *" STOP "* ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "llama_infer uses grammar file flag for non-JSON grammars" {
@@ -90,7 +90,7 @@ SCRIPT
                 [[ "${joined_args}" == *" ${args_dir}/grammar.gbnf "* ]]
                 [[ "${joined_args}" != *" -r "* ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "llama_infer returns llama exit code and logs stderr" {

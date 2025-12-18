@@ -48,7 +48,7 @@ SCRIPT
 }
 
 @test "derive_allowed_tools_from_plan respects react fallback and final answer" {
-run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planner.sh
 tool_names() { printf "%s\n" terminal notes_create final_answer; }

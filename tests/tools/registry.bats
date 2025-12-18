@@ -11,7 +11,7 @@ SCRIPT
 }
 
 @test "register_tool captures descriptors and handlers" {
-run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/tools/registry.sh
 init_tool_registry
