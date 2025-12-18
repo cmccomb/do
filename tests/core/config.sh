@@ -42,7 +42,7 @@ SCRIPT
 }
 
 @test "init_environment disables llama when testing passthrough is set" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 export TESTING_PASSTHROUGH=true
 MODEL_SPEC="demo/repo:demo.gguf"
@@ -55,6 +55,48 @@ init_environment
 printf "%s\n" "${LLAMA_AVAILABLE}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "false" ]
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "false" ]
+}
+
+@test "load_config uses config file Google CSE values" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+config_file="$(mktemp)"
+cat >"${config_file}" <<'EOF'
+OKSO_GOOGLE_CSE_API_KEY="config-key"
+OKSO_GOOGLE_CSE_ID="config-id"
+EOF
+CONFIG_FILE="${config_file}"
+source ./src/lib/config.sh
+load_config
+printf "%s\n%s\n" "${GOOGLE_SEARCH_API_KEY}" "${GOOGLE_SEARCH_CX}"
+rm -f "${config_file}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "config-key" ]
+        [ "${lines[1]}" = "config-id" ]
+}
+
+@test "load_config prefers environment Google CSE overrides" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+config_file="$(mktemp)"
+cat >"${config_file}" <<'EOF'
+OKSO_GOOGLE_CSE_API_KEY="config-key"
+OKSO_GOOGLE_CSE_ID="config-id"
+EOF
+export OKSO_GOOGLE_CSE_API_KEY="env-key"
+export OKSO_GOOGLE_CSE_ID="env-id"
+CONFIG_FILE="${config_file}"
+source ./src/lib/config.sh
+load_config
+printf "%s\n%s\n" "${GOOGLE_SEARCH_API_KEY}" "${GOOGLE_SEARCH_CX}"
+rm -f "${config_file}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "env-key" ]
+        [ "${lines[1]}" = "env-id" ]
 }

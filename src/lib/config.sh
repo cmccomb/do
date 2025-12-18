@@ -15,6 +15,8 @@
 #   FORCE_CONFIRM (bool): always prompt when true.
 #   VERBOSITY (int): logging verbosity; may be overridden by OKSO_VERBOSITY.
 #   DEFAULT_MODEL_FILE (string): fallback file name for parsing model spec.
+#   OKSO_GOOGLE_CSE_API_KEY (string): Google Custom Search API key; may be overridden by environment.
+#   OKSO_GOOGLE_CSE_ID (string): Google Custom Search Engine ID; may be overridden by environment.
 #
 #   okso-branded overrides (legacy DO_* aliases are ignored):
 #     OKSO_MODEL, OKSO_MODEL_BRANCH, OKSO_SUPERVISED, OKSO_VERBOSITY
@@ -107,32 +109,41 @@ detect_config_file() {
 }
 
 load_config() {
-	# Load file-backed configuration first so environment overrides and CLI flags
-	# can layer on top in a predictable order.
-	local model_spec_override model_branch_override
-	if [[ -f "${CONFIG_FILE}" ]]; then
-		# shellcheck source=/dev/null
-		source "${CONFIG_FILE}"
-	fi
+        # Load file-backed configuration first so environment overrides and CLI flags
+        # can layer on top in a predictable order.
+        local model_spec_override model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
+        # string: preserve preexisting environment values so they can override config file entries.
+        preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
+        preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
+        if [[ -f "${CONFIG_FILE}" ]]; then
+                # shellcheck source=/dev/null
+                source "${CONFIG_FILE}"
+        fi
 
-	MODEL_SPEC=${MODEL_SPEC:-"${DEFAULT_MODEL_SPEC_BASE}"}
-	MODEL_BRANCH=${MODEL_BRANCH:-${DEFAULT_MODEL_BRANCH_BASE}}
-	VERBOSITY=${VERBOSITY:-1}
-	APPROVE_ALL=${APPROVE_ALL:-false}
-	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
+        OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
+        OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id:-${OKSO_GOOGLE_CSE_ID:-}}"
+
+        MODEL_SPEC=${MODEL_SPEC:-"${DEFAULT_MODEL_SPEC_BASE}"}
+        MODEL_BRANCH=${MODEL_BRANCH:-${DEFAULT_MODEL_BRANCH_BASE}}
+        VERBOSITY=${VERBOSITY:-1}
+        APPROVE_ALL=${APPROVE_ALL:-false}
+        FORCE_CONFIRM=${FORCE_CONFIRM:-false}
 
 	if [[ -n "${OKSO_MODEL:-}" ]]; then
 		model_spec_override="${OKSO_MODEL}"
 		MODEL_SPEC="${model_spec_override}"
 	fi
 
-	if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
-		model_branch_override="${OKSO_MODEL_BRANCH}"
-		MODEL_BRANCH="${model_branch_override}"
-	fi
+        if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
+                model_branch_override="${OKSO_MODEL_BRANCH}"
+                MODEL_BRANCH="${model_branch_override}"
+        fi
 
-	apply_supervised_overrides
-	apply_verbosity_overrides
+        GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
+        GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
+
+        apply_supervised_overrides
+        apply_verbosity_overrides
 }
 
 write_config_file() {
