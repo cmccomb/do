@@ -13,6 +13,8 @@ The planner registers these tools (each implemented under `src/tools/<name>.sh`)
 - `applescript`: execute AppleScript snippets on macOS (no-op elsewhere).
 - `final_answer`: emit the assistant's final reply.
 
+For end-to-end scenarios that show how tools fit into approvals and offline runs, see the [Run with approvals](../user-guides/usage.md#run-with-approvals) and [Offline or noninteractive feedback collection](../user-guides/usage.md#offline-or-noninteractive-feedback-collection) walkthroughs.
+
 ## Terminal tool
 
 The `terminal` tool keeps a per-query working directory so subsequent calls share context. The default `status` command shows the current directory and a listing. Mutation commands validate arguments and keep `rm` interactive by default.
