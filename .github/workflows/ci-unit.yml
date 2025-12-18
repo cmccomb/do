@@ -14,15 +14,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Cache apt dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/ci-unit.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-
-
       - name: Cache Ruby gems
         uses: actions/cache@v4
         with:
@@ -38,6 +29,7 @@ jobs:
         env:
           GEM_HOME: ${{ env.GEM_HOME }}
         run: |
+          brew update
           brew install -y shellcheck shfmt jq bc
           gem install --no-document bashcov simplecov-cobertura
 
