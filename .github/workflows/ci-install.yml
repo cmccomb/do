@@ -24,11 +24,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Define log directory
-        run: |
-          echo "INSTALL_LOG_DIR=$RUNNER_TEMP/installer-logs/${{ matrix.name }}" >> "$GITHUB_ENV"
-
       - name: Install dependencies
         run: |
           brew update
