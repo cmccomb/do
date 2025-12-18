@@ -6,6 +6,9 @@ Use this map to find the right guide:
   - [Installation](user-guides/installation.md): install, upgrade, or uninstall the CLI.
   - [Usage](user-guides/usage.md): command-line flags and common execution patterns.
 - **Reference** (`docs/reference/`)
+  - [Execution model](reference/execution-model.md): planning steps, ReAct loops, and tracing hooks.
+  - [Feedback](reference/feedback.md): rating plan items interactively or non-interactively.
+  - [Prompts](reference/prompts.md): template layout and grammar links.
   - [Configuration](reference/configuration.md): environment variables and config file keys.
   - [Tools](reference/tools.md): available tool handlers and platform notes.
   - [Grammars](reference/grammars.md): JSON schemas that keep planner output predictable.

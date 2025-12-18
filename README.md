@@ -46,36 +46,8 @@ Initialize a config file with your preferred model settings:
 ./src/bin/okso init --model your-org/your-model:custom.gguf --model-branch main
 ```
 
-More scenarios and reference material live in the [docs/](docs/index.md).
+More scenarios and reference material live in the [docs/](docs/index.md), including:
 
-## Execution model
-
-okso separates high-level planning from step-by-step execution:
-
-- **Planner pass:** drafts a numbered outline that mentions the tools to use.
-- **ReAct loop:** by default, llama.cpp is queried before each step to pick the next tool
-  and craft an appropriate call based on prior observations.
-
-If llama.cpp is unavailable or `USE_REACT_LLAMA=false` is set, okso falls back to a
-deterministic sequence that feeds the original user query to each planned tool.
-
-## Capturing feedback
-
-The bundled `feedback` tool records a 1-5 rating and optional comments for the
-current plan item. Provide a JSON context payload describing the step and
-observation summary:
-
-```bash
-TOOL_QUERY='{"plan_item":"Summarize notes","observations":"Draft complete"}' \
-  FEEDBACK_NONINTERACTIVE_INPUT="5|Clear summary" \
-  bash -lc 'source ./src/tools/feedback.sh; tool_feedback'
-```
-
-Interactive prompts are enabled by default. Set `FEEDBACK_ENABLED=false` to
-skip prompting entirely or `FEEDBACK_OUTPUT_PATH=${HOME}/.okso/feedback.json` to
-persist the captured payload within the writable allowlist.
-
-## Prompt assets
-
-Prompt templates live alongside grammar definitions to keep the assistant behaviour easy to review.
-Each prompt has a dedicated file in `src/prompts/` (for example, `concise_response.txt`, `planner.txt`, and `react.txt`) and is loaded by the helpers in `src/lib/prompts.sh` before being sent to llama.cpp.
+- [Execution model](docs/reference/execution-model.md): how planning and ReAct loops interact with tool calls.
+- [Capturing feedback](docs/reference/feedback.md): recording plan ratings and configuring prompts.
+- [Prompt assets](docs/reference/prompts.md): where prompts live and how they load.
