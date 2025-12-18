@@ -54,7 +54,7 @@ llama_with_timeout() {
 		fi
 
 		if command -v perl >/dev/null 2>&1; then
-			perl -e 'alarm shift; $SIG{ALRM}=sub { exit 124 }; exec @ARGV' "${timeout_seconds}" "$@"
+			perl -e '$timeout = shift; eval { local $SIG{ALRM} = sub { die "TIMEOUT\n" }; alarm $timeout; system(@ARGV); alarm 0; }; if ($@ eq "TIMEOUT\n") { exit 124 } else { exit ($? >> 8) }' "${timeout_seconds}" "$@"
 			return $?
 		fi
 
