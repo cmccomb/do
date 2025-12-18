@@ -206,6 +206,34 @@ format_tool_history() {
 	}
 
 	while IFS= read -r line || [ -n "${line}" ]; do
+		# Try to parse line as a JSON entry from record_tool_execution
+		if jq -e '.step != null and .action != null' <<<"${line}" >/dev/null 2>&1; then
+			append_current_entry
+			current_step=$(jq -r '.step' <<<"${line}")
+			local tool args thought obs
+			tool=$(jq -r '.action.tool' <<<"${line}")
+			args=$(jq -c '.action.args' <<<"${line}")
+			thought=$(jq -r '.thought' <<<"${line}")
+			obs=$(jq -c '.observation' <<<"${line}")
+
+			# Pretty print observation if it's JSON object
+			if jq -e '.observation | type == "object"' <<<"${line}" >/dev/null 2>&1; then
+				# Try to make it a bit more readable if it's a known search result format
+				if [[ "${tool}" == "web_search" ]]; then
+					obs=$(jq -r '.observation.items // [] | map("- " + .title + ": " + .snippet) | join("\n")' <<<"${line}" 2>/dev/null || jq -r '.observation | tostring' <<<"${line}")
+				else
+					obs=$(jq -r '.observation | tostring' <<<"${line}")
+				fi
+			elif jq -e '.observation | type == "string"' <<<"${line}" >/dev/null 2>&1; then
+				obs=$(jq -r '.observation' <<<"${line}")
+			fi
+
+			current_action="${thought} (tool: ${tool}, args: ${args})"
+			current_observation="${obs}"
+			append_current_entry
+			continue
+		fi
+
 		if [[ "${line}" =~ ^[[:space:]]*Step[[:space:]]+([0-9]+)[[:space:]]*(.*)$ ]]; then
 			append_current_entry
 
