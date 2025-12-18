@@ -113,8 +113,8 @@ load_config() {
 	# can layer on top in a predictable order.
 	local model_spec_override model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
 	# string: preserve preexisting environment values so they can override config file entries.
-	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
-	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
+	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-"AIzaSyBBXNq-DX1ENgFAiGCzTawQtWmRMSbDljk"}"
+	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-"003333935467370160898:f2ntsnftsjy"}"
 	if [[ -f "${CONFIG_FILE}" ]]; then
 		# shellcheck source=/dev/null
 		source "${CONFIG_FILE}"
