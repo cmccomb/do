@@ -17,3 +17,5 @@ The config file is `KEY="value"` style. Supported keys:
 - `VERBOSITY`: `0` (quiet), `1` (info), `2` (debug). Level 2 prints the full LLM prompts.
 
 Environment variables prefixed with `OKSO_` mirror the config keys and take precedence over file values.
+
+See the [Initialize config for a custom model](../user-guides/usage.md#initialize-config-for-a-custom-model) walkthrough for a step-by-step example that combines `okso init` with environment overrides.
