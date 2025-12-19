@@ -96,8 +96,8 @@ validate_args_schema() {
 	true
 	end)
 	' <<<"${args_schema}" >/dev/null 2>&1; then
-	log "ERROR" "Invalid args schema" "${args_schema}" || true
-	return 1
+		log "ERROR" "Invalid args schema" "${args_schema}" || true
+		return 1
 	fi
 }
 
@@ -119,15 +119,15 @@ update_tool_registry_json() {
 	safety="$5"
 	handler="$6"
 	args_schema="$7"
-	
+
 	jq -c \
-	--arg name "${name}" \
-	--arg description "${description}" \
-	--arg command "${command}" \
-	--arg safety "${safety}" \
-	--arg handler "${handler}" \
-	--argjson args_schema "${args_schema}" \
-	'(.names //= [])
+		--arg name "${name}" \
+		--arg description "${description}" \
+		--arg command "${command}" \
+		--arg safety "${safety}" \
+		--arg handler "${handler}" \
+		--argjson args_schema "${args_schema}" \
+		'(.names //= [])
 	| (.registry //= {})
 	| (if (.names | index($name)) == null then .names += [$name] else . end)
 	| .registry[$name] = {description:$description, command:$command, safety:$safety, handler:$handler, args_schema:$args_schema}' <<<"${registry_json}"
