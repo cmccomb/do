@@ -43,7 +43,7 @@ setup() {
 	export USE_REACT_LLAMA="${USE_REACT_LLAMA:-true}"
 	export VERBOSITY="${VERBOSITY:-1}"
 
-	run ./src/bin/okso --yes --model "${MODEL_SPEC}" --model-branch "${MODEL_BRANCH}" -- "summarize this repository layout"
+	run ./src/bin/okso --yes --model "${MODEL_SPEC}" --model-branch "${MODEL_BRANCH}" -- "what is 2 plus 2?"
 
 	[ "$status" -eq 0 ]
 
