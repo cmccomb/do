@@ -15,16 +15,13 @@
 #   TESTING_PASSTHROUGH (bool): forces llama calls off during tests.
 #   APPROVE_ALL (bool): skip prompts when true.
 #   FORCE_CONFIRM (bool): always prompt when true.
-#   VERBOSITY (int): logging verbosity; may be overridden by OKSO_VERBOSITY.
+#   VERBOSITY (int): logging verbosity.
 #   DEFAULT_MODEL_FILE (string): fallback file name for parsing model spec.
 #   OKSO_GOOGLE_CSE_API_KEY (string): Google Custom Search API key; may be overridden by environment.
 #   OKSO_GOOGLE_CSE_ID (string): Google Custom Search Engine ID; may be overridden by environment.
 #
-#   okso-branded overrides (legacy DO_* aliases are ignored):
-#     OKSO_MODEL, OKSO_MODEL_BRANCH, OKSO_SUPERVISED, OKSO_VERBOSITY
-#
 # Dependencies:
-#   - bash 5+
+#   - bash 3.2+
 #   - mkdir, cat
 #
 # Exit codes:
@@ -53,52 +50,6 @@ readonly DEFAULT_REACT_MODEL_SPEC_BASE DEFAULT_REACT_MODEL_BRANCH_BASE
 readonly DEFAULT_PLANNER_MODEL_REPO_BASE DEFAULT_PLANNER_MODEL_FILE_BASE
 readonly DEFAULT_PLANNER_MODEL_SPEC_BASE DEFAULT_PLANNER_MODEL_BRANCH_BASE
 
-normalize_boolean_input() {
-	# Arguments:
-	#   $1 - input value (string)
-	#   $2 - fallback value when input is invalid (string; defaults to "false")
-	local value fallback
-	value="$1"
-	fallback="${2:-false}"
-
-	case "${value}" in
-	true | True | TRUE | 1)
-		printf 'true'
-		;;
-	false | False | FALSE | 0)
-		printf 'false'
-		;;
-	*)
-		printf '%s' "${fallback}"
-		;;
-	esac
-}
-
-apply_supervised_overrides() {
-	local supervised_raw supervised
-	supervised_raw="${OKSO_SUPERVISED:-}"
-	if [[ -z "${supervised_raw}" ]]; then
-		return 0
-	fi
-
-	supervised=$(normalize_boolean_input "${supervised_raw}" "true")
-	if [[ "${supervised}" == false ]]; then
-		APPROVE_ALL=true
-	else
-		APPROVE_ALL=false
-	fi
-}
-
-apply_verbosity_overrides() {
-	local verbosity_override
-	verbosity_override="${OKSO_VERBOSITY:-}"
-	if [[ -z "${verbosity_override}" ]]; then
-		return 0
-	fi
-
-	VERBOSITY="${verbosity_override}"
-}
-
 detect_config_file() {
 	# Parse the config path early so subsequent helpers can honor user-provided
 	# locations before any other arguments are interpreted.
@@ -125,54 +76,134 @@ detect_config_file() {
 load_config() {
 	# Load file-backed configuration first so environment overrides and CLI flags
 	# can layer on top in a predictable order.
-	local model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
-	# string: preserve preexisting environment values so they can override config file entries.
-	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
-	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
+	local preexisting_okso_google_cse_api_key preexisting_okso_google_cse_api_key_set
+	local preexisting_okso_google_cse_id preexisting_okso_google_cse_id_set
+	local preexisting_planner_model_spec preexisting_planner_model_spec_set
+	local preexisting_planner_model_branch preexisting_planner_model_branch_set
+	local preexisting_react_model_spec preexisting_react_model_spec_set
+	local preexisting_react_model_branch preexisting_react_model_branch_set
+	local preexisting_default_model_file preexisting_default_model_file_set
+	local preexisting_default_planner_model_file preexisting_default_planner_model_file_set
+	local preexisting_verbosity preexisting_verbosity_set
+	local preexisting_approve_all preexisting_approve_all_set
+	local preexisting_force_confirm preexisting_force_confirm_set
+
+	preexisting_okso_google_cse_api_key_set=false
+	preexisting_okso_google_cse_id_set=false
+	preexisting_planner_model_spec_set=false
+	preexisting_planner_model_branch_set=false
+	preexisting_react_model_spec_set=false
+	preexisting_react_model_branch_set=false
+	preexisting_default_model_file_set=false
+	preexisting_default_planner_model_file_set=false
+	preexisting_verbosity_set=false
+	preexisting_approve_all_set=false
+	preexisting_force_confirm_set=false
+
+	if [[ -n "${OKSO_GOOGLE_CSE_API_KEY+x}" ]]; then
+		preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY}"
+		preexisting_okso_google_cse_api_key_set=true
+	fi
+	if [[ -n "${OKSO_GOOGLE_CSE_ID+x}" ]]; then
+		preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID}"
+		preexisting_okso_google_cse_id_set=true
+	fi
+	if [[ -n "${PLANNER_MODEL_SPEC+x}" ]]; then
+		preexisting_planner_model_spec="${PLANNER_MODEL_SPEC}"
+		preexisting_planner_model_spec_set=true
+	fi
+	if [[ -n "${PLANNER_MODEL_BRANCH+x}" ]]; then
+		preexisting_planner_model_branch="${PLANNER_MODEL_BRANCH}"
+		preexisting_planner_model_branch_set=true
+	fi
+	if [[ -n "${REACT_MODEL_SPEC+x}" ]]; then
+		preexisting_react_model_spec="${REACT_MODEL_SPEC}"
+		preexisting_react_model_spec_set=true
+	fi
+	if [[ -n "${REACT_MODEL_BRANCH+x}" ]]; then
+		preexisting_react_model_branch="${REACT_MODEL_BRANCH}"
+		preexisting_react_model_branch_set=true
+	fi
+	if [[ -n "${DEFAULT_MODEL_FILE+x}" ]]; then
+		preexisting_default_model_file="${DEFAULT_MODEL_FILE}"
+		preexisting_default_model_file_set=true
+	fi
+	if [[ -n "${DEFAULT_PLANNER_MODEL_FILE+x}" ]]; then
+		preexisting_default_planner_model_file="${DEFAULT_PLANNER_MODEL_FILE}"
+		preexisting_default_planner_model_file_set=true
+	fi
+	if [[ -n "${VERBOSITY+x}" ]]; then
+		preexisting_verbosity="${VERBOSITY}"
+		preexisting_verbosity_set=true
+	fi
+	if [[ -n "${APPROVE_ALL+x}" ]]; then
+		preexisting_approve_all="${APPROVE_ALL}"
+		preexisting_approve_all_set=true
+	fi
+	if [[ -n "${FORCE_CONFIRM+x}" ]]; then
+		preexisting_force_confirm="${FORCE_CONFIRM}"
+		preexisting_force_confirm_set=true
+	fi
+
 	if [[ -f "${CONFIG_FILE}" ]]; then
 		# shellcheck source=/dev/null
 		source "${CONFIG_FILE}"
 	fi
 
-	OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
-	OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id:-${OKSO_GOOGLE_CSE_ID:-}}"
-
-	DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
-	DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
-
-	if [[ -n "${MODEL_SPEC:-}" && -z "${PLANNER_MODEL_SPEC:-}" && -z "${REACT_MODEL_SPEC:-}" ]]; then
-		PLANNER_MODEL_SPEC="${MODEL_SPEC}"
-		REACT_MODEL_SPEC="${MODEL_SPEC}"
+	if [[ "${preexisting_okso_google_cse_api_key_set}" == true ]]; then
+		OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key}"
 	fi
-	if [[ -n "${MODEL_BRANCH:-}" && -z "${PLANNER_MODEL_BRANCH:-}" && -z "${REACT_MODEL_BRANCH:-}" ]]; then
-		PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
-		REACT_MODEL_BRANCH="${MODEL_BRANCH}"
+	if [[ "${preexisting_okso_google_cse_id_set}" == true ]]; then
+		OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id}"
 	fi
-
-	PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
-	PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-${DEFAULT_PLANNER_MODEL_BRANCH_BASE}}
-	REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
-	REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-${DEFAULT_REACT_MODEL_BRANCH_BASE}}
-	VERBOSITY=${VERBOSITY:-1}
-	APPROVE_ALL=${APPROVE_ALL:-false}
-	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
-
-	if [[ -n "${OKSO_MODEL:-}" ]]; then
-		PLANNER_MODEL_SPEC="${OKSO_MODEL}"
-		REACT_MODEL_SPEC="${OKSO_MODEL}"
+	if [[ "${preexisting_default_model_file_set}" == true ]]; then
+		DEFAULT_MODEL_FILE="${preexisting_default_model_file}"
+	else
+		DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
 	fi
-
-	if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
-		model_branch_override="${OKSO_MODEL_BRANCH}"
-		PLANNER_MODEL_BRANCH="${model_branch_override}"
-		REACT_MODEL_BRANCH="${model_branch_override}"
+	if [[ "${preexisting_default_planner_model_file_set}" == true ]]; then
+		DEFAULT_PLANNER_MODEL_FILE="${preexisting_default_planner_model_file}"
+	else
+		DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
+	fi
+	if [[ "${preexisting_planner_model_spec_set}" == true ]]; then
+		PLANNER_MODEL_SPEC="${preexisting_planner_model_spec}"
+	else
+		PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
+	fi
+	if [[ "${preexisting_planner_model_branch_set}" == true ]]; then
+		PLANNER_MODEL_BRANCH="${preexisting_planner_model_branch}"
+	else
+		PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-${DEFAULT_PLANNER_MODEL_BRANCH_BASE}}
+	fi
+	if [[ "${preexisting_react_model_spec_set}" == true ]]; then
+		REACT_MODEL_SPEC="${preexisting_react_model_spec}"
+	else
+		REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
+	fi
+	if [[ "${preexisting_react_model_branch_set}" == true ]]; then
+		REACT_MODEL_BRANCH="${preexisting_react_model_branch}"
+	else
+		REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-${DEFAULT_REACT_MODEL_BRANCH_BASE}}
+	fi
+	if [[ "${preexisting_verbosity_set}" == true ]]; then
+		VERBOSITY="${preexisting_verbosity}"
+	else
+		VERBOSITY=${VERBOSITY:-1}
+	fi
+	if [[ "${preexisting_approve_all_set}" == true ]]; then
+		APPROVE_ALL="${preexisting_approve_all}"
+	else
+		APPROVE_ALL=${APPROVE_ALL:-false}
+	fi
+	if [[ "${preexisting_force_confirm_set}" == true ]]; then
+		FORCE_CONFIRM="${preexisting_force_confirm}"
+	else
+		FORCE_CONFIRM=${FORCE_CONFIRM:-false}
 	fi
 
 	GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
 	GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
-
-	apply_supervised_overrides
-	apply_verbosity_overrides
 }
 
 write_config_file() {
@@ -278,22 +309,6 @@ hydrate_model_specs() {
 	# Normalizes planner and react model specs into repo and file components.
 	DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
 	DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
-
-	if [[ -z "${PLANNER_MODEL_SPEC:-}" && -n "${MODEL_SPEC:-}" ]]; then
-		PLANNER_MODEL_SPEC="${MODEL_SPEC}"
-	fi
-
-	if [[ -z "${REACT_MODEL_SPEC:-}" && -n "${MODEL_SPEC:-}" ]]; then
-		REACT_MODEL_SPEC="${MODEL_SPEC}"
-	fi
-
-	if [[ -z "${PLANNER_MODEL_BRANCH:-}" && -n "${MODEL_BRANCH:-}" ]]; then
-		PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
-	fi
-
-	if [[ -z "${REACT_MODEL_BRANCH:-}" && -n "${MODEL_BRANCH:-}" ]]; then
-		REACT_MODEL_BRANCH="${MODEL_BRANCH}"
-	fi
 
 	PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
 	PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-"${DEFAULT_PLANNER_MODEL_BRANCH_BASE}"}
