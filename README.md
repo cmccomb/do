@@ -28,9 +28,8 @@ See [docs/user-guides/installation.md](docs/user-guides/installation.md) for add
 
 ## Basic usage
 
-See [docs/user-guides/usage.md](docs/user-guides/usage.md) for task-based walkthroughs (approvals, offline feedback capture, and configuration setup). Reference material lives in the [docs/](docs/index.md), including:
+See [docs/user-guides/usage.md](docs/user-guides/usage.md) for task-based walkthroughs (approvals, offline and configuration setup). Reference material lives in the [docs/](docs/index.md), including:
 
 - [Execution model](docs/reference/execution-model.md): how planning and ReAct loops interact with tool calls.
-- [Capturing feedback](docs/reference/feedback.md): recording plan ratings and configuring prompts.
 - [Prompt assets](docs/reference/prompts.md): where prompts live and how they load.
 - [Architecture overview](docs/reference/architecture.md): deeper look at the planner pass, ReAct loop, llama.cpp fallbacks, and tool ranking.

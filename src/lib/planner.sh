@@ -492,7 +492,7 @@ format_tool_args() {
 	applescript)
 		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
 		;;
-	feedback | final_answer)
+	final_answer)
 		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
 		;;
 	*)
@@ -544,7 +544,7 @@ extract_tool_query() {
 	applescript)
 		jq -r --arg key "${text_key}" '.[$key] // ""' <<<"${args_json}" 2>/dev/null || printf ''
 		;;
-	feedback | final_answer)
+	final_answer)
 		jq -r --arg key "${text_key}" '.[$key] // ""' <<<"${args_json}" 2>/dev/null || printf ''
 		;;
 	clipboard_paste | notes_list | reminders_list | calendar_list | mail_list_inbox | mail_list_unread)

@@ -29,29 +29,6 @@ Use `./src/bin/okso --help` to see all flags. The CLI walks through planning and
 
 5. Increase logging with `--verbose` or silence informational logs with `--quiet` when running unattended scripts.
 
-### Offline or noninteractive feedback collection
-
-The `feedback` tool can run without prompts while still capturing ratings and notes.
-
-1. Disable interactive prompts and pre-fill a rating and note using `FEEDBACK_NONINTERACTIVE_INPUT` (`rating|note`). To bypass llama.cpp entirely for deterministic scoring, set `TESTING_PASSTHROUGH=true`.
-
-   ```bash
-   FEEDBACK_NONINTERACTIVE_INPUT="5|Clear summary" \
-   TESTING_PASSTHROUGH=true \
-   ./src/bin/okso --yes -- "summarize research notes"
-   ```
-
-2. When you only need to collect feedback artifacts, call the tool directly with a context payload and an output file:
-
-   ```bash
-   TOOL_QUERY='{"plan_item":"Summarize notes","observations":"Draft complete"}' \
-     FEEDBACK_NONINTERACTIVE_INPUT="4|Mentioned gaps" \
-     FEEDBACK_OUTPUT_PATH="${HOME}/.okso/feedback.jsonl" \
-     bash -lc 'source ./src/tools/feedback.sh; tool_feedback'
-   ```
-
-3. Turn off prompts entirely for CI runs with `FEEDBACK_ENABLED=false`; set `FEEDBACK_MIN_INTERVAL` or `FEEDBACK_MAX_ENTRIES` to tune churn and storage rotation.
-
 ### Initialize config for a custom model
 
 1. Generate a config file without executing any plan using the `init` subcommand. Supply your preferred model and optional branch:

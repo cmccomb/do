@@ -204,12 +204,12 @@ tool_feedback() {
 register_feedback() {
 	local args_schema
 
-	args_schema=$(jq -nc '{"type":"object","properties":{"plan_item":{"type":"string","minLength":1},"observations":{"type":"string","minLength":1}},"additionalProperties":false}')
+	args_schema=$(jq -nc '{"type":"object","properties":{"query_to_user":{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"feedback" \
-		"Collect a 1-5 rating and optional comments for the current plan step." \
+		"WHEN ABSOLUTELY NECESSARY use this tool to ask the user a question to receive more information to complete your task." \
 		"feedback <json context>" \
-		"Prompts the user; respects FEEDBACK_ENABLED=false to skip interaction." \
+		"Prompts the user. ONLY invoke if ABSOLUTELY essential." \
 		tool_feedback \
 		"${args_schema}"
 }

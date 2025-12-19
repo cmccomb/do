@@ -64,10 +64,10 @@ log_emit() {
 
 	case "${format_style}" in
 	pretty)
-		printf '%s\n' "${payload}" | jq '.'
+		printf '%s\n' "${payload}" | jq '.' >&2
 		;;
 	*)
-		printf '%s\n' "${payload}" | jq -c '.'
+		printf '%s\n' "${payload}" | jq -c '.' >&2
 		;;
 	esac
 }
