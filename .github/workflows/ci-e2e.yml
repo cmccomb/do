@@ -16,7 +16,7 @@ on:
       - src/tools/**
 
 env:
-  MODEL_SPEC: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF:tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+  MODEL_SPEC: bartowski/SmolLM2-135M-Instruct-GGUF:SmolLM2-135M-Instruct-Q4_K_M.gguf
   MODEL_BRANCH: main
   LLAMA_BIN: llama-cli
   APPROVE_ALL: true
@@ -47,4 +47,4 @@ jobs:
           MODEL_BRANCH: ${{ env.MODEL_BRANCH }}
         run: |
           set -euxo pipefail
-          bats --print-output-on-failure tests/runtime/test_macos_tiny_llama.bats | tee macos-e2e.log
+          bats --print-output-on-failure tests/runtime/test_macos_tiny_llama.bats
