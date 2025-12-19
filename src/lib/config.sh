@@ -10,6 +10,10 @@
 #   CONFIG_FILE (string): config path; default resolved in detect_config_file.
 #   MODEL_SPEC (string): HF repo[:file] spec; may be overridden by OKSO_MODEL.
 #   MODEL_BRANCH (string): HF branch; may be overridden by OKSO_MODEL_BRANCH.
+#   PLANNER_MODEL_SPEC (string): HF repo[:file] spec for planner llama calls.
+#   PLANNER_MODEL_BRANCH (string): HF branch for planner model downloads.
+#   REACT_MODEL_SPEC (string): HF repo[:file] spec for ReAct llama calls.
+#   REACT_MODEL_BRANCH (string): HF branch for ReAct model downloads.
 #   TESTING_PASSTHROUGH (bool): forces llama calls off during tests.
 #   APPROVE_ALL (bool): skip prompts when true.
 #   FORCE_CONFIRM (bool): always prompt when true.
@@ -38,6 +42,13 @@ readonly DEFAULT_MODEL_REPO_BASE="bartowski/Qwen_Qwen3-1.7B-GGUF"
 readonly DEFAULT_MODEL_FILE_BASE="Qwen_Qwen3-1.7B-Q4_K_M.gguf"
 readonly DEFAULT_MODEL_SPEC_BASE="${DEFAULT_MODEL_REPO_BASE}:${DEFAULT_MODEL_FILE_BASE}"
 readonly DEFAULT_MODEL_BRANCH_BASE="main"
+readonly DEFAULT_REACT_MODEL_SPEC_BASE="${DEFAULT_MODEL_SPEC_BASE}"
+readonly DEFAULT_REACT_MODEL_BRANCH_BASE="${DEFAULT_MODEL_BRANCH_BASE}"
+
+readonly DEFAULT_PLANNER_MODEL_REPO_BASE="bartowski/Qwen_Qwen3-8B-GGUF"
+readonly DEFAULT_PLANNER_MODEL_FILE_BASE="Qwen_Qwen3-8B-Q4_K_M.gguf"
+readonly DEFAULT_PLANNER_MODEL_SPEC_BASE="${DEFAULT_PLANNER_MODEL_REPO_BASE}:${DEFAULT_PLANNER_MODEL_FILE_BASE}"
+readonly DEFAULT_PLANNER_MODEL_BRANCH_BASE="main"
 
 normalize_boolean_input() {
 	# Arguments:
@@ -109,12 +120,13 @@ detect_config_file() {
 }
 
 load_config() {
-	# Load file-backed configuration first so environment overrides and CLI flags
-	# can layer on top in a predictable order.
-	local model_spec_override model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
-	# string: preserve preexisting environment values so they can override config file entries.
-	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
-	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
+        # Load file-backed configuration first so environment overrides and CLI flags
+        # can layer on top in a predictable order.
+        local model_spec_override model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
+        local model_spec_was_set planner_model_spec_was_set model_branch_was_set planner_model_branch_was_set
+        # string: preserve preexisting environment values so they can override config file entries.
+        preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
+        preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
 	if [[ -f "${CONFIG_FILE}" ]]; then
 		# shellcheck source=/dev/null
 		source "${CONFIG_FILE}"
@@ -123,24 +135,46 @@ load_config() {
 	OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
 	OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id:-${OKSO_GOOGLE_CSE_ID:-}}"
 
-	MODEL_SPEC=${MODEL_SPEC:-"${DEFAULT_MODEL_SPEC_BASE}"}
-	MODEL_BRANCH=${MODEL_BRANCH:-${DEFAULT_MODEL_BRANCH_BASE}}
-	VERBOSITY=${VERBOSITY:-1}
-	APPROVE_ALL=${APPROVE_ALL:-false}
-	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
+        model_spec_was_set=${MODEL_SPEC+x}
+        planner_model_spec_was_set=${PLANNER_MODEL_SPEC+x}
+        model_branch_was_set=${MODEL_BRANCH+x}
+        planner_model_branch_was_set=${PLANNER_MODEL_BRANCH+x}
 
-	if [[ -n "${OKSO_MODEL:-}" ]]; then
-		model_spec_override="${OKSO_MODEL}"
-		MODEL_SPEC="${model_spec_override}"
-	fi
+        DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
+        DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
 
-	if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
-		model_branch_override="${OKSO_MODEL_BRANCH}"
-		MODEL_BRANCH="${model_branch_override}"
-	fi
+        MODEL_SPEC=${MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
+        MODEL_BRANCH=${MODEL_BRANCH:-${DEFAULT_REACT_MODEL_BRANCH_BASE}}
+        PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
+        PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-${DEFAULT_PLANNER_MODEL_BRANCH_BASE}}
+        REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${MODEL_SPEC}"}
+        REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-${MODEL_BRANCH}}
+        VERBOSITY=${VERBOSITY:-1}
+        APPROVE_ALL=${APPROVE_ALL:-false}
+        FORCE_CONFIRM=${FORCE_CONFIRM:-false}
 
-	GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
-	GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
+        if [[ -n "${OKSO_MODEL:-}" ]]; then
+                model_spec_override="${OKSO_MODEL}"
+                MODEL_SPEC="${model_spec_override}"
+        fi
+
+        if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
+                model_branch_override="${OKSO_MODEL_BRANCH}"
+                MODEL_BRANCH="${model_branch_override}"
+        fi
+
+        REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${MODEL_SPEC}"}
+        REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-"${MODEL_BRANCH}"}
+
+        if [[ -z "${planner_model_spec_was_set:-}" && -n "${model_spec_was_set:-}" ]]; then
+                PLANNER_MODEL_SPEC="${MODEL_SPEC}"
+        fi
+        if [[ -z "${planner_model_branch_was_set:-}" && -n "${model_branch_was_set:-}" ]]; then
+                PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
+        fi
+
+        GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
+        GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
 
 	apply_supervised_overrides
 	apply_verbosity_overrides
@@ -165,6 +199,10 @@ write_config_file() {
 	cat >"${CONFIG_FILE}" <<EOF_CONFIG
 MODEL_SPEC=$(quote_config_value "${MODEL_SPEC}")
 MODEL_BRANCH=$(quote_config_value "${MODEL_BRANCH}")
+PLANNER_MODEL_SPEC=$(quote_config_value "${PLANNER_MODEL_SPEC}")
+PLANNER_MODEL_BRANCH=$(quote_config_value "${PLANNER_MODEL_BRANCH}")
+REACT_MODEL_SPEC=$(quote_config_value "${REACT_MODEL_SPEC}")
+REACT_MODEL_BRANCH=$(quote_config_value "${REACT_MODEL_BRANCH}")
 VERBOSITY=${VERBOSITY}
 APPROVE_ALL=${APPROVE_ALL}
 FORCE_CONFIRM=${FORCE_CONFIRM}
@@ -223,24 +261,56 @@ normalize_approval_flags() {
 	esac
 }
 
-hydrate_model_spec() {
-	# Normalizes MODEL_SPEC into repo and file components for llama.cpp calls.
-	local model_parts
-	# parse_model_spec prints repo then file on separate lines for easy
-	# consumption; we preserve that order here explicitly.
-	model_parts=()
-	while IFS= read -r line; do
-		model_parts+=("$line")
-	done < <(parse_model_spec "$MODEL_SPEC" "$DEFAULT_MODEL_FILE")
-	# shellcheck disable=SC2034
-	MODEL_REPO="${model_parts[0]}"
-	# shellcheck disable=SC2034
-	MODEL_FILE="${model_parts[1]}"
+hydrate_model_spec_to_vars() {
+        # Normalizes a model spec into repo and file components for llama.cpp calls.
+        # Arguments:
+        #   $1 - model spec string
+        #   $2 - default file name
+        #   $3 - repo variable name to populate
+        #   $4 - file variable name to populate
+        local model_parts repo_var file_var
+        model_parts=()
+        repo_var="$3"
+        file_var="$4"
+
+        while IFS= read -r line; do
+                model_parts+=("$line")
+        done < <(parse_model_spec "$1" "$2")
+
+        printf -v "${repo_var}" '%s' "${model_parts[0]}"
+        printf -v "${file_var}" '%s' "${model_parts[1]}"
+}
+
+hydrate_model_specs() {
+        # Normalizes planner and react model specs into repo and file components.
+        DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
+        DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
+
+        MODEL_SPEC=${MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
+        MODEL_BRANCH=${MODEL_BRANCH:-"${DEFAULT_REACT_MODEL_BRANCH_BASE}"}
+
+        REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${MODEL_SPEC}"}
+        REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-"${MODEL_BRANCH}"}
+        PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${MODEL_SPEC}"}
+        PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-"${MODEL_BRANCH}"}
+
+        PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-"${DEFAULT_PLANNER_MODEL_BRANCH_BASE}"}
+        REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-"${DEFAULT_REACT_MODEL_BRANCH_BASE}"}
+
+        hydrate_model_spec_to_vars "${PLANNER_MODEL_SPEC}" "${DEFAULT_PLANNER_MODEL_FILE}" PLANNER_MODEL_REPO PLANNER_MODEL_FILE
+        hydrate_model_spec_to_vars "${REACT_MODEL_SPEC}" "${DEFAULT_MODEL_FILE}" REACT_MODEL_REPO REACT_MODEL_FILE
+
+        # Maintain backwards compatibility by mirroring the react model values into
+        # the legacy MODEL_* variables.
+        # shellcheck disable=SC2034
+        MODEL_REPO="${REACT_MODEL_REPO}"
+        # shellcheck disable=SC2034
+        MODEL_FILE="${REACT_MODEL_FILE}"
 }
 
 init_environment() {
-	normalize_approval_flags
-	hydrate_model_spec
+        normalize_approval_flags
+        hydrate_model_specs
 
 	if command -v uname >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
 		# Downstream tools sometimes need macOS-specific flags; stash a boolean

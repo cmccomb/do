@@ -56,7 +56,7 @@ Use `--dry-run` to stop after plan generation and approvals if you want to inspe
 ## llama.cpp dependency and fallbacks
 
 - `LLAMA_BIN` controls the llama.cpp binary path. If it is unset or unavailable, okso switches to deterministic planning and tool replay so execution continues without the model.
-- `MODEL_SPEC` selects the model weights used by llama.cpp; defaults are provided in [`configuration`](../reference/configuration.md).
+- `PLANNER_MODEL_SPEC` and `REACT_MODEL_SPEC` select the model weights used by llama.cpp for planning and tool selection respectively; defaults are provided in [`configuration`](../reference/configuration.md).
 - `TESTING_PASSTHROUGH=true` disables llama.cpp entirely for offline or CI runs while keeping deterministic behavior.
 - Planner and ReAct prompts both use the schemas in [`src/schemas/`](../reference/schemas.md) so that outputs stay parseable even when models vary.
 
