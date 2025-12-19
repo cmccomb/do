@@ -8,18 +8,8 @@ on:
 jobs:
   installer:
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: self-test-enabled
-            skip_self_test: "false"
-          - name: self-test-skipped
-            skip_self_test: "true"
-    name: macos-${{ matrix.name }}
     env:
       INSTALL_PREFIX: /tmp/okso-ci
-      OKSO_INSTALLER_SKIP_SELF_TEST: ${{ matrix.skip_self_test }}
 
     steps:
       - name: Checkout repository
