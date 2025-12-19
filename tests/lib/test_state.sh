@@ -17,7 +17,7 @@ setup() {
 }
 
 @test "state helpers persist values and history" {
-	source ./src/lib/state.sh
+	source ./src/lib/core/state.sh
 	prefix=state_case
 	state_set "${prefix}" "foo" "bar"
 	[[ "$(state_get "${prefix}" "foo")" == "bar" ]]
@@ -31,7 +31,7 @@ setup() {
 }
 
 @test "json_state_get_document falls back on invalid JSON" {
-	source ./src/lib/json_state.sh
+	source ./src/lib/core/json_state.sh
 	prefix=invalid_state_case
 	json_var=$(json_state_namespace_var "${prefix}")
 	printf -v "${json_var}" "%s" "{invalid"
@@ -40,7 +40,7 @@ setup() {
 }
 
 @test "invalid documents are cached as sanitized fallbacks" {
-	source ./src/lib/json_state.sh
+	source ./src/lib/core/json_state.sh
 	prefix=invalid_cached_state_case
 	json_var=$(json_state_namespace_var "${prefix}")
 	printf -v "${json_var}" "%s" "{invalid"
@@ -55,7 +55,7 @@ setup() {
 }
 
 @test "cache is used when namespace resets" {
-	source ./src/lib/json_state.sh
+	source ./src/lib/core/json_state.sh
 	prefix=cache_reuse_case
 	json_state_set_document "${prefix}" '{"cached":true}'
 	json_state_get_document "${prefix}" >/dev/null
@@ -65,7 +65,7 @@ setup() {
 }
 
 @test "history append gracefully repairs malformed JSON" {
-	source ./src/lib/state.sh
+	source ./src/lib/core/state.sh
 	prefix=broken_history
 	json_var=$(state_namespace_json_var "${prefix}")
 	printf -v "${json_var}" "%s" "{broken"
