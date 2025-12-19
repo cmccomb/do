@@ -73,13 +73,13 @@ llama_infer() {
 	#   $4 - schema file path (optional)
 	#   $5 - model repo override (optional)
 	#   $6 - model file override (optional)
-        local prompt stop_string number_of_tokens schema_file_path schema_content repo_override file_override
-        prompt="$1"
-        stop_string="${2:-}"
-        number_of_tokens="${3:-256}"
-        schema_file_path="${4:-}"
-        repo_override="${5:-${REACT_MODEL_REPO}}"
-        file_override="${6:-${REACT_MODEL_FILE}}"
+	local prompt stop_string number_of_tokens schema_file_path schema_content repo_override file_override
+	prompt="$1"
+	stop_string="${2:-}"
+	number_of_tokens="${3:-256}"
+	schema_file_path="${4:-}"
+	repo_override="${5:-${REACT_MODEL_REPO}}"
+	file_override="${6:-${REACT_MODEL_FILE}}"
 
 	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
 		log "WARN" "llama unavailable; skipping inference" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}"
