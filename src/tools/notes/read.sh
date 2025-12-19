@@ -7,7 +7,7 @@
 #   source "${BASH_SOURCE[0]%/notes/read.sh}/notes/read.sh"
 #
 # Environment variables:
-#   TOOL_ARGS (json): {"title": string}
+#   TOOL_ARGS (json): {"input": string} using the canonical text key for the note title.
 #   NOTES_FOLDER (string): target folder within Apple Notes.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #
@@ -35,8 +35,9 @@ derive_notes_read_query() {
 }
 
 tool_notes_read() {
-	local title folder_script
-	title=$(jq -er '.title // empty' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
+        local title folder_script text_key
+        text_key="$(canonical_text_arg_key)"
+        title=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // .title // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
 
 	if ! notes_require_platform; then
 		return 0
@@ -70,11 +71,7 @@ APPLESCRIPT
 register_notes_read() {
 	local args_schema
 
-	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["title"],"properties":{"title":{"type":"string","minLength":1}},"additionalProperties":false}
-JSON
-	)
+        args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","required":[$key],"properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"notes_read" \
 		"Read an Apple Note's content by title." \

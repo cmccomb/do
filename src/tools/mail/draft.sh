@@ -7,7 +7,8 @@
 #   source "${BASH_SOURCE[0]%/mail/draft.sh}/mail/draft.sh"
 #
 # Environment variables:
-#   TOOL_QUERY (string): first line = comma-separated recipients; second line = subject; remainder = body.
+#   TOOL_ARGS (json): canonical text key containing first line recipients, second line subject, remainder body.
+#   TOOL_QUERY (string): first line = comma-separated recipients; second line = subject; remainder = body (deprecated fallback).
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #   MAIL_OSASCRIPT_BIN (string): override path for osascript; defaults to "osascript".
 #
@@ -76,11 +77,7 @@ APPLESCRIPT
 register_mail_draft() {
 	local args_schema
 
-	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["envelope"],"properties":{"envelope":{"type":"string","minLength":1}},"additionalProperties":false}
-JSON
-	)
+        args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","required":[ $key ],"properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"mail_draft" \
 		"Create an Apple Mail draft using the first line for recipients and second for the subject." \
