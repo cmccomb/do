@@ -113,8 +113,8 @@ load_config() {
 	# can layer on top in a predictable order.
 	local model_spec_override model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
 	# string: preserve preexisting environment values so they can override config file entries.
-	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-"AIzaSyBBXNq-DX1ENgFAiGCzTawQtWmRMSbDljk"}"
-	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-"003333935467370160898:f2ntsnftsjy"}"
+	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
+	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
 	if [[ -f "${CONFIG_FILE}" ]]; then
 		# shellcheck source=/dev/null
 		source "${CONFIG_FILE}"
@@ -147,14 +147,27 @@ load_config() {
 }
 
 write_config_file() {
+	# Persist the current configuration in a shell-friendly format. Values are
+	# shell-escaped to preserve strings with spaces or special characters when the
+	# file is sourced later.
+	# Arguments:
+	#   CONFIG_FILE (string, global): destination path for the config file.
+	quote_config_value() {
+		# Arguments:
+		#   $1 - value to escape (string)
+		local value
+		value="$1"
+
+		printf '%q' "${value}"
+	}
+
 	mkdir -p "$(dirname "${CONFIG_FILE}")"
 	cat >"${CONFIG_FILE}" <<EOF_CONFIG
-  MODEL_SPEC="${MODEL_SPEC}"
-  MODEL_BRANCH="${MODEL_BRANCH}"
-  VERBOSITY=${VERBOSITY}
-  APPROVE_ALL=${APPROVE_ALL}
-  FORCE_CONFIRM=${FORCE_CONFIRM}
-)
+MODEL_SPEC=$(quote_config_value "${MODEL_SPEC}")
+MODEL_BRANCH=$(quote_config_value "${MODEL_BRANCH}")
+VERBOSITY=${VERBOSITY}
+APPROVE_ALL=${APPROVE_ALL}
+FORCE_CONFIRM=${FORCE_CONFIRM}
 EOF_CONFIG
 	printf 'Wrote config to %s\n' "${CONFIG_FILE}"
 }

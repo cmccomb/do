@@ -6,7 +6,18 @@ Defaults live in `${XDG_CONFIG_HOME:-~/.config}/okso/config.env`. Create or upda
 ./src/bin/okso init --model your-org/your-model:custom.gguf --model-branch main
 ```
 
-The config file is `KEY="value"` style. Supported keys:
+The config file is `KEY=value` style, with values shell-escaped so the file can
+be `source`d directly by bash without extra trimming. `okso init` preserves
+spaces and other special characters when writing strings, such as model specs.
+Supported keys:
+
+```
+MODEL_SPEC=custom/model:demo\ quantized.gguf
+MODEL_BRANCH=release-candidate
+VERBOSITY=1
+APPROVE_ALL=false
+FORCE_CONFIRM=false
+```
 
 - `MODEL_SPEC`: Hugging Face `repo[:file]` identifier for the llama.cpp model (default: `bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf`).
 - `MODEL_BRANCH`: Optional branch or tag for the model download (default: `main`).
