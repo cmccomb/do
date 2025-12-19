@@ -53,12 +53,54 @@ SCRIPT
 }
 
 @test "register_tool rejects legacy single-string keys" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/tools/registry.sh
 init_tool_registry
 register_tool alpha "describe" "cmd" "safe" handler_alpha '{"type":"object","required":["message"],"properties":{"message":{"type":"string"}},"additionalProperties":false}'
 SCRIPT
 
-	[ "$status" -eq 1 ]
+        [ "$status" -eq 1 ]
+}
+
+@test "register_tool rejects malformed JSON schemas" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/tools/registry.sh
+init_tool_registry
+VERBOSITY=0 register_tool alpha "describe" "cmd" "safe" handler_alpha '{not-json}'
+SCRIPT
+
+        [ "$status" -eq 1 ]
+        jq -e '.level=="ERROR" and .message=="Invalid args schema"' <<<"${lines[0]}"
+}
+
+@test "register_tool rejects invalid names and preserves registry" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/tools/registry.sh
+init_tool_registry
+if register_tool "bad-name" "describe" "cmd" "safe" handler_alpha; then
+printf '%s\n' "unexpected" "$(tool_registry_json)"
+else
+printf '%s\n' "${?}" "$(tool_registry_json)"
+fi
+SCRIPT
+
+[ "$status" -eq 0 ]
+[ "${lines[1]}" -eq 1 ]
+jq -e '.names==[] and (.registry|length)==0' <<<"${lines[2]}"
+}
+
+@test "tool getters return empty values for unknown tools" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/tools/registry.sh
+init_tool_registry
+printf '%s\n' "$(tool_description missing)" "$(tool_command missing)" "$(tool_safety missing)" "$(tool_handler missing)" "$(tool_args_schema missing)"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        expected=$'\n\n\n\n{}'
+        [ "${output}" = "${expected}" ]
 }

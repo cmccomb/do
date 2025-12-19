@@ -20,20 +20,18 @@
 # shellcheck source=../lib/logging.sh disable=SC1091
 source "${BASH_SOURCE[0]%/tools/registry.sh}/lib/logging.sh"
 
+default_tool_registry_json() {
+	printf '%s' '{"names":[],"registry":{}}'
+}
+
 : "${CANONICAL_TEXT_ARG_KEY:=input}"
 
 canonical_text_arg_key() {
 	printf '%s' "${CANONICAL_TEXT_ARG_KEY}"
 }
 
-if [[ -z "${TOOL_REGISTRY_JSON:-}" ]]; then
-	TOOL_REGISTRY_JSON='{"names":[],"registry":{}}'
-fi
-
 tool_registry_json() {
-	local default_json
-	default_json='{"names":[],"registry":{}}'
-	printf '%s' "${TOOL_REGISTRY_JSON:-${default_json}}"
+	printf '%s' "${TOOL_REGISTRY_JSON:-$(default_tool_registry_json)}"
 }
 
 tool_names() {
@@ -71,7 +69,68 @@ tool_args_schema() {
 }
 
 init_tool_registry() {
-	TOOL_REGISTRY_JSON='{"names":[],"registry":{}}'
+	TOOL_REGISTRY_JSON="$(default_tool_registry_json)"
+}
+
+default_args_schema() {
+	local text_key
+	text_key="$(canonical_text_arg_key)"
+	jq -nc --arg key "${text_key}" '{"type":"object","properties":{($key):{"type":"string"}},"additionalProperties":{"type":"string"}}'
+}
+
+validate_args_schema() {
+	local args_schema text_key
+	args_schema="$1"
+	text_key="$(canonical_text_arg_key)"
+
+	if ! jq -e --arg key "${text_key}" '
+	(. | type) == "object" and
+	(if
+	(.type == "object") and
+	(.properties | type == "object") and
+	([.properties|keys[]] | length == 1) and
+	((.properties|values[]|.type) as $types | ($types == "string"))
+	then
+	(.properties|keys[] | .) == $key
+	else
+	true
+	end)
+	' <<<"${args_schema}" >/dev/null 2>&1; then
+	log "ERROR" "Invalid args schema" "${args_schema}" || true
+	return 1
+	fi
+}
+
+validate_tool_name() {
+	local name
+	name="$1"
+	if [[ ! "${name}" =~ ^[a-z0-9_]+$ ]]; then
+		log "ERROR" "tool names must be alphanumeric with underscores" "${name}" || true
+		return 1
+	fi
+}
+
+update_tool_registry_json() {
+	local registry_json name description command safety handler args_schema
+	registry_json="$1"
+	name="$2"
+	description="$3"
+	command="$4"
+	safety="$5"
+	handler="$6"
+	args_schema="$7"
+	
+	jq -c \
+	--arg name "${name}" \
+	--arg description "${description}" \
+	--arg command "${command}" \
+	--arg safety "${safety}" \
+	--arg handler "${handler}" \
+	--argjson args_schema "${args_schema}" \
+	'(.names //= [])
+	| (.registry //= {})
+	| (if (.names | index($name)) == null then .names += [$name] else . end)
+	| .registry[$name] = {description:$description, command:$command, safety:$safety, handler:$handler, args_schema:$args_schema}' <<<"${registry_json}"
 }
 
 register_tool() {
@@ -87,45 +146,17 @@ register_tool() {
 		return 1
 	fi
 
-	local name args_schema default_args_schema text_key legacy_text_keys
+	local name args_schema
 	name="$1"
-	text_key="$(canonical_text_arg_key)"
-	default_args_schema=$(jq -nc --arg key "${text_key}" '{"type":"object","properties":{($key):{"type":"string"}},"additionalProperties":{"type":"string"}}')
-	args_schema="${6:-${default_args_schema}}"
-	legacy_text_keys='["message","query","script"]'
+	args_schema="${6:-$(default_args_schema)}"
 
-	if ! jq -e --arg key "${text_key}" --argjson legacy "${legacy_text_keys}" '
-                def is_single_string_schema:
-                        (.type == "object")
-                        and (.properties | type == "object")
-                        and ([.properties|keys[]] | length == 1)
-                        and ((.properties|values[]|.type) as $types | ($types == "string"));
-
-                if is_single_string_schema then
-                        (.properties|keys[] | .) as $prop
-                        | ($prop == $key or ( $legacy | index($prop) == null ))
-                else
-                        true
-                end
-        ' <<<"${args_schema}" >/dev/null 2>&1; then
-		log "ERROR" "Single-string schemas must use ${text_key}" "${args_schema}" || true
+	if ! validate_args_schema "${args_schema}"; then
 		return 1
 	fi
 
-	if [[ ! "${name}" =~ ^[a-z0-9_]+$ ]]; then
-		log "ERROR" "tool names must be alphanumeric with underscores" "${name}" || true
+	if ! validate_tool_name "${name}"; then
 		return 1
 	fi
 
-	TOOL_REGISTRY_JSON=$(jq -c \
-		--arg name "${name}" \
-		--arg description "$2" \
-		--arg command "$3" \
-		--arg safety "$4" \
-		--arg handler "$5" \
-		--argjson args_schema "${args_schema}" \
-		'(.names //= [])
-                | (.registry //= {})
-                | (if (.names | index($name)) == null then .names += [$name] else . end)
-                | .registry[$name] = {description:$description, command:$command, safety:$safety, handler:$handler, args_schema:$args_schema}' <<<"$(tool_registry_json)")
+	TOOL_REGISTRY_JSON=$(update_tool_registry_json "$(tool_registry_json)" "$@" "${args_schema}")
 }
