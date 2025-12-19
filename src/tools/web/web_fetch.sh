@@ -87,7 +87,7 @@ tool_web_fetch() {
 	body_encoding="text"
 	if [[ -n "${content_type}" ]]; then
 		case "${content_type,,}" in
-		text/* | *json* | *xml* | *+json) ;;
+		text/* | *json* | *xml*) ;;
 		*)
 			body_encoding="base64"
 			;;
