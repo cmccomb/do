@@ -112,7 +112,7 @@ web_http_request() {
 		--dump-header "${header_file}" \
 		--output "${body_file}" \
 		--write-out '%{http_code}\n%{url_effective}\n%{content_type}\n%{size_download}' \
-		"${curl_args[@]}" \
+		"${curl_args[@]+"${curl_args[@]}"}" \
 		"${url}" \
 		2>"${stderr_file}")
 	status=$?
@@ -124,7 +124,9 @@ web_http_request() {
 	fi
 
 	local -a meta
-	mapfile -t meta <<<"${curl_output}"
+	while IFS= read -r line; do
+		meta+=("$line")
+	done <<<"${curl_output}"
 	local http_code final_url content_type downloaded_bytes
 	http_code="${meta[0]:-0}"
 	final_url="${meta[1]:-${url}}"

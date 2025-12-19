@@ -65,8 +65,8 @@ tool_web_search() {
 	query=$(jq -r '.query' <<<"${parsed_args}")
 	num=$(jq -r '.num' <<<"${parsed_args}")
 
-	api_key="${GOOGLE_SEARCH_API_KEY:-}"
-	cx="${GOOGLE_SEARCH_CX:-}"
+	api_key="${GOOGLE_SEARCH_API_KEY:-"AIzaSyBBXNq-DX1ENgFAiGCzTawQtWmRMSbDljk"}"
+	cx="${GOOGLE_SEARCH_CX:-"003333935467370160898:f2ntsnftsjy"}"
 	if [[ -z "${api_key}" || -z "${cx}" ]]; then
 		log "ERROR" "Missing Google Custom Search configuration" "GOOGLE_SEARCH_API_KEY/GOOGLE_SEARCH_CX required" >&2
 		return 1
