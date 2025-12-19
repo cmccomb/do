@@ -123,64 +123,64 @@ detect_config_file() {
 }
 
 load_config() {
-        # Load file-backed configuration first so environment overrides and CLI flags
-        # can layer on top in a predictable order.
-        local model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
-        # string: preserve preexisting environment values so they can override config file entries.
-        preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
-        preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
-        if [[ -f "${CONFIG_FILE}" ]]; then
-                # shellcheck source=/dev/null
-                source "${CONFIG_FILE}"
-        fi
+	# Load file-backed configuration first so environment overrides and CLI flags
+	# can layer on top in a predictable order.
+	local model_branch_override preexisting_okso_google_cse_api_key preexisting_okso_google_cse_id
+	# string: preserve preexisting environment values so they can override config file entries.
+	preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY:-}"
+	preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID:-}"
+	if [[ -f "${CONFIG_FILE}" ]]; then
+		# shellcheck source=/dev/null
+		source "${CONFIG_FILE}"
+	fi
 
-        OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
-        OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id:-${OKSO_GOOGLE_CSE_ID:-}}"
+	OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
+	OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id:-${OKSO_GOOGLE_CSE_ID:-}}"
 
-        DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
-        DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
+	DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
+	DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
 
-        if [[ -n "${MODEL_SPEC:-}" && -z "${PLANNER_MODEL_SPEC:-}" && -z "${REACT_MODEL_SPEC:-}" ]]; then
-                PLANNER_MODEL_SPEC="${MODEL_SPEC}"
-                REACT_MODEL_SPEC="${MODEL_SPEC}"
-        fi
-        if [[ -n "${MODEL_BRANCH:-}" && -z "${PLANNER_MODEL_BRANCH:-}" && -z "${REACT_MODEL_BRANCH:-}" ]]; then
-                PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
-                REACT_MODEL_BRANCH="${MODEL_BRANCH}"
-        fi
+	if [[ -n "${MODEL_SPEC:-}" && -z "${PLANNER_MODEL_SPEC:-}" && -z "${REACT_MODEL_SPEC:-}" ]]; then
+		PLANNER_MODEL_SPEC="${MODEL_SPEC}"
+		REACT_MODEL_SPEC="${MODEL_SPEC}"
+	fi
+	if [[ -n "${MODEL_BRANCH:-}" && -z "${PLANNER_MODEL_BRANCH:-}" && -z "${REACT_MODEL_BRANCH:-}" ]]; then
+		PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
+		REACT_MODEL_BRANCH="${MODEL_BRANCH}"
+	fi
 
-        PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
-        PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-${DEFAULT_PLANNER_MODEL_BRANCH_BASE}}
-        REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
-        REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-${DEFAULT_REACT_MODEL_BRANCH_BASE}}
-        VERBOSITY=${VERBOSITY:-1}
-        APPROVE_ALL=${APPROVE_ALL:-false}
-        FORCE_CONFIRM=${FORCE_CONFIRM:-false}
+	PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
+	PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-${DEFAULT_PLANNER_MODEL_BRANCH_BASE}}
+	REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
+	REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-${DEFAULT_REACT_MODEL_BRANCH_BASE}}
+	VERBOSITY=${VERBOSITY:-1}
+	APPROVE_ALL=${APPROVE_ALL:-false}
+	FORCE_CONFIRM=${FORCE_CONFIRM:-false}
 
-        if [[ -n "${OKSO_MODEL:-}" ]]; then
-                PLANNER_MODEL_SPEC="${OKSO_MODEL}"
-                REACT_MODEL_SPEC="${OKSO_MODEL}"
-        fi
+	if [[ -n "${OKSO_MODEL:-}" ]]; then
+		PLANNER_MODEL_SPEC="${OKSO_MODEL}"
+		REACT_MODEL_SPEC="${OKSO_MODEL}"
+	fi
 
-        if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
-                model_branch_override="${OKSO_MODEL_BRANCH}"
-                PLANNER_MODEL_BRANCH="${model_branch_override}"
-                REACT_MODEL_BRANCH="${model_branch_override}"
-        fi
+	if [[ -n "${OKSO_MODEL_BRANCH:-}" ]]; then
+		model_branch_override="${OKSO_MODEL_BRANCH}"
+		PLANNER_MODEL_BRANCH="${model_branch_override}"
+		REACT_MODEL_BRANCH="${model_branch_override}"
+	fi
 
-        GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
-        GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
+	GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
+	GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
 
 	apply_supervised_overrides
 	apply_verbosity_overrides
 }
 
 write_config_file() {
-        # Persist the current configuration in a shell-friendly format. Values are
-        # shell-escaped to preserve strings with spaces or special characters when the
-        # file is sourced later.
-        # Arguments:
-        #   CONFIG_FILE (string, global): destination path for the config file.
+	# Persist the current configuration in a shell-friendly format. Values are
+	# shell-escaped to preserve strings with spaces or special characters when the
+	# file is sourced later.
+	# Arguments:
+	#   CONFIG_FILE (string, global): destination path for the config file.
 	quote_config_value() {
 		# Arguments:
 		#   $1 - value to escape (string)
@@ -190,8 +190,8 @@ write_config_file() {
 		printf '%q' "${value}"
 	}
 
-        mkdir -p "$(dirname "${CONFIG_FILE}")"
-        cat >"${CONFIG_FILE}" <<EOF_CONFIG
+	mkdir -p "$(dirname "${CONFIG_FILE}")"
+	cat >"${CONFIG_FILE}" <<EOF_CONFIG
 PLANNER_MODEL_SPEC=$(quote_config_value "${PLANNER_MODEL_SPEC}")
 PLANNER_MODEL_BRANCH=$(quote_config_value "${PLANNER_MODEL_BRANCH}")
 REACT_MODEL_SPEC=$(quote_config_value "${REACT_MODEL_SPEC}")
@@ -275,33 +275,33 @@ hydrate_model_spec_to_vars() {
 }
 
 hydrate_model_specs() {
-        # Normalizes planner and react model specs into repo and file components.
-        DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
-        DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
+	# Normalizes planner and react model specs into repo and file components.
+	DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
+	DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
 
-        if [[ -z "${PLANNER_MODEL_SPEC:-}" && -n "${MODEL_SPEC:-}" ]]; then
-                PLANNER_MODEL_SPEC="${MODEL_SPEC}"
-        fi
+	if [[ -z "${PLANNER_MODEL_SPEC:-}" && -n "${MODEL_SPEC:-}" ]]; then
+		PLANNER_MODEL_SPEC="${MODEL_SPEC}"
+	fi
 
-        if [[ -z "${REACT_MODEL_SPEC:-}" && -n "${MODEL_SPEC:-}" ]]; then
-                REACT_MODEL_SPEC="${MODEL_SPEC}"
-        fi
+	if [[ -z "${REACT_MODEL_SPEC:-}" && -n "${MODEL_SPEC:-}" ]]; then
+		REACT_MODEL_SPEC="${MODEL_SPEC}"
+	fi
 
-        if [[ -z "${PLANNER_MODEL_BRANCH:-}" && -n "${MODEL_BRANCH:-}" ]]; then
-                PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
-        fi
+	if [[ -z "${PLANNER_MODEL_BRANCH:-}" && -n "${MODEL_BRANCH:-}" ]]; then
+		PLANNER_MODEL_BRANCH="${MODEL_BRANCH}"
+	fi
 
-        if [[ -z "${REACT_MODEL_BRANCH:-}" && -n "${MODEL_BRANCH:-}" ]]; then
-                REACT_MODEL_BRANCH="${MODEL_BRANCH}"
-        fi
+	if [[ -z "${REACT_MODEL_BRANCH:-}" && -n "${MODEL_BRANCH:-}" ]]; then
+		REACT_MODEL_BRANCH="${MODEL_BRANCH}"
+	fi
 
-        PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
-        PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-"${DEFAULT_PLANNER_MODEL_BRANCH_BASE}"}
-        REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
-        REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-"${DEFAULT_REACT_MODEL_BRANCH_BASE}"}
+	PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
+	PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-"${DEFAULT_PLANNER_MODEL_BRANCH_BASE}"}
+	REACT_MODEL_SPEC=${REACT_MODEL_SPEC:-"${DEFAULT_REACT_MODEL_SPEC_BASE}"}
+	REACT_MODEL_BRANCH=${REACT_MODEL_BRANCH:-"${DEFAULT_REACT_MODEL_BRANCH_BASE}"}
 
-        hydrate_model_spec_to_vars "${PLANNER_MODEL_SPEC}" "${DEFAULT_PLANNER_MODEL_FILE}" PLANNER_MODEL_REPO PLANNER_MODEL_FILE
-        hydrate_model_spec_to_vars "${REACT_MODEL_SPEC}" "${DEFAULT_MODEL_FILE}" REACT_MODEL_REPO REACT_MODEL_FILE
+	hydrate_model_spec_to_vars "${PLANNER_MODEL_SPEC}" "${DEFAULT_PLANNER_MODEL_FILE}" PLANNER_MODEL_REPO PLANNER_MODEL_FILE
+	hydrate_model_spec_to_vars "${REACT_MODEL_SPEC}" "${DEFAULT_MODEL_FILE}" REACT_MODEL_REPO REACT_MODEL_FILE
 
 }
 

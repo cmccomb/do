@@ -102,7 +102,7 @@ SCRIPT
 }
 
 @test "write_config_file emits shell-parsable assignments" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 config_file="$(mktemp)"
 PLANNER_MODEL_SPEC="planner/model:planner.gguf"
@@ -132,19 +132,19 @@ printf '%s\n' \
 rm -f "${config_file}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "planner/model:planner.gguf" ]
-        [ "${lines[1]}" = "planner-branch" ]
-        [ "${lines[2]}" = "react/model:react.gguf" ]
-        [ "${lines[3]}" = "react-branch" ]
-        [ "${lines[4]}" = "2" ]
-        [ "${lines[5]}" = "true" ]
-        [ "${lines[6]}" = "false" ]
-        [ "${lines[7]}" = "7" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "planner/model:planner.gguf" ]
+	[ "${lines[1]}" = "planner-branch" ]
+	[ "${lines[2]}" = "react/model:react.gguf" ]
+	[ "${lines[3]}" = "react-branch" ]
+	[ "${lines[4]}" = "2" ]
+	[ "${lines[5]}" = "true" ]
+	[ "${lines[6]}" = "false" ]
+	[ "${lines[7]}" = "7" ]
 }
 
 @test "okso init writes clean config without stray characters" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 config_dir="$(mktemp -d)"
@@ -165,20 +165,20 @@ printf '%s\n' \
 rm -rf "${config_dir}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "custom/model:quant demo.gguf" ]
-        [ "${lines[1]}" = "stable/2024-08" ]
-        [ "${lines[2]}" = "custom/model:quant demo.gguf" ]
-        [ "${lines[3]}" = "stable/2024-08" ]
-        [ "${lines[4]}" = "1" ]
-        [ "${lines[5]}" = "true" ]
-        [ "${lines[6]}" = "false" ]
-        [ "${lines[7]}" = "7" ]
-        [ "${lines[8]}" = "7" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "custom/model:quant demo.gguf" ]
+	[ "${lines[1]}" = "stable/2024-08" ]
+	[ "${lines[2]}" = "custom/model:quant demo.gguf" ]
+	[ "${lines[3]}" = "stable/2024-08" ]
+	[ "${lines[4]}" = "1" ]
+	[ "${lines[5]}" = "true" ]
+	[ "${lines[6]}" = "false" ]
+	[ "${lines[7]}" = "7" ]
+	[ "${lines[8]}" = "7" ]
 }
 
 @test "planner and react specs hydrate defaults and shared overrides" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 CONFIG_FILE="$(mktemp)"
 NOTES_DIR="$(mktemp -d)"
@@ -204,17 +204,17 @@ SCRIPT
 	[ "${lines[0]}" = "bartowski/Qwen_Qwen3-8B-GGUF" ]
 	[ "${lines[1]}" = "Qwen_Qwen3-8B-Q4_K_M.gguf" ]
 	[ "${lines[2]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF" ]
-        [ "${lines[3]}" = "Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
-        [ "${lines[4]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-        [ "${lines[5]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
-        [ "${lines[6]}" = "override/repo:react.gguf" ]
-        [ "${lines[7]}" = "override/repo:react.gguf" ]
-        [ "${lines[8]}" = "dev" ]
-        [ "${lines[9]}" = "dev" ]
+	[ "${lines[3]}" = "Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
+	[ "${lines[4]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
+	[ "${lines[5]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
+	[ "${lines[6]}" = "override/repo:react.gguf" ]
+	[ "${lines[7]}" = "override/repo:react.gguf" ]
+	[ "${lines[8]}" = "dev" ]
+	[ "${lines[9]}" = "dev" ]
 }
 
 @test "cli shared model flags populate planner and react when unset" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/cli/cli.sh
 COMMAND="run"
@@ -227,15 +227,15 @@ parse_args --model shared/repo:shared.gguf --model-branch release -- "demo query
 printf '%s\n' "${PLANNER_MODEL_SPEC}" "${REACT_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" "${REACT_MODEL_BRANCH}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "shared/repo:shared.gguf" ]
-        [ "${lines[1]}" = "shared/repo:shared.gguf" ]
-        [ "${lines[2]}" = "release" ]
-        [ "${lines[3]}" = "release" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "shared/repo:shared.gguf" ]
+	[ "${lines[1]}" = "shared/repo:shared.gguf" ]
+	[ "${lines[2]}" = "release" ]
+	[ "${lines[3]}" = "release" ]
 }
 
 @test "cli planner flags override shared selections" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/cli/cli.sh
 COMMAND="run"
@@ -248,9 +248,9 @@ parse_args --model shared/repo:shared.gguf --planner-model dedicated/planner:pla
 printf '%s\n' "${PLANNER_MODEL_SPEC}" "${REACT_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" "${REACT_MODEL_BRANCH}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "dedicated/planner:plan.gguf" ]
-        [ "${lines[1]}" = "shared/repo:shared.gguf" ]
-        [ "${lines[2]}" = "nightly" ]
-        [ "${lines[3]}" = "main" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "dedicated/planner:plan.gguf" ]
+	[ "${lines[1]}" = "shared/repo:shared.gguf" ]
+	[ "${lines[2]}" = "nightly" ]
+	[ "${lines[3]}" = "main" ]
 }
