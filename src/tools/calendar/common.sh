@@ -26,6 +26,8 @@
 source "${BASH_SOURCE[0]%/tools/calendar/common.sh}/lib/core/logging.sh"
 # shellcheck source=../osascript_helpers.sh disable=SC1091
 source "${BASH_SOURCE[0]%/tools/calendar/common.sh}/tools/osascript_helpers.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/calendar/common.sh}/registry.sh"
 
 calendar_name() {
 	# Prints the resolved Apple Calendar name.
@@ -50,6 +52,18 @@ calendar_require_platform() {
 	fi
 
 	return 0
+}
+
+calendar_resolve_query() {
+	local text_key query
+	text_key="$(canonical_text_arg_key)"
+	query=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
+
+	if [[ -z "${query}" ]]; then
+		query=${TOOL_QUERY:-""}
+	fi
+
+	printf '%s' "${query}"
 }
 
 calendar_extract_event_fields() {

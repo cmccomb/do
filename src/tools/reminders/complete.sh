@@ -7,7 +7,7 @@
 #   source "${BASH_SOURCE[0]%/reminders/complete.sh}/reminders/complete.sh"
 #
 # Environment variables:
-#   TOOL_ARGS (json): {"title": string}
+#   TOOL_ARGS (json): {"input": string} using the canonical text key for the reminder title.
 #   REMINDERS_LIST (string): target list within Apple Reminders.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #
@@ -63,11 +63,7 @@ APPLESCRIPT
 register_reminders_complete() {
 	local args_schema
 
-	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["title"],"properties":{"title":{"type":"string","minLength":1}},"additionalProperties":false}
-JSON
-	)
+	args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","required":[$key],"properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"reminders_complete" \
 		"Mark a reminder complete by title in the configured list." \

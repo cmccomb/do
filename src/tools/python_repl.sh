@@ -92,6 +92,19 @@ python_repl_wrap_query() {
 	printf '%s' "${wrapped}"
 }
 
+python_repl_resolve_query() {
+	# Resolves the Python input text from TOOL_ARGS or TOOL_QUERY (deprecated).
+	local text_key query
+	text_key="$(canonical_text_arg_key)"
+	query=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
+
+	if [[ -z "${query}" ]]; then
+		query=${TOOL_QUERY:-""}
+	fi
+
+	printf '%s' "${query}"
+}
+
 tool_python_repl() {
 	local query sandbox_dir startup_file repl_input status args_json text_key # strings and status code
 	args_json="${TOOL_ARGS:-}" || true
