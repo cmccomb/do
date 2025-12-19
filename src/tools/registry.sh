@@ -87,14 +87,13 @@ register_tool() {
 		return 1
 	fi
 
-	local name args_schema default_args_schema text_key legacy_text_keys
+	local name args_schema default_args_schema text_key
 	name="$1"
 	text_key="$(canonical_text_arg_key)"
 	default_args_schema=$(jq -nc --arg key "${text_key}" '{"type":"object","properties":{($key):{"type":"string"}},"additionalProperties":{"type":"string"}}')
 	args_schema="${6:-${default_args_schema}}"
-	legacy_text_keys='["message","query","script"]'
 
-	if ! jq -e --arg key "${text_key}" --argjson legacy "${legacy_text_keys}" '
+	if ! jq -e --arg key "${text_key}" '
                 def is_single_string_schema:
                         (.type == "object")
                         and (.properties | type == "object")
@@ -103,7 +102,7 @@ register_tool() {
 
                 if is_single_string_schema then
                         (.properties|keys[] | .) as $prop
-                        | ($prop == $key or ( $legacy | index($prop) == null ))
+                        | ($prop == $key)
                 else
                         true
                 end

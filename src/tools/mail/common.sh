@@ -25,6 +25,8 @@
 source "${BASH_SOURCE[0]%/tools/mail/common.sh}/lib/core/logging.sh"
 # shellcheck source=../osascript_helpers.sh disable=SC1091
 source "${BASH_SOURCE[0]%/tools/mail/common.sh}/tools/osascript_helpers.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/mail/common.sh}/registry.sh"
 
 mail_require_platform() {
 	# Ensures Apple Mail tools only run on macOS with osascript available.
@@ -62,11 +64,23 @@ mail_trim_whitespace() {
 	printf '%s' "${value}"
 }
 
+mail_resolve_query() {
+	local text_key query
+	text_key="$(canonical_text_arg_key)"
+	query=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
+
+	if [[ -z "${query}" ]]; then
+		query=${TOOL_QUERY:-""}
+	fi
+
+	printf '%s' "${query}"
+}
+
 mail_extract_envelope() {
-	# Splits TOOL_QUERY into recipients, subject, and body.
+	# Splits TOOL_ARGS (canonical text) or TOOL_QUERY into recipients, subject, and body.
 	# Emits three NUL-delimited fields: recipients, subject, body.
 	local query recipients subject body remainder
-	query=${TOOL_QUERY:-""}
+	query=$(mail_resolve_query)
 
 	if [[ -z "${query//[[:space:]]/}" ]]; then
 		log "ERROR" "Mail content is required" "" || true

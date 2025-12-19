@@ -153,7 +153,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 source ./src/lib/planning/planner.sh
 
 tool_registry_json() {
-        printf "%s" '{"names":["python_repl","final_answer"],"registry":{"python_repl":{"args_schema":{"type":"object","required":["code"],"properties":{"code":{"type":"string","minLength":1}}}},"final_answer":{"args_schema":{"type":"object","required":["message"],"properties":{"message":{"type":"string","minLength":1}}}}}}'
+        printf "%s" '{"names":["python_repl","final_answer"],"registry":{"python_repl":{"args_schema":{"type":"object","required":["input"],"properties":{"input":{"type":"string","minLength":1}}}},"final_answer":{"args_schema":{"type":"object","required":["input"],"properties":{"input":{"type":"string","minLength":1}}}}}}'
 }
 
 tool_names() {
@@ -175,9 +175,9 @@ prompt="$(build_react_prompt "demo request" "${allowed_tool_descriptions}" "demo
 rm -f "${react_schema_path}"
 
 grep -F '"python_repl"' <<<"${prompt}"
-grep -F '"code"' <<<"${prompt}"
+grep -F '"input"' <<<"${prompt}"
 grep -F '"final_answer"' <<<"${prompt}"
-grep -F '"message"' <<<"${prompt}"
+grep -F '"input"' <<<"${prompt}"
 INNERSCRIPT
 	)
 

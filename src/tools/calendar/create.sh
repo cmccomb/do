@@ -7,7 +7,8 @@
 #   source "${BASH_SOURCE[0]%/calendar/create.sh}/calendar/create.sh"
 #
 # Environment variables:
-#   TOOL_QUERY (string): event details; first line = title, second = start time, optional third = location.
+#   TOOL_ARGS (json): structured arguments containing the canonical text key with event details (line separated).
+#   TOOL_QUERY (string): event details; first line = title, second = start time, optional third = location (deprecated fallback).
 #   CALENDAR_NAME (string): target calendar name.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #   DRY_RUN (bool): when true, logs intent without executing AppleScript.
@@ -77,11 +78,7 @@ APPLESCRIPT
 register_calendar_create() {
 	local args_schema
 
-	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["details"],"properties":{"details":{"type":"string","minLength":1}},"additionalProperties":false}
-JSON
-	)
+	args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","required":[$key],"properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"calendar_create" \
 		"Create a new Apple Calendar event (line 1: title; line 2: start time)." \

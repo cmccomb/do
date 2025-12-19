@@ -7,7 +7,8 @@
 #   source "${BASH_SOURCE[0]%/tools/python_repl.sh}/tools/python_repl.sh"
 #
 # Environment variables:
-#   TOOL_QUERY (string): Python statements executed in the REPL session.
+#   TOOL_ARGS (json): structured arguments containing the canonical text key with Python statements.
+#   TOOL_QUERY (string): Python statements executed in the REPL session (deprecated; falls back when TOOL_ARGS is empty).
 #
 # Dependencies:
 #   - bash 5+
@@ -92,9 +93,22 @@ python_repl_wrap_query() {
 	printf '%s' "${wrapped}"
 }
 
+python_repl_resolve_query() {
+	# Resolves the Python input text from TOOL_ARGS or TOOL_QUERY (deprecated).
+	local text_key query
+	text_key="$(canonical_text_arg_key)"
+	query=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
+
+	if [[ -z "${query}" ]]; then
+		query=${TOOL_QUERY:-""}
+	fi
+
+	printf '%s' "${query}"
+}
+
 tool_python_repl() {
 	local query sandbox_dir startup_file repl_input status # strings and status code
-	query=${TOOL_QUERY:-""}
+	query="$(python_repl_resolve_query)"
 
 	sandbox_dir=$(python_repl_create_sandbox) || {
 		log "ERROR" "Failed to create sandbox" "${query}" || true
@@ -122,11 +136,7 @@ tool_python_repl() {
 register_python_repl() {
 	local args_schema
 
-	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["code"],"properties":{"code":{"type":"string","minLength":1}},"additionalProperties":false}
-JSON
-	)
+	args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","required":[$key],"properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"python_repl" \
 		"Execute Python statements in a temporary sandbox via python -i." \

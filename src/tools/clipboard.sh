@@ -7,7 +7,8 @@
 #   source "${BASH_SOURCE[0]%/tools/clipboard.sh}/tools/clipboard.sh"
 #
 # Environment variables:
-#   TOOL_QUERY (string): text to copy (for clipboard_copy) or ignored for paste.
+#   TOOL_ARGS (json): structured arguments containing the canonical text key for copy operations.
+#   TOOL_QUERY (string): text to copy (for clipboard_copy) or ignored for paste; deprecated fallback.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #
 # Dependencies:
@@ -34,8 +35,14 @@ clipboard_require_macos() {
 }
 
 tool_clipboard_copy() {
-	local content
-	content=${TOOL_QUERY:-""}
+	local content text_key
+	text_key="$(canonical_text_arg_key)"
+
+	content=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
+
+	if [[ -z "${content}" ]]; then
+		content=${TOOL_QUERY:-""}
+	fi
 
 	if ! clipboard_require_macos; then
 		return 0
@@ -65,11 +72,7 @@ tool_clipboard_paste() {
 register_clipboard_copy() {
 	local args_schema
 
-	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["text"],"properties":{"text":{"type":"string","minLength":1}},"additionalProperties":false}
-JSON
-	)
+	args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","required":[$key],"properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"clipboard_copy" \
 		"Copy the provided text into the macOS clipboard." \
