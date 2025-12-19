@@ -100,3 +100,63 @@ SCRIPT
 	[ "${lines[0]}" = "env-key" ]
 	[ "${lines[1]}" = "env-id" ]
 }
+
+@test "write_config_file emits shell-parsable assignments" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+config_file="$(mktemp)"
+MODEL_SPEC="demo/model with space:demo file.gguf"
+MODEL_BRANCH="feature branch"
+VERBOSITY=2
+APPROVE_ALL=true
+FORCE_CONFIRM=false
+CONFIG_FILE="${config_file}"
+source ./src/lib/config.sh
+write_config_file >/dev/null
+bash -n "${config_file}"
+MODEL_SPEC="placeholder"
+MODEL_BRANCH="placeholder"
+VERBOSITY=0
+APPROVE_ALL=false
+FORCE_CONFIRM=true
+source "${config_file}"
+printf '%s\n' "${MODEL_SPEC}" "${MODEL_BRANCH}" "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}"
+rm -f "${config_file}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "demo/model with space:demo file.gguf" ]
+	[ "${lines[1]}" = "feature branch" ]
+	[ "${lines[2]}" = "2" ]
+	[ "${lines[3]}" = "true" ]
+	[ "${lines[4]}" = "false" ]
+}
+
+@test "okso init writes clean config without stray characters" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+repo_root="$(git rev-parse --show-toplevel)"
+config_dir="$(mktemp -d)"
+config_file="${config_dir}/config.env"
+model_spec="custom/model:quant demo.gguf"
+model_branch="stable/2024-08"
+cd "${repo_root}"
+./src/bin/okso init --config "${config_file}" --model "${model_spec}" --model-branch "${model_branch}" --yes >/dev/null
+bash -n "${config_file}"
+unset MODEL_SPEC MODEL_BRANCH VERBOSITY APPROVE_ALL FORCE_CONFIRM
+source "${config_file}"
+printf '%s\n' "${MODEL_SPEC}" "${MODEL_BRANCH}" "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}"
+printf '%s\n' "$(grep -E '^[A-Z_]+=.*' "${config_file}" | wc -l | tr -d ' ')"
+printf '%s\n' "$(wc -l < "${config_file}" | tr -d ' ')"
+rm -rf "${config_dir}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "custom/model:quant demo.gguf" ]
+	[ "${lines[1]}" = "stable/2024-08" ]
+	[ "${lines[2]}" = "1" ]
+	[ "${lines[3]}" = "true" ]
+	[ "${lines[4]}" = "false" ]
+	[ "${lines[5]}" = "5" ]
+	[ "${lines[6]}" = "5" ]
+}
