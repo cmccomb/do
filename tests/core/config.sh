@@ -102,11 +102,15 @@ SCRIPT
 }
 
 @test "write_config_file emits shell-parsable assignments" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 config_file="$(mktemp)"
 MODEL_SPEC="demo/model with space:demo file.gguf"
 MODEL_BRANCH="feature branch"
+PLANNER_MODEL_SPEC="planner/model:planner.gguf"
+PLANNER_MODEL_BRANCH="planner-branch"
+REACT_MODEL_SPEC="react/model:react.gguf"
+REACT_MODEL_BRANCH="react-branch"
 VERBOSITY=2
 APPROVE_ALL=true
 FORCE_CONFIRM=false
@@ -116,24 +120,38 @@ write_config_file >/dev/null
 bash -n "${config_file}"
 MODEL_SPEC="placeholder"
 MODEL_BRANCH="placeholder"
+PLANNER_MODEL_SPEC="placeholder"
+PLANNER_MODEL_BRANCH="placeholder"
+REACT_MODEL_SPEC="placeholder"
+REACT_MODEL_BRANCH="placeholder"
 VERBOSITY=0
 APPROVE_ALL=false
 FORCE_CONFIRM=true
 source "${config_file}"
-printf '%s\n' "${MODEL_SPEC}" "${MODEL_BRANCH}" "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}"
+printf '%s\n' \
+        "${MODEL_SPEC}" "${MODEL_BRANCH}" \
+        "${PLANNER_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" \
+        "${REACT_MODEL_SPEC}" "${REACT_MODEL_BRANCH}" \
+        "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}" \
+        "$(wc -l < "${config_file}" | tr -d ' ')"
 rm -f "${config_file}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "demo/model with space:demo file.gguf" ]
-	[ "${lines[1]}" = "feature branch" ]
-	[ "${lines[2]}" = "2" ]
-	[ "${lines[3]}" = "true" ]
-	[ "${lines[4]}" = "false" ]
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "demo/model with space:demo file.gguf" ]
+        [ "${lines[1]}" = "feature branch" ]
+        [ "${lines[2]}" = "planner/model:planner.gguf" ]
+        [ "${lines[3]}" = "planner-branch" ]
+        [ "${lines[4]}" = "react/model:react.gguf" ]
+        [ "${lines[5]}" = "react-branch" ]
+        [ "${lines[6]}" = "2" ]
+        [ "${lines[7]}" = "true" ]
+        [ "${lines[8]}" = "false" ]
+        [ "${lines[9]}" = "9" ]
 }
 
 @test "okso init writes clean config without stray characters" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 config_dir="$(mktemp -d)"
@@ -143,20 +161,112 @@ model_branch="stable/2024-08"
 cd "${repo_root}"
 ./src/bin/okso init --config "${config_file}" --model "${model_spec}" --model-branch "${model_branch}" --yes >/dev/null
 bash -n "${config_file}"
-unset MODEL_SPEC MODEL_BRANCH VERBOSITY APPROVE_ALL FORCE_CONFIRM
+unset MODEL_SPEC MODEL_BRANCH PLANNER_MODEL_SPEC PLANNER_MODEL_BRANCH REACT_MODEL_SPEC REACT_MODEL_BRANCH VERBOSITY APPROVE_ALL FORCE_CONFIRM
 source "${config_file}"
-printf '%s\n' "${MODEL_SPEC}" "${MODEL_BRANCH}" "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}"
-printf '%s\n' "$(grep -E '^[A-Z_]+=.*' "${config_file}" | wc -l | tr -d ' ')"
-printf '%s\n' "$(wc -l < "${config_file}" | tr -d ' ')"
+printf '%s\n' \
+        "${MODEL_SPEC}" "${MODEL_BRANCH}" \
+        "${PLANNER_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" \
+        "${REACT_MODEL_SPEC}" "${REACT_MODEL_BRANCH}" \
+        "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}" \
+        "$(grep -E '^[A-Z_]+=.*' "${config_file}" | wc -l | tr -d ' ')" \
+        "$(wc -l < "${config_file}" | tr -d ' ')"
 rm -rf "${config_dir}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "custom/model:quant demo.gguf" ]
-	[ "${lines[1]}" = "stable/2024-08" ]
-	[ "${lines[2]}" = "1" ]
-	[ "${lines[3]}" = "true" ]
-	[ "${lines[4]}" = "false" ]
-	[ "${lines[5]}" = "5" ]
-	[ "${lines[6]}" = "5" ]
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "custom/model:quant demo.gguf" ]
+        [ "${lines[1]}" = "stable/2024-08" ]
+        [ "${lines[2]}" = "custom/model:quant demo.gguf" ]
+        [ "${lines[3]}" = "stable/2024-08" ]
+        [ "${lines[4]}" = "custom/model:quant demo.gguf" ]
+        [ "${lines[5]}" = "stable/2024-08" ]
+        [ "${lines[6]}" = "1" ]
+        [ "${lines[7]}" = "true" ]
+        [ "${lines[8]}" = "false" ]
+        [ "${lines[9]}" = "9" ]
+        [ "${lines[10]}" = "9" ]
+}
+
+@test "planner and react specs hydrate defaults and shared overrides" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+CONFIG_FILE="$(mktemp)"
+NOTES_DIR="$(mktemp -d)"
+source ./src/lib/config.sh
+load_config
+hydrate_model_specs
+printf '%s\n' \
+        "${PLANNER_MODEL_REPO}" "${PLANNER_MODEL_FILE}" \
+        "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" \
+        "${PLANNER_MODEL_SPEC}" "${REACT_MODEL_SPEC}"
+MODEL_SPEC="override/repo:react.gguf"
+MODEL_BRANCH="dev"
+PLANNER_MODEL_SPEC=""
+REACT_MODEL_SPEC=""
+PLANNER_MODEL_BRANCH=""
+REACT_MODEL_BRANCH=""
+hydrate_model_specs
+printf '%s\n' "${PLANNER_MODEL_SPEC}" "${REACT_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" "${REACT_MODEL_BRANCH}"
+rm -f "${CONFIG_FILE}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "bartowski/Qwen_Qwen3-8B-GGUF" ]
+        [ "${lines[1]}" = "Qwen_Qwen3-8B-Q4_K_M.gguf" ]
+        [ "${lines[2]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF" ]
+        [ "${lines[3]}" = "Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
+        [ "${lines[4]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
+        [ "${lines[5]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
+        [ "${lines[6]}" = "override/repo:react.gguf" ]
+        [ "${lines[7]}" = "override/repo:react.gguf" ]
+        [ "${lines[8]}" = "dev" ]
+        [ "${lines[9]}" = "dev" ]
+}
+
+@test "cli shared model flags populate planner and react when unset" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/cli/cli.sh
+COMMAND="run"
+DEFAULT_MODEL_BRANCH_BASE=${DEFAULT_MODEL_BRANCH_BASE:-main}
+DEFAULT_PLANNER_MODEL_BRANCH_BASE=${DEFAULT_PLANNER_MODEL_BRANCH_BASE:-main}
+DEFAULT_REACT_MODEL_BRANCH_BASE=${DEFAULT_REACT_MODEL_BRANCH_BASE:-main}
+MODEL_BRANCH="${DEFAULT_MODEL_BRANCH_BASE}"
+PLANNER_MODEL_BRANCH="${DEFAULT_PLANNER_MODEL_BRANCH_BASE}"
+REACT_MODEL_BRANCH="${DEFAULT_REACT_MODEL_BRANCH_BASE}"
+parse_args --model shared/repo:shared.gguf --model-branch release -- "demo query"
+printf '%s\n' "${MODEL_SPEC}" "${PLANNER_MODEL_SPEC}" "${REACT_MODEL_SPEC}" "${MODEL_BRANCH}" "${PLANNER_MODEL_BRANCH}" "${REACT_MODEL_BRANCH}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "shared/repo:shared.gguf" ]
+        [ "${lines[1]}" = "shared/repo:shared.gguf" ]
+        [ "${lines[2]}" = "shared/repo:shared.gguf" ]
+        [ "${lines[3]}" = "release" ]
+        [ "${lines[4]}" = "release" ]
+        [ "${lines[5]}" = "release" ]
+}
+
+@test "cli planner flags override shared selections" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/cli/cli.sh
+COMMAND="run"
+DEFAULT_MODEL_BRANCH_BASE=${DEFAULT_MODEL_BRANCH_BASE:-main}
+DEFAULT_PLANNER_MODEL_BRANCH_BASE=${DEFAULT_PLANNER_MODEL_BRANCH_BASE:-main}
+DEFAULT_REACT_MODEL_BRANCH_BASE=${DEFAULT_REACT_MODEL_BRANCH_BASE:-main}
+MODEL_BRANCH="${DEFAULT_MODEL_BRANCH_BASE}"
+PLANNER_MODEL_BRANCH="${DEFAULT_PLANNER_MODEL_BRANCH_BASE}"
+REACT_MODEL_BRANCH="${DEFAULT_REACT_MODEL_BRANCH_BASE}"
+parse_args --model shared/repo:shared.gguf --planner-model dedicated/planner:plan.gguf --planner-model-branch nightly -- "demo query"
+printf '%s\n' "${MODEL_SPEC}" "${PLANNER_MODEL_SPEC}" "${REACT_MODEL_SPEC}" "${MODEL_BRANCH}" "${PLANNER_MODEL_BRANCH}" "${REACT_MODEL_BRANCH}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "shared/repo:shared.gguf" ]
+        [ "${lines[1]}" = "dedicated/planner:plan.gguf" ]
+        [ "${lines[2]}" = "shared/repo:shared.gguf" ]
+        [ "${lines[3]}" = "main" ]
+        [ "${lines[4]}" = "nightly" ]
+        [ "${lines[5]}" = "main" ]
 }
