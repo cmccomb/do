@@ -30,7 +30,7 @@ source "${BASH_SOURCE[0]%/list.sh}/common.sh"
 
 calendar_list_dry_run_guard() {
 	if [[ "${DRY_RUN}" == true ]]; then
-		log "INFO" "Dry run: skipping Apple Calendar listing" "${TOOL_QUERY:-}" || true
+		log "INFO" "Dry run: skipping Apple Calendar listing" "" || true
 		return 0
 	fi
 
@@ -44,7 +44,7 @@ tool_calendar_list() {
 		return 0
 	fi
 
-	if ! calendar_require_platform; then
+	if ! calendar_require_platform ""; then
 		return 0
 	fi
 

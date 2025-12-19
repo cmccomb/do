@@ -32,7 +32,7 @@ tool_mail_list_inbox() {
 	local limit
 	limit=$(mail_inbox_limit)
 
-	if ! mail_require_platform; then
+	if ! mail_require_platform ""; then
 		return 0
 	fi
 

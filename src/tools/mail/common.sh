@@ -30,13 +30,16 @@ source "${BASH_SOURCE[0]%/mail/common.sh}/registry.sh"
 
 mail_require_platform() {
 	# Ensures Apple Mail tools only run on macOS with osascript available.
+	local context
+	context="$1"
+
 	if [[ "${IS_MACOS}" != true ]]; then
-		log "WARN" "Apple Mail is only available on macOS" "${TOOL_QUERY:-}" || true
+		log "WARN" "Apple Mail is only available on macOS" "${context}" || true
 		return 1
 	fi
 
 	if ! command -v "${MAIL_OSASCRIPT_BIN:-osascript}" >/dev/null 2>&1; then
-		log "WARN" "osascript missing; cannot reach Apple Mail" "${TOOL_QUERY:-}" || true
+		log "WARN" "osascript missing; cannot reach Apple Mail" "${context}" || true
 		return 1
 	fi
 
@@ -77,18 +80,18 @@ mail_resolve_query() {
 }
 
 mail_extract_envelope() {
-	# Splits TOOL_ARGS (canonical text) or TOOL_QUERY into recipients, subject, and body.
+	# Splits the provided envelope string into recipients, subject, and body.
 	# Emits three NUL-delimited fields: recipients, subject, body.
-	local query recipients subject body remainder
-	query=$(mail_resolve_query)
+	local envelope recipients subject body remainder
+	envelope="$1"
 
-	if [[ -z "${query//[[:space:]]/}" ]]; then
+	if [[ -z "${envelope//[[:space:]]/}" ]]; then
 		log "ERROR" "Mail content is required" "" || true
 		return 1
 	fi
 
-	recipients=${query%%$'\n'*}
-	remainder=${query#"${recipients}"}
+	recipients=${envelope%%$'\n'*}
+	remainder=${envelope#"${recipients}"}
 	remainder=${remainder#$'\n'}
 	subject=${remainder%%$'\n'*}
 	body=${remainder#"${subject}"}

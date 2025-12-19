@@ -7,8 +7,7 @@
 #   source "${BASH_SOURCE[0]%/tools/clipboard.sh}/tools/clipboard.sh"
 #
 # Environment variables:
-#   TOOL_ARGS (json): structured arguments containing the canonical text key for copy operations.
-#   TOOL_QUERY (string): text to copy (for clipboard_copy) or ignored for paste; deprecated fallback.
+#   TOOL_ARGS (JSON object): structured args including `input` for copy.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #
 # Dependencies:
@@ -27,24 +26,39 @@ source "${BASH_SOURCE[0]%/clipboard.sh}/registry.sh"
 
 clipboard_require_macos() {
 	# Short-circuits when not running on macOS.
+	local context
+	context="$1"
+
 	if [[ "${IS_MACOS}" != true ]]; then
-		log "WARN" "Clipboard operations require macOS" "${TOOL_QUERY:-}"
+		log "WARN" "Clipboard operations require macOS" "${context}"
 		return 1
 	fi
 	return 0
 }
 
 tool_clipboard_copy() {
-	local content text_key
+	local content args_json text_key
+	args_json="${TOOL_ARGS:-}" || true
 	text_key="$(canonical_text_arg_key)"
+	content=""
 
-	content=$(jq -er --arg key "${text_key}" 'if type == "object" then .[$key] // empty else empty end' <<<"${TOOL_ARGS:-{}}" 2>/dev/null || true)
-
-	if [[ -z "${content}" ]]; then
-		content=${TOOL_QUERY:-""}
+	if [[ -n "${args_json}" ]]; then
+		content=$(jq -er --arg key "${text_key}" '
+ if type != "object" then error("args must be object") end
+| if .[$key]? == null then error("missing ${key}") end
+| if (.[$key] | type) != "string" then error("${key} must be string") end
+| if (.[$key] | length) == 0 then error("${key} cannot be empty") end
+| if ((del(.[$key]) | length) != 0) then error("unexpected properties") end
+| .[$key]
+' <<<"${args_json}" 2>/dev/null || true)
 	fi
 
-	if ! clipboard_require_macos; then
+	if [[ -z "${content}" ]]; then
+		log "ERROR" "Missing TOOL_ARGS.${text_key}" "${args_json}" || true
+		return 1
+	fi
+
+	if ! clipboard_require_macos "${content}"; then
 		return 0
 	fi
 
@@ -57,12 +71,12 @@ tool_clipboard_copy() {
 }
 
 tool_clipboard_paste() {
-	if ! clipboard_require_macos; then
+	if ! clipboard_require_macos ""; then
 		return 0
 	fi
 
 	if ! command -v pbpaste >/dev/null 2>&1; then
-		log "ERROR" "pbpaste missing; cannot read clipboard" "${TOOL_QUERY:-}"
+		log "ERROR" "pbpaste missing; cannot read clipboard" ""
 		return 1
 	fi
 

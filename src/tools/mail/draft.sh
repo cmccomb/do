@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 #
-# Create an Apple Mail draft from TOOL_QUERY.
+# Create an Apple Mail draft from structured TOOL_ARGS input.
 #
 # Usage:
 #   source "${BASH_SOURCE[0]%/mail/draft.sh}/mail/draft.sh"
 #
 # Environment variables:
-#   TOOL_ARGS (json): canonical text key containing first line recipients, second line subject, remainder body.
-#   TOOL_QUERY (string): first line = comma-separated recipients; second line = subject; remainder = body (deprecated fallback).
+#   TOOL_ARGS (json): structured args including `input` with recipients, subject, and body lines.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #   MAIL_OSASCRIPT_BIN (string): override path for osascript; defaults to "osascript".
 #
@@ -37,14 +36,29 @@ mail_build_recipient_args() {
 }
 
 tool_mail_draft() {
-	local recipients_line subject body
+	local recipients_line subject body args_json envelope text_key
+	args_json="${TOOL_ARGS:-}" || true
+	text_key="$(canonical_text_arg_key)"
+	envelope=$(jq -er --arg key "${text_key}" '
+ if type != "object" then error("args must be object") end
+| if .[$key]? == null then error("missing ${key}") end
+| if (.[$key] | type) != "string" then error("${key} must be string") end
+| if (.[$key] | length) == 0 then error("${key} cannot be empty") end
+| if ((del(.[$key]) | length) != 0) then error("unexpected properties") end
+| .[$key]
+' <<<"${args_json}" 2>/dev/null || true)
 
-	if ! mail_require_platform; then
+	if [[ -z "${envelope}" ]]; then
+		log "ERROR" "Missing TOOL_ARGS.${text_key}" "${args_json}" || true
+		return 1
+	fi
+
+	if ! mail_require_platform "${envelope}"; then
 		return 0
 	fi
 
-	if ! { IFS= read -r -d '' recipients_line && IFS= read -r -d '' subject && IFS= read -r -d '' body; } < <(mail_extract_envelope); then
-		log "ERROR" "Unable to parse mail envelope" "${TOOL_QUERY:-}" || true
+	if ! { IFS= read -r -d '' recipients_line && IFS= read -r -d '' subject && IFS= read -r -d '' body; } < <(mail_extract_envelope "${envelope}"); then
+		log "ERROR" "Unable to parse mail envelope" "${envelope}" || true
 		return 1
 	fi
 

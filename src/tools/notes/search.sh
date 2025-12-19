@@ -8,7 +8,6 @@
 #
 # Environment variables:
 #   TOOL_ARGS (json): structured args including `input`.
-#   TOOL_QUERY (string): legacy search phrase fallback when TOOL_ARGS is absent.
 #   NOTES_FOLDER (string): target folder within Apple Notes.
 #   IS_MACOS (bool): indicates whether macOS-specific tooling should run.
 #
@@ -39,10 +38,9 @@ tool_notes_search() {
 	local query folder_script args_json text_key
 	args_json="${TOOL_ARGS:-}" || true
 	text_key="$(canonical_text_arg_key)"
-	query="${TOOL_QUERY:-}" || true
+	query=""
 
-	if [[ -n "${args_json}" ]]; then
-		query=$(jq -er --arg key "${text_key}" '
+	query=$(jq -er --arg key "${text_key}" '
  if type != "object" then error("args must be object") end
 | if .[$key]? == null then error("missing ${key}") end
 | if (.[$key] | type) != "string" then error("${key} must be string") end
@@ -50,15 +48,14 @@ tool_notes_search() {
 | if ((del(.[$key]) | length) != 0) then error("unexpected properties") end
 | .[$key]
 ' <<<"${args_json}" 2>/dev/null || true)
-	fi
 
 	if ! notes_require_platform; then
 		return 0
 	fi
 
 	if [[ -z "${query//[[:space:]]/}" ]]; then
-		log "ERROR" "Search term is required" "" || true
-		return 0
+		log "ERROR" "Search term is required" "${args_json}" || true
+		return 1
 	fi
 
 	folder_script="$(notes_resolve_folder_script)"

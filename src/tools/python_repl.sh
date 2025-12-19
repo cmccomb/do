@@ -7,8 +7,7 @@
 #   source "${BASH_SOURCE[0]%/tools/python_repl.sh}/tools/python_repl.sh"
 #
 # Environment variables:
-#   TOOL_ARGS (json): structured arguments containing the canonical text key with Python statements.
-#   TOOL_QUERY (string): Python statements executed in the REPL session (deprecated; falls back when TOOL_ARGS is empty).
+#   TOOL_ARGS (JSON object): structured args including `input` with Python statements.
 #
 # Dependencies:
 #   - bash 5+
@@ -107,8 +106,25 @@ python_repl_resolve_query() {
 }
 
 tool_python_repl() {
-	local query sandbox_dir startup_file repl_input status # strings and status code
-	query="$(python_repl_resolve_query)"
+	local query sandbox_dir startup_file repl_input status args_json text_key # strings and status code
+	args_json="${TOOL_ARGS:-}" || true
+	text_key="$(canonical_text_arg_key)"
+
+	if [[ -n "${args_json}" ]]; then
+		query=$(jq -er --arg key "${text_key}" '
+ if type != "object" then error("args must be object") end
+| if .[$key]? == null then error("missing ${key}") end
+| if (.[$key] | type) != "string" then error("${key} must be string") end
+| if (.[$key] | length) == 0 then error("${key} cannot be empty") end
+| if ((del(.[$key]) | length) != 0) then error("unexpected properties") end
+| .[$key]
+' <<<"${args_json}" 2>/dev/null || true)
+	fi
+
+	if [[ -z "${query}" ]]; then
+		log "ERROR" "Missing TOOL_ARGS.${text_key}" "${args_json}" || true
+		return 1
+	fi
 
 	sandbox_dir=$(python_repl_create_sandbox) || {
 		log "ERROR" "Failed to create sandbox" "${query}" || true
