@@ -31,12 +31,12 @@ Use `./src/bin/okso --help` to see all flags. The CLI walks through planning and
 
 ### Initialize config for a custom model
 
-1. Generate a config file without executing any plan using the `init` subcommand. Supply your preferred models and optional branch. The defaults split responsibilities so the planner uses Qwen3-8B while the ReAct loop uses Qwen3-1.7B:
+1. Generate a config file without executing any plan using the `init` subcommand. Supply your preferred models and optional branch. The defaults split responsibilities so the planner uses Qwen3-8B while the ReAct loop uses Qwen3-4B:
 
    ```bash
    ./src/bin/okso init --config "${XDG_CONFIG_HOME:-$HOME/.config}/okso/config.env" \
      --planner-model bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf \
-     --react-model bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf \
+     --react-model bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf \
      --model-branch main
    ```
 
@@ -44,7 +44,7 @@ Use `./src/bin/okso --help` to see all flags. The CLI walks through planning and
 
    ```bash
    PLANNER_MODEL_SPEC=bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf \
-   REACT_MODEL_SPEC=bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf \
+   REACT_MODEL_SPEC=bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf \
    PLANNER_MODEL_BRANCH=main \
    REACT_MODEL_BRANCH=main \
    OKSO_LLAMA_BIN=llama-cli \

@@ -33,8 +33,8 @@ CONFIG_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=./core/logging.sh disable=SC1091
 source "${CONFIG_LIB_DIR}/core/logging.sh"
 
-: "${DEFAULT_MODEL_REPO_BASE:=bartowski/Qwen_Qwen3-1.7B-GGUF}"
-: "${DEFAULT_MODEL_FILE_BASE:=Qwen_Qwen3-1.7B-Q4_K_M.gguf}"
+: "${DEFAULT_MODEL_REPO_BASE:=bartowski/Qwen_Qwen3-4B-GGUF}"
+: "${DEFAULT_MODEL_FILE_BASE:=Qwen_Qwen3-4B-Q4_K_M.gguf}"
 : "${DEFAULT_MODEL_SPEC_BASE:=${DEFAULT_MODEL_REPO_BASE}:${DEFAULT_MODEL_FILE_BASE}}"
 : "${DEFAULT_MODEL_BRANCH_BASE:=main}"
 : "${DEFAULT_REACT_MODEL_SPEC_BASE:=${DEFAULT_MODEL_SPEC_BASE}}"

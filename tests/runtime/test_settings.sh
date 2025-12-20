@@ -40,8 +40,8 @@
 	[ "${lines[1]}" = "${config_dir_expected}/config.env" ]
 	[ "${lines[2]}" = "true" ]
 	[ "${lines[3]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-	[ "${lines[4]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
-	[ "${lines[5]}" = "Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
+	[ "${lines[4]}" = "bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf" ]
+	[ "${lines[5]}" = "Qwen_Qwen3-4B-Q4_K_M.gguf" ]
 	[ "${lines[6]}" = "Qwen_Qwen3-8B-Q4_K_M.gguf" ]
 }
 

@@ -131,11 +131,11 @@ create_default_settings() {
 	settings_clear_namespace "${settings_prefix}"
 
 	config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
-	default_model_file="${DEFAULT_MODEL_FILE_BASE:-Qwen_Qwen3-1.7B-Q4_K_M.gguf}"
+	default_model_file="${DEFAULT_MODEL_FILE_BASE:-Qwen_Qwen3-4B-Q4_K_M.gguf}"
 	default_planner_model_file="${DEFAULT_PLANNER_MODEL_FILE_BASE:-Qwen_Qwen3-8B-Q4_K_M.gguf}"
 	config_file="${config_dir}/config.env"
 	planner_model_spec="${DEFAULT_PLANNER_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-8B-GGUF:${default_planner_model_file}}"
-	react_model_spec="${DEFAULT_REACT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-1.7B-GGUF:${default_model_file}}"
+	react_model_spec="${DEFAULT_REACT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:${default_model_file}}"
 
 	new_settings_json=$(jq -c -n \
 		--arg version "0.1.0" \

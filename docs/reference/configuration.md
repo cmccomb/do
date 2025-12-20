@@ -4,7 +4,7 @@ Defaults live in `${XDG_CONFIG_HOME:-~/.config}/okso/config.env`. Create or upda
 
 ```bash
 ./src/bin/okso init --planner-model bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf \
-  --react-model bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf \
+  --react-model bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf \
   --model-branch main
 ```
 
@@ -16,7 +16,7 @@ Supported keys:
 ```
 PLANNER_MODEL_SPEC=bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf
 PLANNER_MODEL_BRANCH=main
-REACT_MODEL_SPEC=bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf
+REACT_MODEL_SPEC=bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf
 REACT_MODEL_BRANCH=main
 VERBOSITY=1
 APPROVE_ALL=false
@@ -25,7 +25,7 @@ FORCE_CONFIRM=false
 
 - `PLANNER_MODEL_SPEC`: Hugging Face `repo[:file]` identifier for the planning llama.cpp model (default: `bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf`).
 - `PLANNER_MODEL_BRANCH`: Optional branch or tag for the planner download (default: `main`).
-- `REACT_MODEL_SPEC`: Hugging Face `repo[:file]` identifier for the ReAct llama.cpp model (default: `bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf`).
+- `REACT_MODEL_SPEC`: Hugging Face `repo[:file]` identifier for the ReAct llama.cpp model (default: `bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf`).
 - `REACT_MODEL_BRANCH`: Optional branch or tag for the ReAct download (default: `main`).
 - `LLAMA_BIN`: Path to the llama.cpp binary used for scoring (default: `llama-cli`).
 - `TESTING_PASSTHROUGH`: `true` to bypass llama.cpp for offline or deterministic runs.

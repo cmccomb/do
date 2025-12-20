@@ -28,7 +28,7 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-	[ "${lines[1]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
+	[ "${lines[1]}" = "bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf" ]
 }
 
 @test "normalize_planner_plan rejects unstructured outline text" {
