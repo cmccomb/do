@@ -158,7 +158,7 @@ llama_infer() {
 	start_time_ns=$((start_time_ns * 1000000000))
 
 	if [[ "${VERBOSITY:-0}" -ge 2 ]]; then
-		log "DEBUG" "llama prompt" "${prompt}"
+		log "DEBUG" "llama args" "${llama_arg_string}"
 	fi
 
 	llama_output=$(llama_with_timeout "${llama_args[@]}" 2>"${stderr_file}")
