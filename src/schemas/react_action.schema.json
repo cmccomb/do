@@ -6,7 +6,7 @@
   "required": ["thought", "tool", "args"],
   "additionalProperties": false,
   "properties": {
-    "thought": { "type": "string", "minLength": 1 },
+    "thought": { "type": "string", "minLength": 50 },
     "tool": { "type": "string", "minLength": 1 },
     "args": { "type": "object" }
   }
