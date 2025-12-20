@@ -31,19 +31,15 @@ SCRIPT
 	[ "${lines[1]}" = "bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf" ]
 }
 
-@test "normalize_planner_plan builds react fallback from outlines" {
+@test "normalize_planner_plan rejects unstructured outline text" {
 	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 normalize_planner_plan <<<"1) first step\n- second step"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	tools=$(printf '%s' "${output}" | jq -r '.[].tool')
-	thoughts=$(printf '%s' "${output}" | jq -r '.[].thought')
-	[[ "${tools}" == *"react_fallback"* ]]
-	[[ "${thoughts}" == *"first step"* ]]
-	[[ "${thoughts}" == *"second step"* ]]
+	[ "$status" -ne 0 ]
+	[[ "${output}" == *"unable to parse planner output"* ]]
 }
 
 @test "normalize_planner_plan handles structured plan with missing optional fields" {
@@ -62,6 +58,18 @@ SCRIPT
 	[ "${plan_tool}" = "notes_create" ]
 	[ "${plan_thought}" = "" ]
 	[ "${args_type}" = "object" ]
+}
+
+@test "normalize_planner_plan rejects steps with non-object args" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/planning/planner.sh
+raw_plan='[{"tool":"notes_create","args":"title"}]'
+normalize_planner_plan <<<"${raw_plan}"
+SCRIPT
+
+	[ "$status" -ne 0 ]
+	[[ "${output}" == *"unable to parse planner output"* ]]
 }
 
 @test "normalize_planner_plan extracts JSON arrays from mixed text output" {
@@ -107,15 +115,15 @@ SCRIPT
 	[ "${second_thought}" = "done" ]
 }
 
-@test "derive_allowed_tools_from_plan respects react fallback and final answer" {
+@test "derive_allowed_tools_from_plan gathers unique tools and ensures summary" {
 	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 tool_names() { printf "%s\n" terminal notes_create final_answer; }
-plan_json='[{"tool":"react_fallback","args":{},"thought":"choose"},{"tool":"notes_create","args":{},"thought":"capture"}]'
+plan_json='[{"tool":"terminal","args":{},"thought":"choose"},{"tool":"notes_create","args":{},"thought":"capture"}]'
 tools=()
 while IFS= read -r line; do
-	tools+=("$line")
+        tools+=("$line")
 done < <(derive_allowed_tools_from_plan "${plan_json}")
 printf "%s\n" "${tools[@]}"
 SCRIPT
