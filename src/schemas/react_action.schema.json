@@ -11,65 +11,115 @@
     "args": { "type": "object" }
   },
   "$defs": {
-    "terminal_args": {
-      "type": "object",
-      "required": ["command"],
-      "additionalProperties": false,
-      "properties": {
-        "command": {
-          "type": "string",
-          "enum": [
-            "status",
-            "pwd",
-            "ls",
-            "cd",
-            "cat",
-            "head",
-            "tail",
-            "find",
-            "grep",
-            "open",
-            "mkdir",
-            "rmdir",
-            "mv",
-            "cp",
-            "touch",
-            "rm",
-            "stat",
-            "wc",
-            "du",
-            "base64"
-          ]
-        },
-        "args": {
-          "type": "array",
-          "items": { "type": "string" }
+    "args_by_tool": {
+      "terminal": {
+        "type": "object",
+        "required": ["command"],
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": [
+              "status",
+              "pwd",
+              "ls",
+              "cd",
+              "cat",
+              "head",
+              "tail",
+              "find",
+              "grep",
+              "open",
+              "mkdir",
+              "rmdir",
+              "mv",
+              "cp",
+              "touch",
+              "rm",
+              "stat",
+              "wc",
+              "du",
+              "base64"
+            ]
+          },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
         }
-      }
-    },
-    "final_answer_args": {
-      "type": "object",
-      "required": ["input"],
-      "additionalProperties": false,
-      "properties": {
-        "input": { "type": "string", "minLength": 1 }
+      },
+      "final_answer": {
+        "type": "object",
+        "required": ["input"],
+        "additionalProperties": false,
+        "properties": {
+          "input": { "type": "string", "minLength": 1 }
+        }
       }
     }
   },
-  "oneOf": [
+  "allOf": [
     {
-      "properties": {
-        "tool": { "const": "terminal" },
-        "args": { "$ref": "#/$defs/terminal_args" }
-      },
-      "required": ["tool", "args"]
+      "if": { "properties": { "tool": { "const": "terminal" } } },
+      "then": {
+        "properties": {
+          "tool": { "const": "terminal" },
+          "args": {
+            "type": "object",
+            "required": ["command"],
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string",
+                "enum": [
+                  "status",
+                  "pwd",
+                  "ls",
+                  "cd",
+                  "cat",
+                  "head",
+                  "tail",
+                  "find",
+                  "grep",
+                  "open",
+                  "mkdir",
+                  "rmdir",
+                  "mv",
+                  "cp",
+                  "touch",
+                  "rm",
+                  "stat",
+                  "wc",
+                  "du",
+                  "base64"
+                ]
+              },
+              "args": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["tool", "args"]
+      }
     },
     {
-      "properties": {
-        "tool": { "const": "final_answer" },
-        "args": { "$ref": "#/$defs/final_answer_args" }
-      },
-      "required": ["tool", "args"]
+      "if": { "properties": { "tool": { "const": "final_answer" } } },
+      "then": {
+        "properties": {
+          "tool": { "const": "final_answer" },
+          "args": {
+            "type": "object",
+            "required": ["input"],
+            "additionalProperties": false,
+            "properties": {
+              "input": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "required": ["tool", "args"]
+      }
     }
   ]
 }

@@ -9,9 +9,9 @@
 #   - bats
 #   - bash 3.2+
 
-@test "react_action schema defines terminal and final_answer branches" {
-	script=$(
-		cat <<'INNERSCRIPT'
+@test "react_action schema defines terminal and final_answer branches without oneOf" {
+        script=$(
+                cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -21,16 +21,15 @@ jq -e '
         (.additionalProperties == false)
         and (.required | sort == ["args","thought","tool"])
         and (.properties.tool.enum == ["terminal","final_answer"])
-        and (."$defs".terminal_args.additionalProperties == false)
-        and (."$defs".final_answer_args.additionalProperties == false)
-        and (.oneOf | length == 2)
-        and (.oneOf[0].properties.tool.const == "terminal")
-        and (.oneOf[1].properties.tool.const == "final_answer")
-        and (.oneOf[0].required | sort == ["args","tool"])
-        and (.oneOf[1].required | sort == ["args","tool"])
+        and (."$defs".args_by_tool.terminal.additionalProperties == false)
+        and (."$defs".args_by_tool.final_answer.additionalProperties == false)
+        and ((.oneOf // null) == null)
+        and (.allOf | length == 2)
+        and (any(.allOf[]; .if.properties.tool.const == "terminal" and (.then.properties.args.required | sort == ["command"])) )
+        and (any(.allOf[]; .if.properties.tool.const == "final_answer" and (.then.properties.args.required | sort == ["input"])) )
 ' "${schema_path}"
 INNERSCRIPT
-	)
+        )
 
 	run bash -lc "${script}"
 	[ "$status" -eq 0 ]
@@ -89,9 +88,9 @@ INNERSCRIPT
 	[ "$status" -eq 0 ]
 }
 
-@test "build_react_action_schema encodes tool args in oneOf with const tool" {
-	script=$(
-		cat <<'INNERSCRIPT'
+@test "build_react_action_schema encodes tool args in if/then branches" {
+        script=$(
+                cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -110,13 +109,15 @@ tool_names() {
 schema_path="$(build_react_action_schema $'alpha\nbeta')"
 
 jq -e '
-        (.required | sort) == ["args", "thought", "tool"] and
-        (.properties.tool.enum | sort) == ["alpha", "beta"] and
-        (.oneOf | length) == 2 and
-        (all(.oneOf[]; (.required | sort) == ["args", "tool"])) and
-        (any(.oneOf[]; .properties.tool.const == "alpha" and .properties.args["$ref"] == "#/$defs/args_by_tool/alpha")) and
-        (any(.oneOf[]; .properties.tool.const == "beta" and .properties.args["$ref"] == "#/$defs/args_by_tool/beta")) and
-        (.additionalProperties == false)
+        . as $root
+        | ($root.required | sort) == ["args", "thought", "tool"]
+        and ($root.properties.tool.enum | sort) == ["alpha", "beta"]
+        and (($root.oneOf // null) == null)
+        and ($root.allOf | length) == 2
+        and (all($root.allOf[]; (.then.required | sort) == ["args", "tool"]))
+        and (any($root.allOf[]; .if.properties.tool.const == "alpha" and .then.properties.args == $root."$defs".args_by_tool.alpha))
+        and (any($root.allOf[]; .if.properties.tool.const == "beta" and .then.properties.args == $root."$defs".args_by_tool.beta))
+        and ($root.additionalProperties == false)
 ' "${schema_path}"
 
 rm -f "${schema_path}"
