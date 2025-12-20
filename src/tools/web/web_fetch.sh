@@ -56,7 +56,7 @@ web_fetch_parse_args() {
 
 tool_web_fetch() {
 	# Downloads the response body for a URL, enforcing size limits and returning JSON metadata.
-	local parsed_args url max_bytes response payload body_path content_type truncated body_size headers final_url body_encoding body_snippet snippet_limit
+	local parsed_args url max_bytes response payload body_path content_type truncated body_size headers final_url body_encoding body_snippet snippet_limit body_markdown
 
 	if ! parsed_args=$(web_fetch_parse_args); then
 		return 1
@@ -85,8 +85,10 @@ tool_web_fetch() {
 	headers=$(jq -r '.headers // ""' <<<"${payload}")
 	final_url=$(jq -r '.final_url // ""' <<<"${payload}")
 
-	snippet_limit=4096
+	# snippet_limit (integer): maximum characters for preview snippets.
+	snippet_limit=1024
 	body_encoding="text"
+	body_markdown=""
 	if [[ -n "${content_type}" ]]; then
 		local content_type_lower
 		content_type_lower=$(printf '%s' "${content_type}" | tr '[:upper:]' '[:lower:]')
@@ -101,7 +103,19 @@ tool_web_fetch() {
 	if [[ "${body_encoding}" == "base64" ]]; then
 		body_snippet=$(head -c "${snippet_limit}" "${body_path}" | base64 | tr -d '\n')
 	else
-		body_snippet=$(head -c "${snippet_limit}" "${body_path}")
+		local converter_output
+		if converter_output=$(python3 "${WEB_TOOLS_DIR}/markdownify.py" --path "${body_path}" --content-type "${content_type}" --limit "${snippet_limit}" 2>&1); then
+			if body_markdown=$(jq -er '.markdown' <<<"${converter_output}" 2>/dev/null) && body_snippet=$(jq -er '.preview' <<<"${converter_output}" 2>/dev/null); then
+				true
+			else
+				log "WARN" "Invalid markdownify output" "${converter_output}" >&2
+				body_markdown=""
+				body_snippet=$(head -c "${snippet_limit}" "${body_path}")
+			fi
+		else
+			log "WARN" "Markdown conversion failed" "${converter_output}" >&2
+			body_snippet=$(head -c "${snippet_limit}" "${body_path}")
+		fi
 	fi
 
 	local status_code
@@ -124,11 +138,12 @@ tool_web_fetch() {
 		--arg content_type "${content_type}" \
 		--arg headers "${headers}" \
 		--arg body_snippet "${body_snippet}" \
+		--arg body_markdown "${body_markdown}" \
 		--arg body_encoding "${body_encoding}" \
 		--argjson status "$(jq -r '.status' <<<"${payload}")" \
 		--argjson bytes "${body_size}" \
 		--argjson truncated "${truncated}" \
-		'{url: $url, final_url: $final_url, status: $status, content_type: $content_type, headers: $headers, bytes: $bytes, truncated: $truncated, body_encoding: $body_encoding, body_snippet: $body_snippet}'
+		'{url: $url, final_url: $final_url, status: $status, content_type: $content_type, headers: $headers, bytes: $bytes, truncated: $truncated, body_encoding: $body_encoding, body_snippet: $body_snippet, body_markdown: (if ($body_markdown | length) > 0 then $body_markdown else null end)}'
 }
 
 register_web_fetch() {

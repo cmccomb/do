@@ -7,7 +7,7 @@ use the canonical `input` property so prompts and schemas can reference `args.in
 - `terminal`: persistent working directory with `pwd`, `ls`, `cd`, `find`, `grep`, `stat`, `wc`, `du`, `base64 encode|decode`, and guarded mutations (`rm -i`, `mkdir`, `mv`, `cp`, `touch`). Uses `open` on macOS.
 - `python_repl`: run Python snippets in an ephemeral sandbox using quiet `python -i` startup guards that confine writes.
 - `web_search`: query the Google Custom Search API with a structured payload (`query` and optional `num`, default `5`, maximum `10`) and return JSON results.
-- `web_fetch`: retrieve HTTP response bodies with a configurable size cap, returning JSON metadata (final URL, HTTP status, content type, headers, byte length, truncation flag, body encoding, and body snippet).
+- `web_fetch`: retrieve HTTP response bodies with a configurable size cap, returning JSON metadata (final URL, HTTP status, content type, headers, byte length, truncation flag, body encoding, body snippet, and optional `body_markdown`).
 - `*_search`: Notes, Calendar, and Mail searches reuse the same `input` field for the search term.
 - `clipboard_copy` / `clipboard_paste`: macOS clipboard helpers.
 - `notes_*`: create, append, list, read, or search Apple Notes entries.
@@ -17,7 +17,7 @@ use the canonical `input` property so prompts and schemas can reference `args.in
 - `applescript`: execute AppleScript snippets on macOS (no-op elsewhere). Expects an `input` string containing the script.
 - `final_answer`: emit the assistant's final reply with an `input` string.
 
-`web_fetch` responses include the final URL, HTTP status, content type, headers, byte length, a truncation flag, and a preview snippet. Non-text payloads are base64-encoded with `body_encoding` set to `base64` to avoid unsafe binary output.
+`web_fetch` responses include the final URL, HTTP status, content type, headers, byte length, a truncation flag, a preview snippet, and a `body_markdown` field when text-like payloads can be converted. Text responses (HTML, JSON, XML, or plain text) are transformed into Markdown with previews truncated to 1024 characters. Non-text payloads are base64-encoded with `body_encoding` set to `base64` to avoid unsafe binary output. Conversion failures fall back to raw snippets with `body_markdown` set to `null`.
 
 For end-to-end scenarios that show how tools fit into approvals and offline runs, see the [Run with approvals](../user-guides/usage.md#run-with-approvals) and [Offline or noninteractive feedback collection](../user-guides/usage.md#offline-or-noninteractive-feedback-collection) walkthroughs.
 
