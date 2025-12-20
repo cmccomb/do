@@ -27,6 +27,12 @@
 # Exit codes:
 #   Functions return non-zero on misuse; fatal errors logged by caller.
 
+# Ensure third-party shell hooks (e.g., mise) do not execute during
+# library initialization, which can cause infinite chpwd invocations
+# in non-interactive contexts such as Bats tests.
+unset -f chpwd _mise_hook __zsh_like_cd cd 2>/dev/null || true
+chpwd_functions=()
+
 PLANNING_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # shellcheck source=../core/errors.sh disable=SC1091

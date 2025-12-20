@@ -2,10 +2,12 @@
 
 setup() {
 	unset -f chpwd _mise_hook 2>/dev/null || true
+	unset -f __zsh_like_cd cd 2>/dev/null || true
+	chpwd_functions=()
 }
 
 @test "react_loop finalizes after invalid action selection" {
-	run bash <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -28,7 +30,7 @@ SCRIPT
 }
 
 @test "react_loop records duplicate actions with warning observation" {
-	run bash <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=2
 LLAMA_AVAILABLE=false
@@ -63,7 +65,7 @@ SCRIPT
 }
 
 @test "react_loop clears plan entries after tool failure" {
-	run bash <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
@@ -78,15 +80,17 @@ execute_tool_action() { printf '{"output":"fail","exit_code":1}'; }
 record_tool_execution() { :; }
 select_next_action() { printf -v "$2" '{"thought":"try","tool":"alpha","args":{}}'; }
 react_loop "question" "alpha" '{"tool":"alpha"}' ""
-printf 'plan_entries=%s' "$(state_get react_state plan_entries)"
+history_len=$(state_get_history_lines react_state | wc -l | tr -d ' ')
+plan_steps=$(jq length <<<"${PLAN_JSON:-[]}")
+printf 'history_len=%s plan_steps=%s' "${history_len}" "${plan_steps}"
 SCRIPT
 
 	[ "$status" -eq 0 ]
-	[ "$output" = "plan_entries=" ]
+	[ "$output" = "history_len=0 plan_steps=0" ]
 }
 
 @test "react_loop stops after final_answer" {
-	run bash <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=3
 LLAMA_AVAILABLE=false

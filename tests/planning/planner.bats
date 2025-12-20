@@ -2,10 +2,12 @@
 
 setup() {
 	unset -f chpwd _mise_hook 2>/dev/null || true
+	unset -f __zsh_like_cd cd 2>/dev/null || true
+	chpwd_functions=()
 }
 
 @test "generate_plan_json falls back when llama is unavailable" {
-	run bash <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 LLAMA_AVAILABLE=false
@@ -20,7 +22,7 @@ SCRIPT
 }
 
 @test "generate_plan_json appends final step to llama output" {
-	run bash <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 LLAMA_AVAILABLE=true
