@@ -27,9 +27,9 @@
 }
 
 @test "rejects commands outside allowed enum" {
-        run bash -lc 'source ./src/tools/terminal/index.sh; VERBOSITY=0; TOOL_ARGS="{\"command\":\"launch\",\"args\":[\"rockets\"]}"; tool_terminal'
-        [ "$status" -eq 1 ]
-        [[ "${output}" == *"terminal command not permitted"* ]]
+	run bash -lc 'source ./src/tools/terminal/index.sh; VERBOSITY=0; TOOL_ARGS="{\"command\":\"launch\",\"args\":[\"rockets\"]}"; tool_terminal'
+	[ "$status" -eq 1 ]
+	[[ "${output}" == *"terminal command not permitted"* ]]
 }
 
 @test "mkdir and rmdir operate within working directory" {
