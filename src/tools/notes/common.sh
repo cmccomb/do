@@ -59,7 +59,7 @@ notes_extract_title_and_body() {
 	fi
 
 	if [[ -z "${title//[[:space:]]/}" ]]; then
-		title="Untitled note $(date -Iseconds)"
+		title="Untitled note $(date +%Y-%m-%dT%H:%M:%S%z)"
 	fi
 
 	printf '%s\0%s\0' "${title}" "${body}"

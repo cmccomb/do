@@ -34,7 +34,7 @@ log_emit() {
 	message="$2"
 	detail=${3:-""}
 	format_style="$4"
-	timestamp="$(date -Iseconds)"
+	timestamp="$(date +%Y-%m-%dT%H:%M:%S%z)"
 	verbosity=${VERBOSITY:-1}
 	should_emit=1
 

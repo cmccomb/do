@@ -35,11 +35,12 @@ tool_applescript() {
 	if [[ -n "${args_json}" ]]; then
 		query=$(jq -er --arg key "${text_key}" '
  if type != "object" then error("args must be object") end
-| if .[$key]? == null then error("missing ${key}") end
-| if (.[$key] | type) != "string" then error("${key} must be string") end
-| if (.[$key] | length) == 0 then error("${key} cannot be empty") end
+| .[$key]? as $val
+| if $val == null then error("missing \($key)") end
+| if ($val | type) != "string" then error("\($key) must be string") end
+| if ($val | length) == 0 then error("\($key) cannot be empty") end
 | if ((del(.[$key]) | length) != 0) then error("unexpected properties") end
-| .[$key]
+| $val
 ' <<<"${args_json}" 2>/dev/null || true)
 	fi
 

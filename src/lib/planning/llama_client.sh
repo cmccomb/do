@@ -125,7 +125,8 @@ llama_infer() {
 
 	stderr_file="$(mktemp)"
 
-	start_time_ns=$(date +%s%N)
+	start_time_ns=$(date +%s)
+	start_time_ns=$((start_time_ns * 1000000000))
 
 	if [[ "${VERBOSITY:-0}" -ge 2 ]]; then
 		log "DEBUG" "llama prompt" "${prompt}"
@@ -134,7 +135,8 @@ llama_infer() {
 	llama_output=$(llama_with_timeout "${llama_args[@]}" 2>"${stderr_file}")
 	exit_code=$?
 
-	end_time_ns=$(date +%s%N)
+	end_time_ns=$(date +%s)
+	end_time_ns=$((end_time_ns * 1000000000))
 	elapsed_ms=$(((end_time_ns - start_time_ns) / 1000000))
 
 	if [[ ${exit_code} -eq 124 || ${exit_code} -eq 137 || ${exit_code} -eq 143 ]]; then

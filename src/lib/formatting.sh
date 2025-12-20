@@ -87,7 +87,7 @@ format_tool_details() {
 		return 0
 	fi
 
-	for i in "${!details[@]}"; do
+	for i in $(seq 0 $((${#details[@]} - 1))); do
 		if ((i > 0)); then
 			detail_text+=' | '
 		fi

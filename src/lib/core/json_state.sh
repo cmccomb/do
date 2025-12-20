@@ -61,7 +61,11 @@ json_state_get_document() {
 	#   invalid JSON, preventing downstream jq errors.
 	local prefix fallback json_var document_value sanitized_fallback cache_path cache_document fallback_provided sanitized_document resolved_document output_var
 	prefix="$1"
-	output_var="${3:-}"
+	if [[ $# -ge 3 && -n "${3}" ]]; then
+		output_var="$3"
+	else
+		output_var=""
+	fi
 	if [[ $# -ge 2 && -n "${2}" ]]; then
 		fallback_provided=true
 		fallback="$2"
