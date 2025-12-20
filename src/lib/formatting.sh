@@ -54,16 +54,25 @@ format_tool_descriptions() {
 format_tool_details() {
 	# Arguments:
 	#   $1 - tool name (string)
-	local tool description command safety
+	#   $2 - include schema (bool, optional)
+	local tool description command safety include_schema args_schema
 	local -a details=()
 	local detail_text=""
 	tool="$1"
+	include_schema="${2:-false}"
 	description="$(tool_description "${tool}")"
 	command="$(tool_command "${tool}")"
 	safety="$(tool_safety "${tool}")"
 
 	if [[ -n "${description}" ]]; then
 		details+=("${description}")
+	fi
+
+	if [[ "${include_schema}" == true ]]; then
+		args_schema="$(tool_args_schema "${tool}")"
+		if [[ -n "${args_schema}" && "${args_schema}" != "{}" ]]; then
+			details+=("Args Schema: ${args_schema}")
+		fi
 	fi
 
 	if [[ -n "${command}" ]]; then
