@@ -147,8 +147,8 @@ SCRIPT
 }
 
 @test "llama_infer fails when JSON schema cannot be read" {
-	local missing_schema
-	missing_schema="${BATS_TMPDIR}/missing-schema.json"
+        local missing_schema
+        missing_schema="${BATS_TMPDIR}/missing-schema.json"
 
 	run env BASH_ENV= ENV= MISSING_SCHEMA="${missing_schema}" bash --noprofile --norc -c '
                 cd "$(git rev-parse --show-toplevel)" || exit 1
@@ -170,7 +170,113 @@ SCRIPT
         '
 	[ "$status" -eq 1 ]
 	message=$(printf '%s\n' "${output}" | jq -r '.message')
-	[[ "${message}" == "failed to read JSON schema" ]]
-	detail=$(printf '%s\n' "${output}" | jq -r '.detail')
-	[[ "${detail}" == *"${missing_schema}"* ]]
+        [[ "${message}" == "failed to read JSON schema" ]]
+        detail=$(printf '%s\n' "${output}" | jq -r '.detail')
+        [[ "${detail}" == *"${missing_schema}"* ]]
+}
+
+@test "llama_infer keeps default context when estimate fits" {
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
+                cd "$(git rev-parse --show-toplevel)" || exit 1
+                args_dir="$(mktemp -d)"
+                args_file="${args_dir}/args.txt"
+                mock_binary="${args_dir}/mock_llama.sh"
+                cat >"${mock_binary}" <<SCRIPT
+#!/usr/bin/env bash
+printf "%s\n" "\$@" >"${args_file}"
+SCRIPT
+                chmod +x "${mock_binary}"
+                export LLAMA_AVAILABLE=true
+                export LLAMA_BIN="${mock_binary}"
+                export REACT_MODEL_REPO=demo/repo
+                export REACT_MODEL_FILE=model.gguf
+                export LLAMA_DEFAULT_CONTEXT_SIZE=128
+                export LLAMA_CONTEXT_CAP=256
+                export LLAMA_CONTEXT_MARGIN_PERCENT=15
+                source ./src/lib/planning/llama_client.sh
+                llama_infer "small prompt" "" 16
+                args=()
+                while IFS= read -r line; do
+                        args+=("$line")
+                done <"${args_file}"
+                [[ " ${args[*]} " != *" -c "* ]]
+        '
+        [ "$status" -eq 0 ]
+}
+
+@test "llama_infer expands context for large prompts" {
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
+                cd "$(git rev-parse --show-toplevel)" || exit 1
+                args_dir="$(mktemp -d)"
+                args_file="${args_dir}/args.txt"
+                mock_binary="${args_dir}/mock_llama.sh"
+                cat >"${mock_binary}" <<SCRIPT
+#!/usr/bin/env bash
+printf "%s\n" "\$@" >"${args_file}"
+SCRIPT
+                chmod +x "${mock_binary}"
+                long_prompt=$(printf "p%.0s" {1..200})
+                export LLAMA_AVAILABLE=true
+                export LLAMA_BIN="${mock_binary}"
+                export REACT_MODEL_REPO=demo/repo
+                export REACT_MODEL_FILE=model.gguf
+                export LLAMA_DEFAULT_CONTEXT_SIZE=64
+                export LLAMA_CONTEXT_CAP=512
+                export LLAMA_CONTEXT_MARGIN_PERCENT=15
+                source ./src/lib/planning/llama_client.sh
+                llama_infer "${long_prompt}" "" 20
+                args=()
+                while IFS= read -r line; do
+                        args+=("$line")
+                done <"${args_file}"
+                context_value=""
+                for i in "${!args[@]}"; do
+                        if [[ "${args[$i]}" == "-c" ]]; then
+                                context_value="${args[$((i + 1))]}"
+                        fi
+                done
+                [[ "${context_value}" == "81" ]]
+        '
+        [ "$status" -eq 0 ]
+}
+
+@test "llama_infer caps requested context" {
+        run env BASH_ENV= ENV= bash --noprofile --norc -c '
+                cd "$(git rev-parse --show-toplevel)" || exit 1
+                args_dir="$(mktemp -d)"
+                args_file="${args_dir}/args.txt"
+                mock_binary="${args_dir}/mock_llama.sh"
+                cat >"${mock_binary}" <<SCRIPT
+#!/usr/bin/env bash
+printf "%s\n" "\$@" >"${args_file}"
+SCRIPT
+                chmod +x "${mock_binary}"
+                long_prompt=$(printf "c%.0s" {1..400})
+                export LLAMA_AVAILABLE=true
+                export LLAMA_BIN="${mock_binary}"
+                export REACT_MODEL_REPO=demo/repo
+                export REACT_MODEL_FILE=model.gguf
+                export LLAMA_DEFAULT_CONTEXT_SIZE=64
+                export LLAMA_CONTEXT_CAP=90
+                export LLAMA_CONTEXT_MARGIN_PERCENT=15
+                source ./src/lib/planning/llama_client.sh
+                llama_infer "${long_prompt}" "" 40
+                args=()
+                while IFS= read -r line; do
+                        args+=("$line")
+                done <"${args_file}"
+                context_value=""
+                for i in "${!args[@]}"; do
+                        if [[ "${args[$i]}" == "-c" ]]; then
+                                context_value="${args[$((i + 1))]}"
+                        fi
+                done
+                [[ "${context_value}" == "90" ]]
+        '
+        [ "$status" -eq 0 ]
+        message=$(printf '%s\n' "${output}" | jq -r '.message')
+        detail=$(printf '%s\n' "${output}" | jq -r '.detail')
+        [[ "${message}" == "llama context capped" ]]
+        [[ "${detail}" == *"required_context=161"* ]]
+        [[ "${detail}" == *"capped_context=90"* ]]
 }
