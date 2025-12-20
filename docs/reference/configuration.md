@@ -21,6 +21,9 @@ REACT_MODEL_BRANCH=main
 VERBOSITY=1
 APPROVE_ALL=false
 FORCE_CONFIRM=false
+LLAMA_DEFAULT_CONTEXT_SIZE=4096
+LLAMA_CONTEXT_CAP=8192
+LLAMA_CONTEXT_MARGIN_PERCENT=15
 ```
 
 - `PLANNER_MODEL_SPEC`: Hugging Face `repo[:file]` identifier for the planning llama.cpp model (default: `bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf`).
@@ -28,6 +31,9 @@ FORCE_CONFIRM=false
 - `REACT_MODEL_SPEC`: Hugging Face `repo[:file]` identifier for the ReAct llama.cpp model (default: `bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf`).
 - `REACT_MODEL_BRANCH`: Optional branch or tag for the ReAct download (default: `main`).
 - `LLAMA_BIN`: Path to the llama.cpp binary used for scoring (default: `llama-cli`).
+- `LLAMA_DEFAULT_CONTEXT_SIZE`: Assumed default llama.cpp context window used when no override is requested (default: `4096`).
+- `LLAMA_CONTEXT_CAP`: Maximum context window okso will request for llama.cpp invocations (default: `8192`).
+- `LLAMA_CONTEXT_MARGIN_PERCENT`: Safety margin percentage applied to prompt + generation estimates when sizing context (default: `15`).
 - `TESTING_PASSTHROUGH`: `true` to bypass llama.cpp for offline or deterministic runs.
 - `APPROVE_ALL`: `true` to skip prompts by default.
 - `FORCE_CONFIRM`: `true` to always prompt, even when approvals are automatic.
