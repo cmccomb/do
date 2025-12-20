@@ -106,6 +106,11 @@ terminal_args_from_json() {
 		TERMINAL_CMD="status"
 	fi
 
+	if ! terminal_allowed "${TERMINAL_CMD}"; then
+		log "ERROR" "terminal command not permitted" "${TERMINAL_CMD}" || true
+		return 1
+	fi
+
 	TERMINAL_CMD_ARGS=()
 	while IFS= read -r line; do
 		TERMINAL_CMD_ARGS+=("$line")
@@ -347,7 +352,7 @@ register_terminal() {
 
 	args_schema=$(
 		cat <<'JSON'
-{"type":"object","required":["command"],"properties":{"command":{"type":"string","minLength":1},"args":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
+{"type":"object","required":["command"],"properties":{"command":{"type":"string","enum":["status","pwd","ls","cd","cat","head","tail","find","grep","open","mkdir","rmdir","mv","cp","touch","rm","stat","wc","du","base64"]},"args":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
 JSON
 	)
 	register_tool \

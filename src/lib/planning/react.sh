@@ -401,7 +401,7 @@ validate_react_action() {
 		#   $1 - argument key (string)
 		#   $2 - argument JSON value (string)
 		#   $3 - schema JSON string
-		local arg_key value_json schema_fragment expected_type min_length item_type
+		local arg_key value_json schema_fragment expected_type min_length item_type enum_values const_value
 		arg_key="$1"
 		value_json="$2"
 		schema_fragment="$3"
@@ -413,6 +413,8 @@ validate_react_action() {
 
 		case "${expected_type}" in
 		string)
+			enum_values=$(jq -c '.enum // empty' <<<"${schema_fragment}")
+			const_value=$(jq -c '.const // empty' <<<"${schema_fragment}")
 			if ! jq -e 'type == "string"' <<<"${value_json}" >/dev/null; then
 				printf 'Arg %s must be a string\n' "${arg_key}" >&2
 				return 1
@@ -421,6 +423,18 @@ validate_react_action() {
 			if [[ "${min_length}" -gt 0 ]] && [[ -z "$(jq -r 'gsub("^\\s+|\\s+$"; "")' <<<"${value_json}")" ]]; then
 				printf 'Arg %s cannot be empty\n' "${arg_key}" >&2
 				return 1
+			fi
+			if [[ -n "${const_value}" && "${const_value}" != "null" ]]; then
+				if ! jq -e --argjson const "${const_value}" --argjson val "${value_json}" '$const == $val' <<<"null" >/dev/null; then
+					printf 'Arg %s must equal %s\n' "${arg_key}" "${const_value}" >&2
+					return 1
+				fi
+			fi
+			if [[ -n "${enum_values}" && "${enum_values}" != "null" ]]; then
+				if ! jq -e --argjson enum "${enum_values}" --argjson val "${value_json}" '$enum | index($val)' <<<"null" >/dev/null; then
+					printf 'Arg %s must be one of: %s\n' "${arg_key}" "${enum_values}" >&2
+					return 1
+				fi
 			fi
 			;;
 		object)

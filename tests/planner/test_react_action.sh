@@ -191,6 +191,45 @@ INNERSCRIPT
 	[ "$status" -eq 0 ]
 }
 
+@test "validate_react_action enforces enum constraints" {
+	script=$(
+		cat <<'INNERSCRIPT'
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+source ./src/lib/planning/planner.sh
+
+tool_registry_json() {
+        cat <<'JSON'
+{"names":["terminal"],"registry":{"terminal":{"args_schema":{"type":"object","required":["command"],"properties":{"command":{"type":"string","enum":["status","pwd"]}},"additionalProperties":false}}}}
+JSON
+}
+
+tool_names() { printf "%s\n" "terminal"; }
+
+schema_path="$(build_react_action_schema "terminal")"
+
+invalid_action='{"thought":"check time","tool":"terminal","args":{"command":"date"}}'
+
+set +e
+validate_react_action "${invalid_action}" "${schema_path}" 2>err.log
+status=$?
+set -e
+
+if [[ ${status} -eq 0 ]]; then
+        echo "validation unexpectedly succeeded"
+        exit 1
+fi
+
+grep -F "Arg command must be one of" err.log
+rm -f "${schema_path}" err.log
+INNERSCRIPT
+	)
+
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
+}
+
 @test "validate_react_action accepts terminal arg arrays" {
 	script=$(
 		cat <<'INNERSCRIPT'
@@ -201,7 +240,7 @@ source ./src/lib/planning/planner.sh
 
 schema_path="$(build_react_action_schema "terminal")"
 
-action='{"thought":"execute","tool":"terminal","args":{"command":"echo","args":["hi"]}}'
+action='{"thought":"execute","tool":"terminal","args":{"command":"ls","args":["-la"]}}'
 validate_react_action "${action}" "${schema_path}" >/dev/null
 
 rm -f "${schema_path}"
@@ -247,12 +286,12 @@ source ./src/lib/planning/planner.sh
 llama_prompt_file=$(mktemp)
 llama_infer() {
         printf '%s' "$1" >"${llama_prompt_file}"
-        printf '%s' '{"thought":"llama chose","tool":"terminal","args":{"command":"echo","args":["hi"]}}'
+        printf '%s' '{"thought":"llama chose","tool":"terminal","args":{"command":"ls","args":["-la"]}}'
 }
 
 state_prefix=react
-plan_entry=$(jq -nc '{tool:"terminal",args:{command:"echo",args:["hi"]},thought:"planned guidance"}')
-plan_outline=$'1. terminal -> echo hi\n2. final_answer -> summarize'
+plan_entry=$(jq -nc '{tool:"terminal",args:{command:"ls",args:["-la"]},thought:"planned guidance"}')
+plan_outline=$'1. terminal -> ls -la\n2. final_answer -> summarize'
 
 initialize_react_state "${state_prefix}" "demo request" $'terminal\nfinal_answer' "${plan_entry}" "${plan_outline}"
 
@@ -277,12 +316,12 @@ if ! grep -F 'planned guidance' "${llama_prompt_file}" >/dev/null; then
         exit 1
 fi
 
-if ! grep -F '"command":"echo"' "${llama_prompt_file}" >/dev/null; then
-        echo "plan args missing from prompt"
-        exit 1
-fi
+        if ! grep -F '"command":"ls"' "${llama_prompt_file}" >/dev/null; then
+                echo "plan args missing from prompt"
+                exit 1
+        fi
 
-jq -e '.tool == "terminal" and .args.command == "echo" and .thought == "llama chose"' <<<"${action_json}"
+        jq -e '.tool == "terminal" and .args.command == "ls" and .thought == "llama chose"' <<<"${action_json}"
 rm -f "${llama_prompt_file}"
 INNERSCRIPT
 	)
@@ -306,8 +345,8 @@ llama_infer() {
 }
 
 state_prefix=react
-plan_entry=$(jq -nc '{tool:"terminal",args:{command:"echo",args:["hi"]},thought:"planned guidance"}')
-plan_outline=$'1. terminal -> echo hi\n2. final_answer -> summarize'
+plan_entry=$(jq -nc '{tool:"terminal",args:{command:"ls",args:["-la"]},thought:"planned guidance"}')
+plan_outline=$'1. terminal -> ls -la\n2. final_answer -> summarize'
 
 initialize_react_state "${state_prefix}" "demo request" $'terminal\nfinal_answer' "${plan_entry}" "${plan_outline}"
 
