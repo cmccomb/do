@@ -13,7 +13,6 @@
 # Dependencies:
 #   - bash 3.2+
 #   - coreutils (ls, pwd)
-#   - fd, rg (optional for search tool)
 #   - logging helpers from logging.sh
 #   - register_tool utilities from tools/registry.sh
 #
