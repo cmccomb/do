@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 setup() {
-        unset -f chpwd _mise_hook 2>/dev/null || true
+	unset -f chpwd _mise_hook 2>/dev/null || true
 }
 
 @test "react_loop finalizes after invalid action selection" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -23,12 +23,12 @@ react_loop "what time is it" "alpha" "" ""
 printf 'final=%s step=%s' "$(state_get react_state final_answer)" "$(state_get react_state step)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "final=fallback_response step=1" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "final=fallback_response step=1" ]
 }
 
 @test "react_loop records duplicate actions with warning observation" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=2
 LLAMA_AVAILABLE=false
@@ -58,12 +58,12 @@ printf 'first_thought=%s second_thought=%s' \
         "$(printf '%s' "${second_entry}" | jq -r '.thought')"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "first_thought=first second_thought=second (REPEATED)" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "first_thought=first second_thought=second (REPEATED)" ]
 }
 
 @test "react_loop clears plan entries after tool failure" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
@@ -81,12 +81,12 @@ react_loop "question" "alpha" '{"tool":"alpha"}' ""
 printf 'plan_entries=%s' "$(state_get react_state plan_entries)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_entries=" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_entries=" ]
 }
 
 @test "react_loop stops after final_answer" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=3
 LLAMA_AVAILABLE=false
@@ -104,6 +104,6 @@ react_loop "question" "final_answer" "" ""
 printf 'final=%s step=%s' "$(state_get react_state final_answer)" "$(state_get react_state step)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "final=complete step=1" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "final=complete step=1" ]
 }

@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 setup() {
-        unset -f chpwd _mise_hook 2>/dev/null || true
+	unset -f chpwd _mise_hook 2>/dev/null || true
 }
 
 @test "should_prompt_for_tool respects approval flags" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/execution.sh
 PLAN_ONLY=true
@@ -19,12 +19,12 @@ else
 fi
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${output}" = "skip" ]
+	[ "$status" -eq 0 ]
+	[ "${output}" = "skip" ]
 }
 
 @test "execute_tool_with_query runs handler and emits structured response" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/execution.sh
 APPROVE_ALL=true
@@ -40,10 +40,10 @@ fake_handler() {
 execute_tool_with_query "example" "do it" "context" '{"foo":1}'
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        payload=$(printf '%s' "${output}")
-        body=$(printf '%s' "${payload}" | jq -r '.output')
-        exit_code=$(printf '%s' "${payload}" | jq -r '.exit_code')
-        [ "${body}" = 'ran:do it:{"foo":1}' ]
-        [ "${exit_code}" -eq 0 ]
+	[ "$status" -eq 0 ]
+	payload=$(printf '%s' "${output}")
+	body=$(printf '%s' "${payload}" | jq -r '.output')
+	exit_code=$(printf '%s' "${payload}" | jq -r '.exit_code')
+	[ "${body}" = 'ran:do it:{"foo":1}' ]
+	[ "${exit_code}" -eq 0 ]
 }

@@ -19,7 +19,7 @@ SCRIPT
 }
 
 @test "normalize_planner_plan rejects unstructured outline text" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 normalize_planner_plan <<<"1) first step\n- second step"

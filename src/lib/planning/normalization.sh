@@ -24,12 +24,12 @@ source "${PLANNING_NORMALIZATION_DIR}/../core/logging.sh"
 # Normalize noisy planner output into a clean PlannerPlan JSON array of objects.
 # Reads from stdin, writes clean JSON array to stdout.
 normalize_planner_plan() {
-        local raw plan_candidate normalized
+	local raw plan_candidate normalized
 
-        raw="$(cat)"
+	raw="$(cat)"
 
-        plan_candidate=$(
-                RAW_INPUT="${raw}" python3 - <<'PYTHON'
+	plan_candidate=$(
+		RAW_INPUT="${raw}" python3 - <<'PYTHON'
 import json
 import os
 import re
@@ -59,10 +59,10 @@ json.dump(candidate, sys.stdout)
 
 PYTHON
 
-        ) || plan_candidate=""
+	) || plan_candidate=""
 
-        if [[ -n "${plan_candidate:-}" ]]; then
-                normalized=$(jq -ec '
+	if [[ -n "${plan_candidate:-}" ]]; then
+		normalized=$(jq -ec '
                         def valid_step:
                                 (.tool | type == "string")
                                 and (.tool | length) > 0
@@ -77,33 +77,33 @@ PYTHON
                                 map({tool: .tool, args: (.args // {}), thought: (.thought // "")})
                         end
                         ' <<<"${plan_candidate}" 2>/dev/null || true)
-                if [[ -n "${normalized}" && "${normalized}" != "[]" ]]; then
-                        printf '%s' "${normalized}"
-                        return 0
-                fi
-        fi
+		if [[ -n "${normalized}" && "${normalized}" != "[]" ]]; then
+			printf '%s' "${normalized}"
+			return 0
+		fi
+	fi
 
-        log "ERROR" "normalize_planner_plan: unable to parse planner output" "${raw}" >&2
-        return 1
+	log "ERROR" "normalize_planner_plan: unable to parse planner output" "${raw}" >&2
+	return 1
 }
 
 append_final_answer_step() {
-        # Ensures the plan includes a final step with the final_answer tool.
-        # Arguments:
-        #   $1 - plan JSON array (string)
-        local plan_json plan_clean has_final updated_plan
-        plan_json="${1:-[]}"
+	# Ensures the plan includes a final step with the final_answer tool.
+	# Arguments:
+	#   $1 - plan JSON array (string)
+	local plan_json plan_clean has_final updated_plan
+	plan_json="${1:-[]}"
 
-        plan_clean="$(printf '%s' "$plan_json" | normalize_planner_plan)" || return 1
+	plan_clean="$(printf '%s' "$plan_json" | normalize_planner_plan)" || return 1
 
-        has_final="$(jq -r 'map((.tool // "") | ascii_downcase == "final_answer") | any' <<<"${plan_clean}" 2>/dev/null || echo false)"
-        if [[ "${has_final}" == "true" ]]; then
-                printf '%s' "${plan_clean}"
-                return 0
-        fi
+	has_final="$(jq -r 'map((.tool // "") | ascii_downcase == "final_answer") | any' <<<"${plan_clean}" 2>/dev/null || echo false)"
+	if [[ "${has_final}" == "true" ]]; then
+		printf '%s' "${plan_clean}"
+		return 0
+	fi
 
-        updated_plan="$(jq -c '. + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}]' <<<"${plan_clean}" 2>/dev/null || printf '%s' "${plan_json}")"
-        printf '%s' "${updated_plan}"
+	updated_plan="$(jq -c '. + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}]' <<<"${plan_clean}" 2>/dev/null || printf '%s' "${plan_json}")"
+	printf '%s' "${updated_plan}"
 }
 
 export -f normalize_planner_plan

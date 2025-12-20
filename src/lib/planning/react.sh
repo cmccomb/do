@@ -20,6 +20,7 @@
 #   None directly; functions return status of operations.
 
 PLANNING_REACT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck disable=SC2034 # consumed by sourced React helpers
 PLANNING_REACT_ROOT_DIR="${PLANNING_REACT_DIR}"
 
 # shellcheck source=./react/schema.sh disable=SC1091

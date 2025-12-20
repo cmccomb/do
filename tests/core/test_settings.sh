@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 @test "create_default_settings seeds derived defaults" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 source ./src/lib/core/settings.sh
                 create_default_settings compat
@@ -13,17 +13,17 @@
                         "$(jq -r ".react_model_spec" <<<"${doc}")" \
                         "$(jq -r ".use_react_llama" <<<"${doc}")"
         '
-        [ "$status" -eq 0 ]
-        config_dir_expected="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
-        [ "${lines[0]}" = "${config_dir_expected}" ]
-        [ "${lines[1]}" = "${config_dir_expected}/config.env" ]
-        [ "${lines[2]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-        [ "${lines[3]}" = "bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf" ]
-        [ "${lines[4]}" = "true" ]
+	[ "$status" -eq 0 ]
+	config_dir_expected="${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
+	[ "${lines[0]}" = "${config_dir_expected}" ]
+	[ "${lines[1]}" = "${config_dir_expected}/config.env" ]
+	[ "${lines[2]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
+	[ "${lines[3]}" = "bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf" ]
+	[ "${lines[4]}" = "true" ]
 }
 
 @test "settings persist across shells using cache" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 prefix="persist_${RANDOM}"
                 source ./src/lib/core/settings.sh
@@ -33,12 +33,12 @@
                 unset "${cache_var}"
                 printf "%s" "$(settings_get_json_document "${prefix}" | jq -r ".example")"
         '
-        [ "$status" -eq 0 ]
-        [ "$output" = "value" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "value" ]
 }
 
 @test "default overrides merge onto base settings" {
-        run bash -lc '
+	run bash -lc '
                 set -e
                 prefix="override_${RANDOM}"
                 export DEFAULT_MODEL_FILE_BASE="Alt.gguf"
@@ -50,6 +50,6 @@
                         "$(jq -r ".verbosity" <<<"${doc}")" \
                         "$(jq -r ".notes_dir" <<<"${doc}")"
         '
-        [ "$status" -eq 0 ]
-        [ "$output" = "Alt.gguf|5|/tmp/custom_notes" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "Alt.gguf|5|/tmp/custom_notes" ]
 }
