@@ -58,10 +58,10 @@ respond_text() {
 		return 0
 	fi
 
-        local context_for_prompt
-        prompt="$(build_concise_response_prompt "${user_query}" "${context}")"
-        context_for_prompt="$(apply_prompt_context_budget "${prompt}" "${context}" "${number_of_tokens}" "direct_response")"
-        prompt="$(build_concise_response_prompt "${user_query}" "${context_for_prompt}")"
+	local context_for_prompt
+	prompt="$(build_concise_response_prompt "${user_query}" "${context}")"
+	context_for_prompt="$(apply_prompt_context_budget "${prompt}" "${context}" "${number_of_tokens}" "direct_response")"
+	prompt="$(build_concise_response_prompt "${user_query}" "${context_for_prompt}")"
 	log "INFO" "Invoking llama inference" "$(printf 'tokens=%s schema=%s' "${number_of_tokens}" "${concise_schema_path}")" >&2
 	local response_text
 	response_text="$(llama_infer "${prompt}" "" "${number_of_tokens}" "${concise_schema_path}" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}")"

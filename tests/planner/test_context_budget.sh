@@ -10,7 +10,7 @@
 #   - bash 3.2+
 
 @test "apply_prompt_context_budget leaves short context untouched" {
-        run bash -s <<'SCRIPT'
+	run bash -s <<'SCRIPT'
 set -e
 cd "$(git rev-parse --show-toplevel)" || exit 1
 export PROMPT_TOKEN_BUDGET=20
@@ -23,11 +23,11 @@ context="Short context."
 output="$(apply_prompt_context_budget "${prompt}" "${context}" 5 "direct_response")"
 [[ "${output}" == "${context}" ]]
 SCRIPT
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "apply_prompt_context_budget summarizes oversized web_fetch content" {
-        run bash -s <<'SCRIPT'
+	run bash -s <<'SCRIPT'
 set -e
 cd "$(git rev-parse --show-toplevel)" || exit 1
 export PROMPT_TOKEN_BUDGET=200
@@ -45,5 +45,5 @@ summarized="$(apply_prompt_context_budget "${prompt}" "${context}" 32 "react_his
 final_tokens=$(estimate_total_tokens "History:\n${summarized}" 32)
 (( final_tokens <= PROMPT_TOKEN_BUDGET ))
 SCRIPT
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
