@@ -36,59 +36,6 @@ INNERSCRIPT
 	[ "${status}" -eq 0 ]
 }
 
-@test "planner replay uses structured args for file_search" {
-	script=$(
-		cat <<'INNERSCRIPT'
-set -euo pipefail
-cd "$(git rev-parse --show-toplevel)" || exit 1
-
-chpwd_functions=()
-unset -f chpwd _mise_hook 2>/dev/null || true
-
-source ./src/lib/planning/planner.sh
-source ./src/lib/tools.sh
-
-init_tool_registry
-register_file_search
-register_final_answer
-
-extract_tool_query() { printf '%s' "legacy"; }
-
-working_dir=$(mktemp -d)
-cd "${working_dir}"
-
-: >structured_match.txt
-: >legacy_only.txt
-
-plan_json='[{"tool":"file_search","args":{"input":"structured_match"},"thought":"search"},{"tool":"final_answer","args":{"input":"done"},"thought":"finish"}]'
-plan_entries="$(plan_json_to_entries "${plan_json}")"
-allowed_tools="$(derive_allowed_tools_from_plan "${plan_json}")"
-plan_outline="$(plan_json_to_outline "${plan_json}")"
-
-USE_REACT_LLAMA=false
-LLAMA_AVAILABLE=false
-VERBOSITY=0
-APPROVE_ALL=true
-PLAN_ONLY=false
-DRY_RUN=false
-FORCE_CONFIRM=false
-
-output=$(react_loop "find files" "${allowed_tools}" "${plan_entries}" "${plan_outline}" 2>/dev/null)
-
-rm -rf "${working_dir}"
-
-grep -F "structured_match" <<<"${output}"
-if grep -F "legacy_only" <<<"${output}"; then
-        echo "file_search used TOOL_QUERY instead of TOOL_ARGS"
-        exit 1
-fi
-INNERSCRIPT
-	)
-
-	run bash -lc "${script}"
-	[ "${status}" -eq 0 ]
-}
-
 @test "ReAct loop forwards structured args to applescript" {
 	script=$(
 		cat <<'INNERSCRIPT'
