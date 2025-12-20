@@ -39,3 +39,6 @@ coverage/
 # However, this is generally not recommended for scripts that need to be executable
 # across different environments.
 # *.sh mode
+
+
+output
