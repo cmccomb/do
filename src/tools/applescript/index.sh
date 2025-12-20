@@ -4,7 +4,7 @@
 # AppleScript tool that executes snippets on macOS when available.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/applescript.sh}/tools/applescript.sh"
+#   source "${BASH_SOURCE[0]%/tools/applescript/index.sh}/tools/applescript/index.sh"
 #
 # Environment variables:
 #   TOOL_ARGS (JSON object): structured args including `input`.
@@ -19,12 +19,12 @@
 # Exit codes:
 #   Returns non-zero only when registration is misused.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/applescript.sh}/lib/core/logging.sh"
-# shellcheck source=./osascript_helpers.sh disable=SC1091
-source "${BASH_SOURCE[0]%/applescript.sh}/osascript_helpers.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/applescript.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/applescript/index.sh}/lib/core/logging.sh"
+# shellcheck source=../osascript_helpers.sh disable=SC1091
+source "${BASH_SOURCE[0]%/applescript/index.sh}/osascript_helpers.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/applescript/index.sh}/registry.sh"
 
 tool_applescript() {
 	local query args_json text_key

@@ -5,7 +5,7 @@
 # shell session for the agent.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/terminal.sh}/tools/terminal.sh"
+#   source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/tools/terminal/index.sh"
 #
 # Environment variables:
 #   TOOL_QUERY (string): command to run within the session (defaults to "status").
@@ -22,12 +22,12 @@
 # Exit codes:
 #   Returns non-zero only when registration is misused.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/terminal.sh}/lib/core/logging.sh"
-# shellcheck source=../lib/cli/output.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/terminal.sh}/lib/cli/output.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/terminal.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/lib/core/logging.sh"
+# shellcheck source=../../lib/cli/output.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/lib/cli/output.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/terminal/index.sh}/registry.sh"
 
 TERMINAL_ALLOWED_COMMANDS=(
 	"status"

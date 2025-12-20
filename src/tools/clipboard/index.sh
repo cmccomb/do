@@ -4,7 +4,7 @@
 # Clipboard utilities for copying and pasting text via macOS pbcopy/pbpaste.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/clipboard.sh}/tools/clipboard.sh"
+#   source "${BASH_SOURCE[0]%/tools/clipboard/index.sh}/tools/clipboard/index.sh"
 #
 # Environment variables:
 #   TOOL_ARGS (JSON object): structured args including `input` for copy.
@@ -19,10 +19,10 @@
 # Exit codes:
 #   Returns non-zero when a required dependency is missing on macOS.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/clipboard.sh}/lib/core/logging.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/clipboard.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/clipboard/index.sh}/lib/core/logging.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/clipboard/index.sh}/registry.sh"
 
 clipboard_require_macos() {
 	# Short-circuits when not running on macOS.

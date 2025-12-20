@@ -4,7 +4,7 @@
 # Final answer capture tool that records the agent's user-facing reply without side effects.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/final_answer.sh}/tools/final_answer.sh"
+#   source "${BASH_SOURCE[0]%/tools/final_answer/index.sh}/tools/final_answer/index.sh"
 #
 # Environment variables:
 #   TOOL_ARGS (JSON object): structured args including `input`.
@@ -17,12 +17,12 @@
 # Exit codes:
 #   Returns 0 after echoing the supplied TOOL_ARGS.input.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/final_answer.sh}/lib/core/logging.sh"
-# shellcheck source=../lib/cli/output.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/final_answer.sh}/lib/cli/output.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/final_answer.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/final_answer/index.sh}/lib/core/logging.sh"
+# shellcheck source=../../lib/cli/output.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/final_answer/index.sh}/lib/cli/output.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/final_answer/index.sh}/registry.sh"
 
 tool_final_answer() {
 	# Emits the provided final answer text without modification.

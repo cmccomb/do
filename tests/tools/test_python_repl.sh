@@ -18,7 +18,7 @@
 		cat <<'SCRIPT'
 set -e
 cd "$(git rev-parse --show-toplevel)"
-source ./src/tools/python_repl.sh
+source ./src/tools/python_repl/index.sh
 VERBOSITY=0
 TOOL_ARGS=$(jq -nc --arg code 'import os; print(os.getcwd())' '{input:$code}')
 tool_python_repl
@@ -35,7 +35,7 @@ SCRIPT
 	script=$(
 		cat <<'SCRIPT'
 cd "$(git rev-parse --show-toplevel)"
-source ./src/tools/python_repl.sh
+source ./src/tools/python_repl/index.sh
 VERBOSITY=0
 TOOL_ARGS=$(jq -nc --arg code 'print("ok")' '{input:$code}')
 tool_python_repl
@@ -51,7 +51,7 @@ SCRIPT
 	script=$(
 		cat <<'SCRIPT'
 cd "$(git rev-parse --show-toplevel)"
-source ./src/tools/python_repl.sh
+source ./src/tools/python_repl/index.sh
 VERBOSITY=0
 TOOL_ARGS=$(jq -nc --arg code 'raise RuntimeError("boom")' '{input:$code}')
 tool_python_repl
@@ -66,7 +66,7 @@ SCRIPT
 	script=$(
 		cat <<'SCRIPT'
 cd "$(git rev-parse --show-toplevel)"
-source ./src/tools/python_repl.sh
+source ./src/tools/python_repl/index.sh
 VERBOSITY=0
 rm -f /tmp/python_repl_forbidden.txt
 TOOL_ARGS=$(jq -nc --arg code 'open("/tmp/python_repl_forbidden.txt", "w").write("nope")' '{input:$code}')

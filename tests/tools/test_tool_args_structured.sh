@@ -16,7 +16,7 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 chpwd_functions=()
 unset -f chpwd _mise_hook 2>/dev/null || true
 
-source ./src/tools/final_answer.sh
+source ./src/tools/final_answer/index.sh
 
 output=$(TOOL_ARGS='{"input":"structured value"}' tool_final_answer)
 

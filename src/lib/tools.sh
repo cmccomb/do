@@ -34,14 +34,14 @@ TOOL_WRITABLE_DIRECTORY_ALLOWLIST=(
 	"${HOME}/.okso"
 	"${XDG_CONFIG_HOME:-${HOME}/.config}/okso"
 )
-# shellcheck source=./tools/terminal.sh disable=SC1091
-source "${TOOLS_DIR}/terminal.sh"
-# shellcheck source=./tools/file_search.sh disable=SC1091
-source "${TOOLS_DIR}/file_search.sh"
-# shellcheck source=./tools/python_repl.sh disable=SC1091
-source "${TOOLS_DIR}/python_repl.sh"
-# shellcheck source=./tools/clipboard.sh disable=SC1091
-source "${TOOLS_DIR}/clipboard.sh"
+# shellcheck source=./tools/terminal/index.sh disable=SC1091
+source "${TOOLS_DIR}/terminal/index.sh"
+# shellcheck source=./tools/file_search/index.sh disable=SC1091
+source "${TOOLS_DIR}/file_search/index.sh"
+# shellcheck source=./tools/python_repl/index.sh disable=SC1091
+source "${TOOLS_DIR}/python_repl/index.sh"
+# shellcheck source=./tools/clipboard/index.sh disable=SC1091
+source "${TOOLS_DIR}/clipboard/index.sh"
 # shellcheck source=./tools/notes/index.sh disable=SC1091
 source "${TOOLS_DIR}/notes/index.sh"
 # shellcheck source=./tools/reminders/index.sh disable=SC1091
@@ -50,10 +50,12 @@ source "${TOOLS_DIR}/reminders/index.sh"
 source "${TOOLS_DIR}/calendar/index.sh"
 # shellcheck source=./tools/mail/index.sh disable=SC1091
 source "${TOOLS_DIR}/mail/index.sh"
-# shellcheck source=./tools/applescript.sh disable=SC1091
-source "${TOOLS_DIR}/applescript.sh"
-# shellcheck source=./tools/final_answer.sh disable=SC1091
-source "${TOOLS_DIR}/final_answer.sh"
+# shellcheck source=./tools/applescript/index.sh disable=SC1091
+source "${TOOLS_DIR}/applescript/index.sh"
+# shellcheck source=./tools/final_answer/index.sh disable=SC1091
+source "${TOOLS_DIR}/final_answer/index.sh"
+# shellcheck source=./tools/feedback/index.sh disable=SC1091
+source "${TOOLS_DIR}/feedback/index.sh"
 # shellcheck source=./tools/web/index.sh disable=SC1091
 source "${TOOLS_DIR}/web/index.sh"
 
@@ -122,5 +124,6 @@ initialize_tools() {
 	register_mail_suite
 	register_applescript
 	register_final_answer
+	register_feedback
 	register_web_suite
 }

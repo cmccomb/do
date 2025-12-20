@@ -5,7 +5,7 @@
 # user for a rating and comments.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/feedback.sh}/tools/feedback.sh"
+#   source "${BASH_SOURCE[0]%/tools/feedback/index.sh}/tools/feedback/index.sh"
 #
 # Environment variables:
 #   TOOL_QUERY (string): JSON object with "plan_item" (string) and
@@ -28,10 +28,10 @@
 #   Returns non-zero when required context is missing, validation fails, or the
 #   output path is not writable.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/feedback.sh}/lib/core/logging.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/feedback.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/feedback/index.sh}/lib/core/logging.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/feedback/index.sh}/registry.sh"
 
 feedback_normalize_context() {
 	# Parses TOOL_QUERY JSON into discrete variables.
@@ -204,7 +204,7 @@ tool_feedback() {
 register_feedback() {
 	local args_schema
 
-	args_schema=$(jq -nc '{"type":"object","properties":{"query_to_user":{"type":"string","minLength":1}},"additionalProperties":false}')
+	args_schema=$(jq -nc --arg key "$(canonical_text_arg_key)" '{"type":"object","properties":{($key):{"type":"string","minLength":1}},"additionalProperties":false}')
 	register_tool \
 		"feedback" \
 		"WHEN ABSOLUTELY NECESSARY use this tool to ask the user a question to receive more information to complete your task." \

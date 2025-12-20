@@ -4,7 +4,7 @@
 # File and content search tool using macOS Spotlight or fd/rg fallbacks.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/file_search.sh}/tools/file_search.sh"
+#   source "${BASH_SOURCE[0]%/tools/file_search/index.sh}/tools/file_search/index.sh"
 #
 # Environment variables:
 #   TOOL_ARGS (JSON object): structured args including `input`.
@@ -20,10 +20,10 @@
 # Exit codes:
 #   Returns non-zero only when registration is misused.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/file_search.sh}/lib/core/logging.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/file_search.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/file_search/index.sh}/lib/core/logging.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/file_search/index.sh}/registry.sh"
 
 tool_file_search() {
 	local query args_json text_key

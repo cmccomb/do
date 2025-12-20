@@ -4,7 +4,7 @@
 # Restricted Python REPL tool using an isolated sandbox directory.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/tools/python_repl.sh}/tools/python_repl.sh"
+#   source "${BASH_SOURCE[0]%/tools/python_repl/index.sh}/tools/python_repl/index.sh"
 #
 # Environment variables:
 #   TOOL_ARGS (JSON object): structured args including `input` with Python statements.
@@ -19,10 +19,10 @@
 # Exit codes:
 #   Returns non-zero when sandbox creation or interpreter startup fails.
 
-# shellcheck source=../lib/core/logging.sh disable=SC1091
-source "${BASH_SOURCE[0]%/tools/python_repl.sh}/lib/core/logging.sh"
-# shellcheck source=./registry.sh disable=SC1091
-source "${BASH_SOURCE[0]%/python_repl.sh}/registry.sh"
+# shellcheck source=../../lib/core/logging.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/python_repl/index.sh}/lib/core/logging.sh"
+# shellcheck source=../registry.sh disable=SC1091
+source "${BASH_SOURCE[0]%/python_repl/index.sh}/registry.sh"
 
 python_repl_create_sandbox() {
 	# Outputs the sandbox path.
