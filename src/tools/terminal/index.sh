@@ -50,6 +50,7 @@ TERMINAL_ALLOWED_COMMANDS=(
 	"wc"
 	"du"
 	"base64"
+	"date"
 )
 
 TERMINAL_SESSION_ID="${TERMINAL_SESSION_ID:-}" # string session identifier
@@ -232,6 +233,9 @@ tool_terminal() {
 	grep)
 		terminal_run_in_workdir grep "${args[@]}"
 		;;
+	date)
+		terminal_run_in_workdir date "${args[@]}"
+		;;
 	open)
 		if [[ "${IS_MACOS}" != true ]]; then
 			log "WARN" "'open' is macOS-only; skipping" "${args[*]:-""}"
@@ -352,13 +356,13 @@ register_terminal() {
 
 	args_schema=$(
 		cat <<'JSON'
-{"type":"object","required":["command"],"properties":{"command":{"type":"string","enum":["status","pwd","ls","cd","cat","head","tail","find","grep","open","mkdir","rmdir","mv","cp","touch","rm","stat","wc","du","base64"]},"args":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
+{"type":"object","required":["command"],"properties":{"command":{"type":"string","enum":["status","pwd","ls","cd","cat","head","tail","find","grep","open","mkdir","rmdir","mv","cp","touch","rm","stat","wc","du","base64","date"]},"args":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
 JSON
 	)
 	register_tool \
 		"terminal" \
 		"Persistent terminal session for navigation, inspection, and safe mutations (pwd, ls, du, cd, cat, head, tail, find, grep, stat, wc, base64 encode/decode, mkdir, rmdir, mv, cp, touch, rm -i default; open on macOS)." \
-		"terminal <status|pwd|ls|cd|cat|head|tail|find|grep|open|mkdir|rmdir|mv|cp|touch|rm|stat|wc|du|base64>" \
+		"terminal <status|pwd|ls|cd|cat|head|tail|find|grep|open|mkdir|rmdir|mv|cp|touch|rm|stat|wc|du|base64|date>" \
 		"Restricted command set with a per-query working directory; destructive operations default to interactive rm." \
 		tool_terminal \
 		"${args_schema}"

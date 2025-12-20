@@ -134,6 +134,12 @@
 	[[ "${lines[0]}" == *"." ]]
 }
 
+@test "date runs within the working directory" {
+	run bash -lc 'source ./src/tools/terminal/index.sh; VERBOSITY=0; TERMINAL_WORKDIR="$(mktemp -d)"; TOOL_ARGS="{\"command\":\"date\"}"; tool_terminal'
+	[ "$status" -eq 0 ]
+	[[ "${output}" == *":"* ]]
+}
+
 @test "base64 supports encode and decode" {
 	run bash -lc '
                 set -e

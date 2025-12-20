@@ -396,7 +396,7 @@ INNERSCRIPT
 	[ "$status" -eq 0 ]
 }
 
-@test "select_next_action keeps plan index when llama validation fails" {
+@test "select_next_action records validation errors without retry" {
 	script=$(
 		cat <<'INNERSCRIPT'
 set -euo pipefail
@@ -424,11 +424,6 @@ select_next_action "${state_prefix}" action_json
 status=$?
 set -e
 
-if [[ ${status} -eq 0 ]]; then
-        echo "expected llama validation to fail"
-        exit 1
-fi
-
 plan_index="$(state_get "${state_prefix}" "plan_index")"
 if [[ "${plan_index}" -ne 0 ]]; then
         echo "plan index should not advance on failure: ${plan_index}"
@@ -437,8 +432,19 @@ fi
 
 llama_calls=$(wc -l <"${llama_calls_file}")
 rm -f "${llama_calls_file}"
-if [[ "${llama_calls}" -ne 2 ]]; then
-        echo "expected corrective llama retry"
+if [[ "${llama_calls}" -ne 1 ]]; then
+        echo "expected single llama call"
+        exit 1
+fi
+
+history="$(state_get_history_lines "${state_prefix}")"
+if ! grep -F "Invalid action from model" <<<"${history}" >/dev/null; then
+        echo "expected validation error to be recorded"
+        exit 1
+fi
+
+if [[ ${status} -eq 0 ]]; then
+        echo "expected llama validation to fail"
         exit 1
 fi
 INNERSCRIPT

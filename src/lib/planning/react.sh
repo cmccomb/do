@@ -576,7 +576,7 @@ select_next_action() {
 			allowed_tool_descriptions+=$'\n'"${allowed_tool_lines}"
 		fi
 
-		local raw_action validated_action validation_error_file corrective_prompt
+		local raw_action validated_action validation_error_file validation_error
 		react_schema_path="$(build_react_action_schema "${allowed_tools}")" || return 1
 		react_schema_text="$(cat "${react_schema_path}")" || return 1
 		local history
@@ -612,14 +612,11 @@ select_next_action() {
 		log_pretty "INFO" "Action received" "${raw_action}"
 
 		if ! validated_action=$(validate_react_action "${raw_action}" "${react_schema_path}" 2>"${validation_error_file}"); then
-			corrective_prompt="${react_prompt}"$'\n'"The previous response was invalid: $(cat "${validation_error_file}"). Respond with a valid JSON action that follows the schema."
-			raw_action="$(llama_infer "${corrective_prompt}" "" 256 "${react_schema_text}" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}")"
-
-			if ! validated_action=$(validate_react_action "${raw_action}" "${react_schema_path}" 2>"${validation_error_file}"); then
-				log "ERROR" "Invalid action output from llama" "$(cat "${validation_error_file}")"
-				rm -f "${validation_error_file}"
-				return 1
-			fi
+			validation_error="$(cat "${validation_error_file}")"
+			record_history "${state_name}" "$(printf 'Invalid action from model: %s' "${validation_error}")"
+			log "WARN" "Invalid action output from llama" "${validation_error}"
+			rm -f "${validation_error_file}"
+			return 1
 		fi
 
 		rm -f "${validation_error_file}"
@@ -787,8 +784,13 @@ react_loop() {
 
 	while (($(state_get "${state_prefix}" "step") < $(state_get "${state_prefix}" "max_steps"))); do
 		current_step=$(($(state_get "${state_prefix}" "step") + 1))
+		action_json=""
 
-		select_next_action "${state_prefix}" action_json
+		if ! select_next_action "${state_prefix}" action_json; then
+			log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
+			state_set "${state_prefix}" "step" "${current_step}"
+			continue
+		fi
 		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
 		thought="$(printf '%s' "${action_json}" | jq -r '.thought // empty' 2>/dev/null || true)"
 		args_json="$(printf '%s' "${action_json}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
