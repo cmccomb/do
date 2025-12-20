@@ -31,6 +31,7 @@
 # library initialization, which can cause infinite chpwd invocations
 # in non-interactive contexts such as Bats tests.
 unset -f chpwd _mise_hook __zsh_like_cd cd 2>/dev/null || true
+# shellcheck disable=SC2034
 chpwd_functions=()
 
 PLANNING_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)

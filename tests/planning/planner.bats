@@ -3,6 +3,7 @@
 setup() {
 	unset -f chpwd _mise_hook 2>/dev/null || true
 	unset -f __zsh_like_cd cd 2>/dev/null || true
+	# shellcheck disable=SC2034
 	chpwd_functions=()
 }
 
