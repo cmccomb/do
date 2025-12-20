@@ -10,7 +10,7 @@
 #   - bash 3.2+
 
 @test "planner models remain unset until initialized" {
-        run bash -lc '
+	run bash -lc '
                 set -euo pipefail
                 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -28,5 +28,5 @@
                 [[ "${REACT_MODEL_REPO}" == "${DEFAULT_MODEL_REPO_BASE}" ]]
                 [[ "${REACT_MODEL_FILE}" == "${DEFAULT_MODEL_FILE_BASE}" ]]
         '
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }

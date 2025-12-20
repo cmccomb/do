@@ -61,10 +61,10 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 set_by_name() {
-        # Arguments:
-        #   $1 - variable name (string)
-        #   $2 - value (string)
-        printf -v "$1" '%s' "$2"
+	# Arguments:
+	#   $1 - variable name (string)
+	#   $2 - value (string)
+	printf -v "$1" '%s' "$2"
 }
 
 settings_field_mappings() {

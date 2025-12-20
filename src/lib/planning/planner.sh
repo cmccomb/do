@@ -55,9 +55,9 @@ source "${PLANNING_LIB_DIR}/prompting.sh"
 source "${PLANNING_LIB_DIR}/execution.sh"
 
 initialize_planner_models() {
-        if [[ -z "${PLANNER_MODEL_REPO:-}" || -z "${PLANNER_MODEL_FILE:-}" || -z "${REACT_MODEL_REPO:-}" || -z "${REACT_MODEL_FILE:-}" ]]; then
-                hydrate_model_specs
-        fi
+	if [[ -z "${PLANNER_MODEL_REPO:-}" || -z "${PLANNER_MODEL_FILE:-}" || -z "${REACT_MODEL_REPO:-}" || -z "${REACT_MODEL_FILE:-}" ]]; then
+		hydrate_model_specs
+	fi
 }
 export -f initialize_planner_models
 
@@ -66,7 +66,6 @@ lowercase() {
 	#   $1 - input string
 	printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }
-
 
 generate_plan_json() {
 	# Arguments:
@@ -92,11 +91,11 @@ generate_plan_json() {
 		return 0
 	fi
 
-        local prompt raw_plan planner_schema_text plan_json
-        planner_schema_text="$(load_schema_text planner_plan)"
+	local prompt raw_plan planner_schema_text plan_json
+	planner_schema_text="$(load_schema_text planner_plan)"
 
-        prompt="$(build_planner_prompt_with_tools "${user_query}" "${planner_tools[@]}")"
-        log "DEBUG" "Generated planner prompt" "${prompt}" >&2
+	prompt="$(build_planner_prompt_with_tools "${user_query}" "${planner_tools[@]}")"
+	log "DEBUG" "Generated planner prompt" "${prompt}" >&2
 	raw_plan="$(llama_infer "${prompt}" '' 512 "${planner_schema_text}" "${PLANNER_MODEL_REPO}" "${PLANNER_MODEL_FILE}")" || raw_plan="[]"
 	if ! plan_json="$(append_final_answer_step "${raw_plan}")"; then
 		log "ERROR" "Planner output failed validation; request regeneration" "${raw_plan}" >&2
@@ -224,7 +223,6 @@ plan_json_to_entries() {
 	plan_json="$1"
 	printf '%s' "${plan_json}" | jq -cr '.[]'
 }
-
 
 # shellcheck source=./react.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/react.sh"
