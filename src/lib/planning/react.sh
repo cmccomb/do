@@ -453,10 +453,12 @@ select_next_action() {
 	tool=""
 	planned_thought="Following planned step"
 	planned_args_json="{}"
+	local plan_step_available=false
 	if [[ -n "${planned_entry}" ]]; then
 		tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
 		planned_thought="$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')"
 		planned_args_json="$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
+		plan_step_available=true
 
 		plan_step_guidance="$(
 			jq -rn \
@@ -466,8 +468,6 @@ select_next_action() {
 				--argjson args "${planned_args_json}" \
 				'"Step \($step) suggested by the planner:\n- tool: \($tool // "(unspecified)")\n- thought: \($thought // "")\n- args: \($args|@json)"'
 		)"
-
-		state_increment "${state_name}" "plan_index" 1 >/dev/null
 	else
 		plan_step_guidance="Planner provided no additional steps; choose the best next action."
 	fi
@@ -544,6 +544,10 @@ select_next_action() {
 			printf '%s\n' "${validated_action}"
 		fi
 
+		if [[ "${plan_step_available}" == true ]]; then
+			state_increment "${state_name}" "plan_index" 1 >/dev/null
+		fi
+
 		return
 	fi
 
@@ -552,6 +556,7 @@ select_next_action() {
 		thought="${planned_thought}"
 		args_json="${planned_args_json}"
 		next_action_payload="$(jq -nc --arg thought "${thought}" --arg tool "${tool}" --argjson args "${args_json}" '{thought:$thought, tool:$tool, args:$args}')"
+		state_increment "${state_name}" "plan_index" 1 >/dev/null
 	else
 		local final_query history_formatted
 		history_formatted="$(format_tool_history "$(state_get_history_lines "${state_name}")")"

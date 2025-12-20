@@ -199,6 +199,58 @@ INNERSCRIPT
 	[ "$status" -eq 0 ]
 }
 
+@test "select_next_action keeps plan index when llama validation fails" {
+	script=$(
+		cat <<'INNERSCRIPT'
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+source ./src/lib/planning/planner.sh
+
+llama_calls_file=$(mktemp)
+llama_infer() {
+        echo "call" >>"${llama_calls_file}"
+        printf '%s' '{"not_valid":true}'
+}
+
+state_prefix=react
+plan_entry=$(jq -nc '{tool:"terminal",args:{command:"echo",args:["hi"]},thought:"planned guidance"}')
+plan_outline=$'1. terminal -> echo hi\n2. final_answer -> summarize'
+
+initialize_react_state "${state_prefix}" "demo request" $'terminal\nfinal_answer' "${plan_entry}" "${plan_outline}"
+
+USE_REACT_LLAMA=true
+LLAMA_AVAILABLE=true
+
+set +e
+select_next_action "${state_prefix}" action_json
+status=$?
+set -e
+
+if [[ ${status} -eq 0 ]]; then
+        echo "expected llama validation to fail"
+        exit 1
+fi
+
+plan_index="$(state_get "${state_prefix}" "plan_index")"
+if [[ "${plan_index}" -ne 0 ]]; then
+        echo "plan index should not advance on failure: ${plan_index}"
+        exit 1
+fi
+
+llama_calls=$(wc -l <"${llama_calls_file}")
+rm -f "${llama_calls_file}"
+if [[ "${llama_calls}" -ne 2 ]]; then
+        echo "expected corrective llama retry"
+        exit 1
+fi
+INNERSCRIPT
+	)
+
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
+}
+
 @test "build_react_prompt includes allowed tool schemas" {
 	script=$(
 		cat <<'INNERSCRIPT'
