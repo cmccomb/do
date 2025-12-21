@@ -153,6 +153,39 @@ SCRIPT
 	[ "$output" = "first_thought=initial second_thought=retry" ]
 }
 
+@test "react_loop records tool invocation failures" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+MAX_STEPS=1
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+log_messages=()
+log() {
+        if [[ "$1" == "ERROR" ]]; then
+                log_messages+=("$1:$2:${3:-}")
+        fi
+}
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback'; }
+validate_tool_permission() { return 0; }
+execute_tool_with_query() { echo ""; return 9; }
+select_next_action() { printf -v "$2" '{"thought":"fail","tool":"alpha","args":{}}'; }
+react_loop "question" "alpha" "" ""
+last_action_exit=$(state_get react_state last_action | jq -r '.exit_code')
+last_error=$(state_get react_state last_tool_error)
+log_count=${#log_messages[@]}
+printf 'exit=%s error=%s logs=%s' "${last_action_exit}" "${last_error}" "${log_count}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	echo "$output"
+	[[ "$output" == *"exit=9"* ]]
+	[[ "$output" == *"error="* ]]
+	[[ "$output" == *"logs="* ]]
+}
+
 @test "react_loop clears plan entries after tool failure" {
 	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
