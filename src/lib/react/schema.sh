@@ -185,22 +185,14 @@ validate_react_action() {
 	fi
 
 	properties_json=$(jq -c 'if (.properties | type == "object") then .properties else {} end' <<<"${tool_schema}")
-	required_args=$(jq -r '(.required // [])[]?' <<<"${tool_schema}")
-	additional_properties=$(jq -c 'if .additionalProperties == null then false else .additionalProperties end' <<<"${tool_schema}")
+        required_args=$(jq -c '.required // []' <<<"${tool_schema}")
+        additional_properties=$(jq -c 'if .additionalProperties == null then false else .additionalProperties end' <<<"${tool_schema}")
 
-	local required
-	for required in ${required_args}; do
-		if ! jq -e --arg key "${required}" '.args | has($key)' <<<"${action_json}" >/dev/null; then
-			printf 'Missing arg: %s\n' "${required}" >&2
-			return 1
-		fi
-	done
-
-	_react_enforce_arg_type() {
-		# Validates an argument value against a schema fragment using jq types.
-		# Arguments:
-		#   $1 - argument value
-		#   $2 - schema fragment JSON
+        _react_enforce_arg_type() {
+                # Validates an argument value against a schema fragment using jq types.
+                # Arguments:
+                #   $1 - argument value
+                #   $2 - schema fragment JSON
 		local value schema type field format
 		value="$1"
 		schema="$2"
@@ -211,11 +203,11 @@ validate_react_action() {
 			return 0
 		fi
 
-		case "${type}" in
-		object)
-			jq -e 'type == "object"' <<<"${value}" >/dev/null || return 1
-			;;
-		array)
+                case "${type}" in
+                object)
+                        jq -e 'type == "object"' <<<"${value}" >/dev/null || return 1
+                        ;;
+                array)
 			jq -e 'type == "array"' <<<"${value}" >/dev/null || return 1
 			;;
 		string)
@@ -226,19 +218,19 @@ validate_react_action() {
 			if [[ "${format}" == "date-time" ]]; then
 				if ! jq -e 'test("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$")' <<<"${value}" >/dev/null; then
 					return 1
-				fi
-			fi
-			;;
-		number)
-			jq -e 'type == "number" or type == "integer"' <<<"${value}" >/dev/null || return 1
-			;;
-		integer)
-			jq -e 'type == "integer"' <<<"${value}" >/dev/null || return 1
-			;;
-		boolean)
-			jq -e 'type == "boolean"' <<<"${value}" >/dev/null || return 1
-			;;
-		null)
+                                fi
+                        fi
+                        ;;
+                number)
+                        jq -e 'type == "number"' <<<"${value}" >/dev/null || return 1
+                        ;;
+                integer)
+                        jq -e 'type == "number" and (. == (.|floor))' <<<"${value}" >/dev/null || return 1
+                        ;;
+                boolean)
+                        jq -e 'type == "boolean"' <<<"${value}" >/dev/null || return 1
+                        ;;
+                null)
 			jq -e 'type == "null"' <<<"${value}" >/dev/null || return 1
 			;;
 		esac
@@ -246,16 +238,40 @@ validate_react_action() {
 		return 0
 	}
 
-	local arg_key
-	for arg_key in $(jq -r 'keys_unsorted[]?' <<<"${properties_json}" 2>/dev/null || true); do
-		local arg_schema arg_value
-		arg_schema=$(jq -c --arg key "${arg_key}" '.[$key]' <<<"${properties_json}")
-		arg_value=$(jq -c --arg key "${arg_key}" '.args[$key]' <<<"${action_json}")
-		if ! _react_enforce_arg_type "${arg_value}" "${arg_schema}"; then
-			printf 'Invalid type for arg: %s\n' "${arg_key}" >&2
-			return 1
-		fi
-	done
+        local arg_key
+        for arg_key in $(jq -r 'keys_unsorted[]?' <<<"${properties_json}" 2>/dev/null || true); do
+                local arg_schema arg_value has_arg is_required
+                arg_schema=$(jq -c --arg key "${arg_key}" '.[$key]' <<<"${properties_json}")
+                if jq -e --arg key "${arg_key}" '.args | has($key)' <<<"${action_json}" >/dev/null; then
+                        has_arg=true
+                else
+                        has_arg=false
+                fi
+
+                if jq -e --arg key "${arg_key}" --argjson required "${required_args}" '$required | index($key)' <<<"null" >/dev/null; then
+                        is_required=true
+                else
+                        is_required=false
+                fi
+
+                if [[ "${has_arg}" == false ]]; then
+                        if [[ "${is_required}" == true ]]; then
+                                printf 'Missing arg: %s\n' "${arg_key}" >&2
+                                return 1
+                        fi
+                        continue
+                fi
+
+                arg_value=$(jq -c --arg key "${arg_key}" '.args[$key]' <<<"${action_json}")
+                if [[ "${arg_value}" == "null" && "${is_required}" == false ]]; then
+                        continue
+                fi
+
+                if ! _react_enforce_arg_type "${arg_value}" "${arg_schema}"; then
+                        printf 'Invalid type for arg: %s\n' "${arg_key}" >&2
+                        return 1
+                fi
+        done
 
 	if [[ "${additional_properties}" == "false" ]]; then
 		local unknown_arg
