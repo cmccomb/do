@@ -36,3 +36,4 @@ ${context}
 ${user_query}
 
 # Final Answer
+Respond with a single JSON object that follows the schema above. Base the answer entirely on the provided context and agent trace. If information is missing, name the gap before giving your best final answer.
