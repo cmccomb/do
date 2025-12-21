@@ -104,12 +104,9 @@ format_tool_args() {
 	mail_draft | mail_send)
 		jq -nc --arg envelope "${payload}" '{envelope:$envelope}'
 		;;
-	applescript)
-		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
-		;;
-	final_answer)
-		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
-		;;
+        final_answer)
+                jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
+                ;;
 	*)
 		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
 		;;
@@ -326,6 +323,7 @@ select_next_action() {
 			return 1
 		fi
 		react_action_json="${react_fallback_action}"
+		state_set "${state_name}" "plan_index" "$((plan_index + 1))"
 	else
 		state_set "${state_name}" "plan_index" "$((plan_index + 1))"
 	fi

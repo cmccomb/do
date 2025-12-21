@@ -77,3 +77,34 @@ setup() {
 	[[ -n "${stderr_payload}" ]]
 	[[ "${stderr_payload}" == *'"level":"WARN"'* ]]
 }
+
+@test "log_pretty returns original detail when JSON parsing fails" {
+	run bash -lc '
+                source ./src/lib/core/logging.sh
+
+                VERBOSITY=1 log_pretty INFO "message" "{not-json" 2>&1
+        '
+
+	[ "$status" -eq 0 ]
+	detail=$(jq -r '.detail' <<<"${output}")
+
+	[[ "${detail}" == "{not-json" ]]
+}
+
+@test "log_pretty splits multiline string details" {
+	run bash -lc '
+                source ./src/lib/core/logging.sh
+
+                detail=$'\''line1\nline2'\''
+                VERBOSITY=1 log_pretty INFO "message" "${detail}" 2>&1
+        '
+
+	[ "$status" -eq 0 ]
+	detail_type=$(jq -r '.detail | type' <<<"${output}")
+	first_line=$(jq -r '.detail[0]' <<<"${output}")
+	second_line=$(jq -r '.detail[1]' <<<"${output}")
+
+	[[ "${detail_type}" == "array" ]]
+	[[ "${first_line}" == "line1" ]]
+	[[ "${second_line}" == "line2" ]]
+}

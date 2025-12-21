@@ -147,6 +147,7 @@ web_http_request() {
 		mv "${body_file}.trimmed" "${body_file}"
 		truncated=true
 	fi
+	body_size=$(wc -c <"${body_file}")
 
 	truncated_bool=false
 	if [[ "${truncated}" == "true" ]]; then
