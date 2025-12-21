@@ -10,8 +10,8 @@
 #   - bash 3.2+
 
 @test "react_action schema documents placeholder tool definitions" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -29,7 +29,7 @@ jq -e '
         and (.allOf[0]["$comment"] | contains("if/then branches are injected"))
 ' "${schema_path}"
 INNERSCRIPT
-        )
+	)
 
 	run bash -lc "${script}"
 	[ "$status" -eq 0 ]
