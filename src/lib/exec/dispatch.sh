@@ -120,10 +120,7 @@ execute_tool_with_query() {
 	stdout_file="$(mktemp)"
 	stderr_file="$(mktemp)"
 
-	log "INFO" "Right before tool call" ""
-	TOOL_QUERY="${tool_query}" TOOL_ARGS="${tool_args_json}" ${handler}
 	TOOL_QUERY="${tool_query}" TOOL_ARGS="${tool_args_json}" ${handler} >"${stdout_file}" 2>"${stderr_file}"
-	log "INFO" "Right after tool call" ""
 
 	status=$?
 	output="$(cat "${stdout_file}")"
