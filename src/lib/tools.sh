@@ -37,8 +37,6 @@ TOOL_WRITABLE_DIRECTORY_ALLOWLIST=(
 source "${TOOLS_DIR}/terminal/index.sh"
 # shellcheck source=./tools/python_repl/index.sh disable=SC1091
 source "${TOOLS_DIR}/python_repl/index.sh"
-# shellcheck source=./tools/clipboard/index.sh disable=SC1091
-source "${TOOLS_DIR}/clipboard/index.sh"
 # shellcheck source=./tools/notes/index.sh disable=SC1091
 source "${TOOLS_DIR}/notes/index.sh"
 # shellcheck source=./tools/reminders/index.sh disable=SC1091
@@ -110,13 +108,11 @@ initialize_tools() {
 		return 1
 	fi
 
-	register_terminal
-	register_python_repl
-	register_clipboard_copy
-	register_clipboard_paste
-	register_notes_suite
-	register_reminders_suite
-	register_calendar_suite
+        register_terminal
+        register_python_repl
+        register_notes_suite
+        register_reminders_suite
+        register_calendar_suite
 	register_mail_suite
 	register_applescript
 	register_final_answer

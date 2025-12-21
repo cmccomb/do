@@ -53,13 +53,4 @@ Use `./src/bin/okso --help` to see all flags. The CLI walks through planning and
 
 3. To keep the run noninteractive while still respecting a new model, pair the overrides with `--yes` or `--confirm` depending on whether you want automatic approvals.
 
-### macOS clipboard helpers
-
-Call built-in helpers when you need quick transfers without opening other tools:
-
-```bash
-./src/bin/okso -- tool clipboard_copy "temporary text"
-./src/bin/okso -- tool clipboard_paste
-```
-
 Refer to [configuration](../reference/configuration.md) for available settings and [tools](../reference/tools.md) for handler details.
