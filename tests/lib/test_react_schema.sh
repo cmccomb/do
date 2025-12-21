@@ -11,7 +11,7 @@
 #   - jq
 
 @test "validate_react_action accepts integer web_search num" {
-        run env BASH_ENV= ENV= bash --noprofile --norc <<'SCRIPT'
+	run env BASH_ENV= ENV= bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 source ./src/lib/react/schema.sh
@@ -21,11 +21,11 @@ trap 'rm -f "${schema_path}"' EXIT
 action='{"thought":"Search for docs","tool":"web_search","args":{"query":"okso","num":3}}'
 validate_react_action "${action}" "${schema_path}"
 SCRIPT
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "validate_react_action rejects non-integer web_search num" {
-        run env BASH_ENV= ENV= bash --noprofile --norc <<'SCRIPT'
+	run env BASH_ENV= ENV= bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 source ./src/lib/react/schema.sh
@@ -42,11 +42,11 @@ if [ "${result}" -eq 0 ]; then
         exit 1
 fi
 SCRIPT
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "validate_react_action tolerates optional null args" {
-        run env BASH_ENV= ENV= bash --noprofile --norc <<'SCRIPT'
+	run env BASH_ENV= ENV= bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 source ./src/lib/react/schema.sh
@@ -56,5 +56,5 @@ trap 'rm -f "${schema_path}"' EXIT
 action='{"thought":"Search for docs","tool":"web_search","args":{"query":"okso","num":null}}'
 validate_react_action "${action}" "${schema_path}"
 SCRIPT
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
