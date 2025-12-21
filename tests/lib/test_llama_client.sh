@@ -116,9 +116,9 @@ SCRIPT
 	export LLAMA_CONTEXT_CAP=96
 	export LLAMA_CONTEXT_MARGIN_PERCENT=10
 	source ./src/lib/planning/llama_client.sh
-        if ! llama_infer "prompt text" "" 8 "" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" "${cache_file}"; then
-                return 1
-        fi
+	if ! llama_infer "prompt text" "" 8 "" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" "${cache_file}"; then
+		return 1
+	fi
 	metadata_file="${args_dir}/react.prompt-cache.meta.json"
 	[[ -s "${metadata_file}" ]]
 	grep -Fq '"repo":"demo/repo"' "${metadata_file}"
@@ -146,15 +146,15 @@ SCRIPT
 	export REACT_MODEL_REPO=demo/repo
 	export REACT_MODEL_FILE=model.gguf
 	source ./src/lib/planning/llama_client.sh
-        if ! llama_infer "prompt text" "" 8 "" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" "${cache_file}" "system-prefix"; then
-                return 1
-        fi
+	if ! llama_infer "prompt text" "" 8 "" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" "${cache_file}" "system-prefix"; then
+		return 1
+	fi
 
-        args=()
-        while IFS= read -r line; do
-                args+=("$line")
-        done <"${args_file}"
-        [[ " ${args[*]} " == *" --prompt-cache-static system-prefix "* ]]
+	args=()
+	while IFS= read -r line; do
+		args+=("$line")
+	done <"${args_file}"
+	[[ " ${args[*]} " == *" --prompt-cache-static system-prefix "* ]]
 }
 
 @test "llama_infer returns llama exit code and logs stderr" {
@@ -231,13 +231,13 @@ SCRIPT
 	export PLANNER_MODEL_REPO=demo/plan
 	export PLANNER_MODEL_FILE=planner.gguf
 	source ./src/lib/planning/llama_client.sh
-        if ! llama_infer "prompt" "" 4 "" "${PLANNER_MODEL_REPO}" "${PLANNER_MODEL_FILE}" "${cache_file}"; then
-                return 1
-        fi
-        cache_file="${args_dir}/planner.prompt-cache"
-        cache_basename="$(basename "${cache_file}")"
-        rotated_count=$(find "${args_dir}" -maxdepth 1 -name "${cache_basename}*.bak" -print | wc -l | tr -d "\n ")
-        [[ "${rotated_count}" -ge 1 ]]
+	if ! llama_infer "prompt" "" 4 "" "${PLANNER_MODEL_REPO}" "${PLANNER_MODEL_FILE}" "${cache_file}"; then
+		return 1
+	fi
+	cache_file="${args_dir}/planner.prompt-cache"
+	cache_basename="$(basename "${cache_file}")"
+	rotated_count=$(find "${args_dir}" -maxdepth 1 -name "${cache_basename}*.bak" -print | wc -l | tr -d "\n ")
+	[[ "${rotated_count}" -ge 1 ]]
 	metadata_file="${cache_file}.meta.json"
 	[[ -s "${metadata_file}" ]]
 	grep -Fq '"file":"planner.gguf"' "${metadata_file}"
