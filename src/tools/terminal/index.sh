@@ -134,7 +134,7 @@ terminal_args_from_json() {
 
 terminal_init_session() {
 	if [[ -z "${TERMINAL_SESSION_ID}" ]]; then
-		TERMINAL_SESSION_ID="terminal-${EPOCHSECONDS}"
+		TERMINAL_SESSION_ID="terminal-$(date +%s)"
 	fi
 
 	if [[ -z "${TERMINAL_WORKDIR}" ]]; then
