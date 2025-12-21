@@ -32,19 +32,19 @@ source "${PLANNING_RESPOND_DIR}/context_budget.sh"
 source "${PLANNING_RESPOND_DIR}/llama_client.sh"
 
 respond_text() {
-	# Generates a concise response using the LLM for a given user query.
-	# Arguments:
-	#   $1 - user query (string)
-	#   $2 - number of tokens to generate (int)
-	#   $3 - context (string, optional)
-	local user_query context prompt number_of_tokens concise_schema_path concise_schema_text
-	user_query="$1"
-	number_of_tokens="$2"
-	context="${3:-}"
-	concise_schema_path="$(schema_path concise_response)"
-	concise_schema_text="$(load_schema_text concise_response)"
+        # Generates a final fallback response using the LLM for a given user query.
+        # Arguments:
+        #   $1 - user query (string)
+        #   $2 - number of tokens to generate (int)
+        #   $3 - context (string, optional)
+        local user_query context prompt number_of_tokens concise_schema_path concise_schema_text
+        user_query="$1"
+        number_of_tokens="$2"
+        context="${3:-}"
+        concise_schema_path="$(schema_path concise_response)"
+        concise_schema_text="$(load_schema_text concise_response)"
 
-	log "INFO" "Generating direct response" "${user_query}" >&2
+        log "INFO" "Generating final fallback response" "${user_query}" >&2
 
 	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
 		log "INFO" "LLM unavailable; using deterministic response fallback" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
@@ -59,10 +59,10 @@ respond_text() {
 		return 0
 	fi
 
-	local context_for_prompt
-	prompt="$(build_concise_response_prompt "${user_query}" "${context}")"
-	context_for_prompt="$(apply_prompt_context_budget "${prompt}" "${context}" "${number_of_tokens}" "direct_response")"
-	prompt="$(build_concise_response_prompt "${user_query}" "${context_for_prompt}")"
+        local context_for_prompt
+        prompt="$(build_final_answer_fallback_prompt "${user_query}" "${context}")"
+        context_for_prompt="$(apply_prompt_context_budget "${prompt}" "${context}" "${number_of_tokens}" "direct_response")"
+        prompt="$(build_final_answer_fallback_prompt "${user_query}" "${context_for_prompt}")"
 	log "INFO" "Invoking llama inference" "$(printf 'tokens=%s schema=%s' "${number_of_tokens}" "${concise_schema_path}")" >&2
 	local response_text
 	response_text="$(llama_infer "${prompt}" "" "${number_of_tokens}" "${concise_schema_text}" "${REACT_MODEL_REPO:-}" "${REACT_MODEL_FILE:-}")"
