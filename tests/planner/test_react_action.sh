@@ -9,7 +9,7 @@
 #   - bats
 #   - bash 3.2+
 
-@test "react_action schema defines terminal and final_answer branches without oneOf" {
+@test "react_action schema documents placeholder tool definitions" {
 	script=$(
 		cat <<'INNERSCRIPT'
 set -euo pipefail
@@ -20,13 +20,13 @@ schema_path="./src/schemas/react_action.schema.json"
 jq -e '
         (.additionalProperties == false)
         and (.required | sort == ["args","thought","tool"])
-        and (.properties.tool.enum == ["terminal","final_answer"])
-        and (."$defs".args_by_tool.terminal.additionalProperties == false)
-        and (."$defs".args_by_tool.final_answer.additionalProperties == false)
+        and (.properties.tool.enum == [])
+        and (.properties.tool["$comment"] | contains("Tool list injected"))
+        and (."$defs".args_by_tool["$comment"] | contains("argument schemas injected"))
+        and (."$defs".final_answer["$comment"] | contains("Illustrative example only"))
         and ((.oneOf // null) == null)
-        and (.allOf | length == 2)
-        and (any(.allOf[]; .if.properties.tool.const == "terminal" and (.then.properties.args.required | sort == ["command"])) )
-        and (any(.allOf[]; .if.properties.tool.const == "final_answer" and (.then.properties.args.required | sort == ["input"])) )
+        and (.allOf | length == 1)
+        and (.allOf[0]["$comment"] | contains("if/then branches are injected"))
 ' "${schema_path}"
 INNERSCRIPT
 	)
