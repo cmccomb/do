@@ -9,7 +9,6 @@ use the canonical `input` property so prompts and schemas can reference `args.in
 - `web_search`: query the Google Custom Search API with a structured payload (`query` and optional `num`, default `5`, maximum `10`) and return JSON results.
 - `web_fetch`: retrieve HTTP response bodies with a configurable size cap, returning JSON metadata (final URL, HTTP status, content type, headers, byte length, truncation flag, body encoding, body snippet, and optional `body_markdown`).
 - `*_search`: Notes, Calendar, and Mail searches reuse the same `input` field for the search term.
-- `clipboard_copy` / `clipboard_paste`: macOS clipboard helpers.
 - `notes_*`: create, append, list, read, or search Apple Notes entries.
 - `reminders_*`: create, list, or complete Apple Reminders.
 - `calendar_*`: create, list, or search Apple Calendar events.
@@ -51,7 +50,7 @@ The `terminal` tool keeps a per-query working directory so subsequent calls shar
 
 ## macOS helpers
 
-Clipboard, Notes, Reminders, Calendar, and Mail helpers rely on `osascript` and run only on macOS. They log a warning and exit without changes when the host is unsupported or when the required binaries are missing. Notes and Mail tools use line-based inputs (first line = title/recipients; later lines = body or options). Calendar tools expect title, start time, and optional location on separate lines.
+Notes, Reminders, Calendar, and Mail helpers rely on `osascript` and run only on macOS. They log a warning and exit without changes when the host is unsupported or when the required binaries are missing. Notes and Mail tools use line-based inputs (first line = title/recipients; later lines = body or options). Calendar tools expect title, start time, and optional location on separate lines.
 
 ## Ranking
 

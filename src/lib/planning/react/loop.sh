@@ -68,12 +68,9 @@ format_tool_args() {
 	web_search)
 		jq -nc --arg query "${payload}" '{query:$query}'
 		;;
-	clipboard_copy)
-		jq -nc --arg text "${payload}" '{text:$text}'
-		;;
-	clipboard_paste | notes_list | reminders_list | calendar_list | mail_list_inbox | mail_list_unread)
-		jq -nc '{}'
-		;;
+        notes_list | reminders_list | calendar_list | mail_list_inbox | mail_list_unread)
+                jq -nc '{}'
+                ;;
 	notes_create | notes_append)
 		local title body
 		title=${payload%%$'\n'*}
@@ -150,18 +147,15 @@ extract_tool_query() {
 	web_search)
 		jq -r '.query // ""' <<<"${args_json}" 2>/dev/null || printf ''
 		;;
-	clipboard_copy)
-		jq -r '(.text // "")' <<<"${args_json}" 2>/dev/null || printf ''
-		;;
 	mail_draft | mail_send)
-		jq -r '(.envelope // "")' <<<"${args_json}" 2>/dev/null || printf ''
+			jq -r '(.envelope // "")' <<<"${args_json}" 2>/dev/null || printf ''
+			;;
+	final_answer)
+		jq -r --arg key "${text_key}" '.[$key] // ""' <<<"${args_json}" 2>/dev/null || printf ''
 		;;
-        final_answer)
-                jq -r --arg key "${text_key}" '.[$key] // ""' <<<"${args_json}" 2>/dev/null || printf ''
-                ;;
-	clipboard_paste | notes_list | reminders_list | calendar_list | mail_list_inbox | mail_list_unread)
-		printf ''
-		;;
+	notes_list | reminders_list | calendar_list | mail_list_inbox | mail_list_unread)
+			printf ''
+			;;
 	*)
 		jq -r --arg key "${text_key}" '.[$key] // .query // ""' <<<"${args_json}" 2>/dev/null || printf ''
 		;;
