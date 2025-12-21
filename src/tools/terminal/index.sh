@@ -30,8 +30,8 @@ source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/lib/cli/output.sh"
 source "${BASH_SOURCE[0]%/terminal/index.sh}/registry.sh"
 
 TERMINAL_ALLOWED_COMMANDS=(
-        "status"
-        "pwd"
+	"status"
+	"pwd"
 	"ls"
 	"cd"
 	"cat"
@@ -50,11 +50,11 @@ TERMINAL_ALLOWED_COMMANDS=(
 	"wc"
 	"du"
 	"base64"
-        "date"
+	"date"
 )
 
-TERMINAL_CMD=""       # string command parsed from TOOL_ARGS
-TERMINAL_CMD_ARGS=()   # array command arguments parsed from TOOL_ARGS
+TERMINAL_CMD=""      # string command parsed from TOOL_ARGS
+TERMINAL_CMD_ARGS=() # array command arguments parsed from TOOL_ARGS
 
 TERMINAL_SESSION_ID="${TERMINAL_SESSION_ID:-}" # string session identifier
 TERMINAL_WORKDIR="${TERMINAL_WORKDIR:-}"       # string working directory for the persistent session
@@ -90,49 +90,49 @@ derive_terminal_query() {
 }
 
 terminal_args_from_json() {
-        # Parses TOOL_ARGS into a command and argument array.
-        # Sets two global variables:
-        #   TERMINAL_CMD (string)
-        #   TERMINAL_CMD_ARGS (array)
-        local args_json args_type
-        args_json=${TOOL_ARGS:-"{}"}
+	# Parses TOOL_ARGS into a command and argument array.
+	# Sets two global variables:
+	#   TERMINAL_CMD (string)
+	#   TERMINAL_CMD_ARGS (array)
+	local args_json args_type
+	args_json=${TOOL_ARGS:-"{}"}
 
-        if ! TERMINAL_CMD=$(jq -er '(.command // "")' <<<"${args_json}" 2>/dev/null); then
-                log "ERROR" "terminal args must be valid JSON" "${args_json}" || true
-                TERMINAL_CMD=""
-                return 1
-        fi
+	if ! TERMINAL_CMD=$(jq -er '(.command // "")' <<<"${args_json}" 2>/dev/null); then
+		log "ERROR" "terminal args must be valid JSON" "${args_json}" || true
+		TERMINAL_CMD=""
+		return 1
+	fi
 
-        if ! args_type=$(jq -er 'if .args == null then "null" else .args | type end' <<<"${args_json}" 2>/dev/null); then
-                log "ERROR" "terminal args must be valid JSON" "${args_json}" || true
-                return 1
-        fi
+	if ! args_type=$(jq -er 'if .args == null then "null" else .args | type end' <<<"${args_json}" 2>/dev/null); then
+		log "ERROR" "terminal args must be valid JSON" "${args_json}" || true
+		return 1
+	fi
 
-        if [[ -z "${TERMINAL_CMD}" ]]; then
-                TERMINAL_CMD="status"
-        fi
+	if [[ -z "${TERMINAL_CMD}" ]]; then
+		TERMINAL_CMD="status"
+	fi
 
-        if ! terminal_allowed "${TERMINAL_CMD}"; then
-                log "ERROR" "terminal command not permitted" "${TERMINAL_CMD}" || true
-                return 1
-        fi
+	if ! terminal_allowed "${TERMINAL_CMD}"; then
+		log "ERROR" "terminal command not permitted" "${TERMINAL_CMD}" || true
+		return 1
+	fi
 
-        TERMINAL_CMD_ARGS=()
-        case "${args_type}" in
-        array)
-                while IFS= read -r line; do
-                        TERMINAL_CMD_ARGS+=("$line")
-                done < <(jq -r '(.args // []) | map(tostring) | .[]' <<<"${args_json}" 2>/dev/null || true)
-                ;;
-        string | number | boolean | null)
-                TERMINAL_CMD_ARGS=()
-                ;;
-        *)
-                log "ERROR" "terminal args must supply an array for args" "${args_json}" || true
-                return 1
-                ;;
-        esac
-        return 0
+	TERMINAL_CMD_ARGS=()
+	case "${args_type}" in
+	array)
+		while IFS= read -r line; do
+			TERMINAL_CMD_ARGS+=("$line")
+		done < <(jq -r '(.args // []) | map(tostring) | .[]' <<<"${args_json}" 2>/dev/null || true)
+		;;
+	string | number | boolean | null)
+		TERMINAL_CMD_ARGS=()
+		;;
+	*)
+		log "ERROR" "terminal args must supply an array for args" "${args_json}" || true
+		return 1
+		;;
+	esac
+	return 0
 }
 
 terminal_init_session() {

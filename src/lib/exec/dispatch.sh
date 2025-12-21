@@ -129,7 +129,6 @@ execute_tool_with_query() {
 	output="$(cat "${stdout_file}")"
 	stderr_output="$(cat "${stderr_file}")"
 
-
 	rm -f "${stdout_file}" "${stderr_file}"
 
 	if [[ -n "${stderr_output}" ]]; then
