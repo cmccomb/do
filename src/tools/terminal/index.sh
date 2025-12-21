@@ -202,11 +202,17 @@ tool_terminal() {
 	local command args mode shifted_args has_interactive rm_args
 	terminal_init_session
 
-	if ! terminal_args_from_json; then
+if ! terminal_args_from_json; then
 		return 1
 	fi
 	command="${TERMINAL_CMD}"
-	args=("${TERMINAL_CMD_ARGS[@]}")
+
+	# Fix: Check length before expansion to satisfy Bash 3.2 set -u
+	if [[ ${#TERMINAL_CMD_ARGS[@]} -eq 0 ]]; then
+		args=()
+	else
+		args=("${TERMINAL_CMD_ARGS[@]}")
+	fi
 
 	if ! terminal_allowed "${command}"; then
 		log "WARN" "Unknown terminal command; showing status" "${command}"
