@@ -239,7 +239,7 @@ REACT_ENTRYPOINT=${REACT_ENTRYPOINT:-"${PLANNING_LIB_DIR}/../react/react.sh"}
 
 if [[ ! -f "${REACT_ENTRYPOINT}" ]]; then
 	log "ERROR" "ReAct entrypoint missing" "REACT_ENTRYPOINT=${REACT_ENTRYPOINT}" >&2
-	return 1 2>/dev/null || exit 1
+	return 1 2>/dev/null
 fi
 
 # shellcheck source=../react/react.sh disable=SC1091
