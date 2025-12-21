@@ -19,8 +19,8 @@ PROMPT_BUILD_PLANNER_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${PROMPT_BUILD_PLANNER_DIR}/templates.sh"
 # shellcheck source=../schema/schema.sh disable=SC1091
 source "${PROMPT_BUILD_PLANNER_DIR}/../schema/schema.sh"
-# shellcheck source=../runtime/time.sh disable=SC1091
-source "${PROMPT_BUILD_PLANNER_DIR}/../runtime/time.sh"
+# shellcheck source=../time/time.sh disable=SC1091
+source "${PROMPT_BUILD_PLANNER_DIR}/../time/time.sh"
 
 build_planner_prompt_static_prefix() {
 	# Returns the deterministic planner prompt prefix that excludes runtime fields.

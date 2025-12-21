@@ -17,8 +17,8 @@ PROMPT_BUILD_REACT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # shellcheck source=./templates.sh disable=SC1091
 source "${PROMPT_BUILD_REACT_DIR}/templates.sh"
-# shellcheck source=../runtime/time.sh disable=SC1091
-source "${PROMPT_BUILD_REACT_DIR}/../runtime/time.sh"
+# shellcheck source=../time/time.sh disable=SC1091
+source "${PROMPT_BUILD_REACT_DIR}/../time/time.sh"
 
 build_react_prompt_static_prefix() {
 	# Returns the deterministic ReAct prompt prefix that excludes runtime fields.

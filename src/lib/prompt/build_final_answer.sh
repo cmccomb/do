@@ -18,8 +18,8 @@ PROMPT_BUILD_FINAL_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${PROMPT_BUILD_FINAL_DIR}/templates.sh"
 # shellcheck source=../schema/schema.sh disable=SC1091
 source "${PROMPT_BUILD_FINAL_DIR}/../schema/schema.sh"
-# shellcheck source=../runtime/time.sh disable=SC1091
-source "${PROMPT_BUILD_FINAL_DIR}/../runtime/time.sh"
+# shellcheck source=../time/time.sh disable=SC1091
+source "${PROMPT_BUILD_FINAL_DIR}/../time/time.sh"
 
 build_final_answer_fallback_prompt() {
 	# Builds a prompt for summarizing a final answer from prior agent context.
