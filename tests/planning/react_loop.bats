@@ -7,12 +7,22 @@ setup() {
 	chpwd_functions=()
 }
 
+@test "planner fails fast when ReAct entrypoint is missing" {
+        run env -i HOME="$HOME" PATH="$PATH" REACT_ENTRYPOINT="/tmp/missing-react.sh" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/planning/planner.sh
+SCRIPT
+
+        [ "$status" -ne 0 ]
+        [[ "$output" == *"ReAct entrypoint missing"* ]]
+}
+
 @test "react_loop finalizes after invalid action selection" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
-source ./src/lib/planning/react.sh
+source ./src/lib/react/react.sh
 log() { :; }
 log_pretty() { :; }
 emit_boxed_summary() { :; }
@@ -31,11 +41,11 @@ SCRIPT
 }
 
 @test "react_loop records duplicate actions with warning observation" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=2
 LLAMA_AVAILABLE=false
-source ./src/lib/planning/react.sh
+source ./src/lib/react/react.sh
 log() { :; }
 log_pretty() { :; }
 emit_boxed_summary() { :; }
@@ -66,11 +76,11 @@ SCRIPT
 }
 
 @test "react_loop clears plan entries after tool failure" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
-source ./src/lib/planning/react.sh
+source ./src/lib/react/react.sh
 log() { :; }
 log_pretty() { :; }
 emit_boxed_summary() { :; }
@@ -91,11 +101,11 @@ SCRIPT
 }
 
 @test "react_loop stops after final_answer" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=3
 LLAMA_AVAILABLE=false
-source ./src/lib/planning/react.sh
+source ./src/lib/react/react.sh
 log() { :; }
 log_pretty() { :; }
 emit_boxed_summary() { :; }
