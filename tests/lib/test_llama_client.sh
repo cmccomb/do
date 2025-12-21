@@ -98,34 +98,34 @@ SCRIPT
 }
 
 @test "llama_infer forwards prompt cache path" {
-        cd "$(git rev-parse --show-toplevel)" || exit 1
-        args_dir=$(mktemp -d)
-        args_file="${args_dir}/args.txt"
-        cache_file="${args_dir}/react.prompt-cache"
-        mock_binary="${args_dir}/mock_llama.sh"
-        cat >"${mock_binary}" <<SCRIPT
+	cd "$(git rev-parse --show-toplevel)" || exit 1
+	args_dir=$(mktemp -d)
+	args_file="${args_dir}/args.txt"
+	cache_file="${args_dir}/react.prompt-cache"
+	mock_binary="${args_dir}/mock_llama.sh"
+	cat >"${mock_binary}" <<SCRIPT
 #!/usr/bin/env bash
 printf "%s\n" "\$@" >"${args_file}"
 SCRIPT
-        chmod +x "${mock_binary}"
-        export LLAMA_AVAILABLE=true
-        export LLAMA_BIN="${mock_binary}"
-        export REACT_MODEL_REPO=demo/repo
-        export REACT_MODEL_FILE=model.gguf
-        export LLAMA_DEFAULT_CONTEXT_SIZE=64
-        export LLAMA_CONTEXT_CAP=96
-        export LLAMA_CONTEXT_MARGIN_PERCENT=10
-        source ./src/lib/planning/llama_client.sh
-        if ! llama_infer "prompt text" "" 8 "" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" "${cache_file}"; then
-                return 1
-        fi
+	chmod +x "${mock_binary}"
+	export LLAMA_AVAILABLE=true
+	export LLAMA_BIN="${mock_binary}"
+	export REACT_MODEL_REPO=demo/repo
+	export REACT_MODEL_FILE=model.gguf
+	export LLAMA_DEFAULT_CONTEXT_SIZE=64
+	export LLAMA_CONTEXT_CAP=96
+	export LLAMA_CONTEXT_MARGIN_PERCENT=10
+	source ./src/lib/planning/llama_client.sh
+	if ! llama_infer "prompt text" "" 8 "" "${REACT_MODEL_REPO}" "${REACT_MODEL_FILE}" "${cache_file}"; then
+		return 1
+	fi
 
-        args=()
-        while IFS= read -r line; do
-                args+=("$line")
-        done <"${args_dir}/args.txt"
-        [[ " ${args[*]} " == *" --prompt-cache ${args_dir}/react.prompt-cache "* ]]
-        [[ ! -e "${cache_file}.meta.json" ]]
+	args=()
+	while IFS= read -r line; do
+		args+=("$line")
+	done <"${args_dir}/args.txt"
+	[[ " ${args[*]} " == *" --prompt-cache ${args_dir}/react.prompt-cache "* ]]
+	[[ ! -e "${cache_file}.meta.json" ]]
 }
 
 @test "llama_infer returns llama exit code and logs stderr" {
