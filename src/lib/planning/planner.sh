@@ -13,6 +13,7 @@
 #   PLANNER_MODEL_FILE (string): model file within the repository for planner inference.
 #   REACT_MODEL_REPO (string): Hugging Face repository name for ReAct inference.
 #   REACT_MODEL_FILE (string): model file within the repository for ReAct inference.
+#   REACT_ENTRYPOINT (string): optional path override for the ReAct entrypoint script.
 #   TOOLS (array): optional array of tool names available to the planner.
 #   PLAN_ONLY, DRY_RUN (bool): control execution and preview behaviour.
 #   APPROVE_ALL, FORCE_CONFIRM (bool): confirmation toggles.
@@ -234,5 +235,12 @@ plan_json_to_entries() {
 	printf '%s' "${plan_json}" | jq -cr '.[]'
 }
 
-# shellcheck source=./react.sh disable=SC1091
-source "${PLANNING_LIB_DIR}/react.sh"
+REACT_ENTRYPOINT=${REACT_ENTRYPOINT:-"${PLANNING_LIB_DIR}/../react/react.sh"}
+
+if [[ ! -f "${REACT_ENTRYPOINT}" ]]; then
+        log "ERROR" "ReAct entrypoint missing" "REACT_ENTRYPOINT=${REACT_ENTRYPOINT}" >&2
+        return 1 2>/dev/null || exit 1
+fi
+
+# shellcheck source=../react/react.sh disable=SC1091
+source "${REACT_ENTRYPOINT}"
