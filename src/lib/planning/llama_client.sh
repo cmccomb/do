@@ -40,95 +40,11 @@ estimate_token_count() {
 	printf '%s' "${token_estimate}"
 }
 
-sanitize_llama_output() {
-	# Normalizes llama.cpp output before downstream usage.
-	# Arguments:
-	#   $1 - raw llama output (string)
-	local raw sanitized
-	raw="$1"
-	sanitized="${raw//$'\r\n'/$'\n'}"
-	sanitized="${sanitized//$'\r'/$'\n'}"
-	sanitized="${sanitized//$'\t'/ }"
-	sanitized="${sanitized//\[end of text\]/}"
-	sanitized="$(printf '%s' "${sanitized}" | sed -e 's/[[:space:]]\+$//')"
-	printf '%s' "${sanitized}"
-}
-
-prompt_cache_metadata_path() {
-	# Arguments:
-	#   $1 - cache file path (string)
-	printf '%s.meta.json' "$1"
-}
-
-derive_prompt_cache_key() {
-	# Arguments:
-	#   $1 - model repo (string)
-	#   $2 - model file (string)
-	#   $3 - context window (string)
-	#   $4 - rope freq base (string)
-	#   $5 - rope freq scale (string)
-	#   $6 - template descriptor (string)
-	#   $7 - grammar descriptor (string)
-	local fingerprint
-	fingerprint=$(printf '%s' "$1|$2|$3|$4|$5|$6|$7")
-	printf '%s' "${fingerprint}" | sha256sum | awk '{print $1}'
-}
-
-prompt_cache_metadata_json() {
-	# Arguments:
-	#   $1 - cache key (string)
-	#   $2 - model repo (string)
-	#   $3 - model file (string)
-	#   $4 - context window (string)
-	#   $5 - rope freq base (string)
-	#   $6 - rope freq scale (string)
-	#   $7 - template descriptor (string)
-	#   $8 - grammar descriptor (string)
-	jq -nc \
-		--arg key "$1" \
-		--arg model_repo "$2" \
-		--arg model_file "$3" \
-		--argjson context "${4:-0}" \
-		--arg rope_freq_base "$5" \
-		--arg rope_freq_scale "$6" \
-		--arg template "$7" \
-		--arg grammar "$8" \
-		'{
-                        key: $key,
-                        model: {repo: $model_repo, file: $model_file},
-                        context: $context,
-                        rope: {freq_base: $rope_freq_base, freq_scale: $rope_freq_scale},
-                        template: $template,
-                        grammar: $grammar
-                }'
-}
-
-rotate_prompt_cache_if_stale() {
-	# Arguments:
-	#   $1 - cache file path (string)
-	#   $2 - expected cache key (string)
-	local cache_file cache_key metadata_path existing_key rotation_suffix
-	cache_file="$1"
-	cache_key="$2"
-	metadata_path="$(prompt_cache_metadata_path "${cache_file}")"
-
-	if [[ -f "${metadata_path}" ]]; then
-		existing_key=$(jq -r '.key // ""' "${metadata_path}" 2>/dev/null || printf '')
-	fi
-
-	if [[ -n "${existing_key:-}" && "${existing_key}" != "${cache_key}" ]]; then
-		rotation_suffix="$(date -u +"%Y%m%dT%H%M%SZ")"
-		mv "${cache_file}" "${cache_file}.${rotation_suffix}.bak" 2>/dev/null || true
-		mv "${metadata_path}" "${metadata_path}.${rotation_suffix}.bak" 2>/dev/null || true
-		log "INFO" "Rotated prompt cache" "cache=${cache_file} old_key=${existing_key} new_key=${cache_key}"
-	fi
-}
-
 llama_with_timeout() {
-	# Executes llama.cpp with an optional timeout.
-	# Arguments:
-	#   $@ - command and arguments to execute
-	local timeout_seconds
+        # Executes llama.cpp with an optional timeout.
+        # Arguments:
+        #   $@ - command and arguments to execute
+        local timeout_seconds
 	timeout_seconds=${LLAMA_TIMEOUT_SECONDS:-0}
 
 	if [[ ${timeout_seconds} -gt 0 ]]; then
@@ -148,53 +64,54 @@ llama_with_timeout() {
 	"$@"
 }
 
+sanitize_llama_output() {
+        # Normalizes llama.cpp output before downstream usage.
+        # Arguments:
+        #   $1 - raw llama output (string)
+        local raw sanitized
+        raw="$1"
+        sanitized="${raw//$'\r\n'/$'\n'}"
+        sanitized="${sanitized//$'\r'/$'\n'}"
+        sanitized="${sanitized//$'\t'/ }"
+        sanitized="${sanitized//\[end of text\]/}"
+        sanitized="$(printf '%s' "${sanitized}" | sed -e 's/[[:space:]]\+$//')"
+        printf '%s' "${sanitized}"
+}
+
 llama_infer() {
-	# Runs llama.cpp with Hugging Face repository caching for inference.
-	# Arguments:
-	#   $1 - prompt string (string)
-	#   $2 - stop string (string, optional)
-	#   $3 - max tokens to generate (int, default: 256)
-	#   $4 - JSON schema document for constrained decoding (string, optional)
-	#   $5 - model repository override (string, optional)
-	#   $6 - model file override (string, optional)
-	#   $7 - prompt cache path (string, optional)
-	#   $8 - static prompt prefix for llama.cpp cache priming (string, optional)
-	# Returns:
-	#   The generated text (string).
-	local prompt stop_string number_of_tokens schema_json repo_override file_override cache_file static_prompt
-	prompt="$1"
-	stop_string="${2:-}"
-	number_of_tokens="${3:-256}"
-	schema_json="${4:-}"
-	repo_override="${5:-${REACT_MODEL_REPO:-}}"
-	file_override="${6:-${REACT_MODEL_FILE:-}}"
-	cache_file="${7:-}"
-	static_prompt="${8:-}"
+        # Runs llama.cpp with Hugging Face repository caching for inference.
+        # Arguments:
+        #   $1 - prompt string (string)
+        #   $2 - stop string (string, optional)
+        #   $3 - max tokens to generate (int, default: 256)
+        #   $4 - JSON schema document for constrained decoding (string, optional)
+        #   $5 - model repository override (string, optional)
+        #   $6 - model file override (string, optional)
+        #   $7 - prompt cache path (string, optional)
+        # Returns:
+        #   The generated text (string).
+        local prompt stop_string number_of_tokens schema_json repo_override file_override cache_file
+        prompt="$1"
+        stop_string="${2:-}"
+        number_of_tokens="${3:-256}"
+        schema_json="${4:-}"
+        repo_override="${5:-${REACT_MODEL_REPO:-}}"
+        file_override="${6:-${REACT_MODEL_FILE:-}}"
+        cache_file="${7:-}"
 
 	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
 		log "WARN" "llama unavailable; skipping inference" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}"
 		return 1
 	fi
 
-	local additional_args
-	additional_args=()
-
-	if [[ -n "${schema_json}" ]]; then
-		additional_args+=(--json-schema "${schema_json}")
-	fi
-
-	if [[ -n "${static_prompt}" ]]; then
-		additional_args+=(--prompt-cache-static "${static_prompt}")
-	fi
-
-	local llama_args llama_arg_string stderr_file exit_code llama_stderr start_time_ns end_time_ns elapsed_ms llama_output
-	local default_context_size context_cap margin_percent prompt_tokens total_tokens computed_context target_context
-	local rope_freq_base rope_freq_scale template_descriptor grammar_descriptor grammar_hash cache_key metadata_path metadata_json
-	llama_args=(
-		"${LLAMA_BIN}"
-		--hf-repo "${repo_override}"
-		--hf-file "${file_override}"
-		-no-cnv --no-display-prompt --simple-io --verbose
+        local llama_args llama_arg_string stderr_file exit_code llama_stderr start_time_ns end_time_ns elapsed_ms llama_output
+        local default_context_size context_cap margin_percent prompt_tokens total_tokens computed_context target_context
+        local rope_freq_base rope_freq_scale template_descriptor
+        llama_args=(
+                "${LLAMA_BIN}"
+                --hf-repo "${repo_override}"
+                --hf-file "${file_override}"
+                -no-cnv --no-display-prompt --simple-io --verbose
 		-n "${number_of_tokens}"
 	)
 
@@ -225,14 +142,17 @@ llama_infer() {
 		llama_args+=(-r "${stop_string}")
 	fi
 
-	rope_freq_base="${LLAMA_ROPE_FREQ_BASE:-}"
-	rope_freq_scale="${LLAMA_ROPE_FREQ_SCALE:-}"
-	template_descriptor="${LLAMA_TEMPLATE:-}"
-	grammar_descriptor=""
+        rope_freq_base="${LLAMA_ROPE_FREQ_BASE:-}"
+        rope_freq_scale="${LLAMA_ROPE_FREQ_SCALE:-}"
+        template_descriptor="${LLAMA_TEMPLATE:-}"
 
-	if [[ -n "${rope_freq_base}" ]]; then
-		llama_args+=(--rope-freq-base "${rope_freq_base}")
-	fi
+        if [[ -n "${schema_json}" ]]; then
+                llama_args+=(--json-schema "${schema_json}")
+        fi
+
+        if [[ -n "${rope_freq_base}" ]]; then
+                llama_args+=(--rope-freq-base "${rope_freq_base}")
+        fi
 
 	if [[ -n "${rope_freq_scale}" ]]; then
 		llama_args+=(--rope-freq-scale "${rope_freq_scale}")
@@ -242,32 +162,15 @@ llama_infer() {
 		llama_args+=(--template "${template_descriptor}")
 	fi
 
-	if [[ -n "${schema_json}" ]]; then
-		grammar_hash=$(printf '%s' "${schema_json}" | sha256sum | awk '{print $1}')
-		grammar_descriptor="json-schema:${grammar_hash}"
-	fi
+        if [[ -n "${LLAMA_GRAMMAR:-}" ]]; then
+                llama_args+=(--grammar "${LLAMA_GRAMMAR}")
+        fi
 
-	if [[ -n "${LLAMA_GRAMMAR:-}" ]]; then
-		llama_args+=(--grammar "${LLAMA_GRAMMAR}")
-		if [[ -z "${grammar_descriptor}" ]]; then
-			grammar_descriptor="grammar:${LLAMA_GRAMMAR}"
-		else
-			grammar_descriptor="${grammar_descriptor}|grammar:${LLAMA_GRAMMAR}"
-		fi
-	fi
+        if [[ -n "${cache_file}" ]]; then
+                llama_args+=(--prompt-cache "${cache_file}")
+        fi
 
-	llama_args+=("${additional_args[@]}")
-
-	if [[ -n "${cache_file}" ]]; then
-		cache_key=$(derive_prompt_cache_key "${repo_override}" "${file_override}" "${target_context}" "${rope_freq_base}" "${rope_freq_scale}" "${template_descriptor}" "${grammar_descriptor}")
-		metadata_json=$(prompt_cache_metadata_json "${cache_key}" "${repo_override}" "${file_override}" "${target_context}" "${rope_freq_base}" "${rope_freq_scale}" "${template_descriptor}" "${grammar_descriptor}")
-		rotate_prompt_cache_if_stale "${cache_file}" "${cache_key}"
-		metadata_path="$(prompt_cache_metadata_path "${cache_file}")"
-		printf '%s\n' "${metadata_json}" >"${metadata_path}"
-		llama_args+=(--prompt-cache "${cache_file}" --prompt-cache-all)
-	fi
-
-	llama_args+=(-p "${prompt}")
+        llama_args+=(-p "${prompt}")
 
 	llama_arg_string=$(printf '%s ' "${llama_args[@]:1}")
 	llama_arg_string=${llama_arg_string% }
