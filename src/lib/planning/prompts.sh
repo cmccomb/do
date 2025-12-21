@@ -77,22 +77,28 @@ render_prompt_template() {
 	env "${substitutions[@]}" envsubst <<<"${prompt_text}"
 }
 
-build_concise_response_prompt() {
-	# Builds a prompt for generating a concise direct response.
+build_final_answer_fallback_prompt() {
+	# Builds a prompt for summarizing a final answer from prior agent context.
 	# Arguments:
 	#   $1 - user query (string)
 	#   $2 - context (string, optional)
 	# Returns:
 	#   The full prompt text (string).
-	local user_query context concise_schema
+	local user_query context final_fallback_schema current_date current_time current_weekday
 	user_query="$1"
 	context="${2:-}"
-	concise_schema="$(load_schema_text concise_response)"
+	final_fallback_schema="$(load_schema_text concise_response)"
+	current_date="$(date -u '+%Y-%m-%d')"
+	current_time="$(date -u '+%H:%M:%S')"
+	current_weekday="$(date -u '+%A')"
 
-	render_prompt_template "concise_response" \
+	render_prompt_template "final_answer_fallback" \
 		user_query "${user_query}" \
 		context "${context}" \
-		concise_schema "${concise_schema}"
+		final_fallback_schema "${final_fallback_schema}" \
+		current_date "${current_date}" \
+		current_time "${current_time}" \
+		current_weekday "${current_weekday}"
 }
 
 build_planner_prompt() {
@@ -102,15 +108,21 @@ build_planner_prompt() {
 	#   $2 - formatted tool descriptions (string)
 	# Returns:
 	#   The full prompt text (string).
-	local user_query tool_lines planner_schema
+	local user_query tool_lines planner_schema current_date current_time current_weekday
 	user_query="$1"
 	tool_lines="$2"
 	planner_schema="$(load_schema_text planner_plan)"
+	current_date="$(date -u '+%Y-%m-%d')"
+	current_time="$(date -u '+%H:%M:%S')"
+	current_weekday="$(date -u '+%A')"
 
 	render_prompt_template "planner" \
 		user_query "${user_query}" \
 		tool_lines "${tool_lines}" \
-		planner_schema "${planner_schema}"
+		planner_schema "${planner_schema}" \
+		current_date "${current_date}" \
+		current_time "${current_time}" \
+		current_weekday "${current_weekday}"
 }
 
 build_react_prompt() {
@@ -125,12 +137,16 @@ build_react_prompt() {
 	# Returns:
 	#   The full prompt text (string).
 	local user_query allowed_tools plan_outline history react_schema plan_step
+	local current_date current_time current_weekday
 	user_query="$1"
 	allowed_tools="$2"
 	plan_outline="$3"
 	history="$4"
 	react_schema="$5"
 	plan_step="$6"
+	current_date="$(date -u '+%Y-%m-%d')"
+	current_time="$(date -u '+%H:%M:%S')"
+	current_weekday="$(date -u '+%A')"
 
 	render_prompt_template "react" \
 		user_query "${user_query}" \
@@ -138,5 +154,8 @@ build_react_prompt() {
 		plan_outline "${plan_outline}" \
 		history "${history}" \
 		react_schema "${react_schema}" \
-		plan_step "${plan_step}"
+		plan_step "${plan_step}" \
+		current_date "${current_date}" \
+		current_time "${current_time}" \
+		current_weekday "${current_weekday}"
 }
