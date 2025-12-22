@@ -4,7 +4,7 @@
 # Guard helpers for common platform and dependency requirements.
 #
 # Usage:
-#   source "${BASH_SOURCE[0]%/guards.sh}/guards.sh"
+#   source "${BASH_SOURCE[0]%/dependency_guards.sh}/dependency_guards.sh"
 #
 # Environment variables:
 #   LLAMA_AVAILABLE (bool): indicates whether llama.cpp is available for inference.
@@ -17,10 +17,10 @@
 # Exit codes:
 #   Functions return non-zero when requirements are unmet.
 
-GUARDS_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+DEPENDENCY_GUARDS_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # shellcheck source=../core/logging.sh disable=SC1091
-source "${GUARDS_LIB_DIR}/../core/logging.sh"
+source "${DEPENDENCY_GUARDS_LIB_DIR}/../core/logging.sh"
 
 require_llama_available() {
         # Ensures llama-backed features only run when llama.cpp is available.
@@ -54,5 +54,28 @@ require_macos_capable_terminal() {
         return 1
 }
 
+require_python3_available() {
+        # Ensures python3 is available before invoking Python-dependent helpers.
+        # Arguments:
+        #   $1 - feature name for logging context (string; optional)
+        local feature python_status
+        feature=${1:-"python3-dependent functionality"}
+        python_status=127
+
+        hash -r 2>/dev/null || true
+
+        if command -v python3 >/dev/null 2>&1; then
+                python3 --version >/dev/null 2>&1
+                python_status=$?
+                if [[ ${python_status} -eq 0 ]]; then
+                        return 0
+                fi
+        fi
+
+        log "ERROR" "python3 is required for ${feature}" "python3 unavailable or failed (exit_status=${python_status})" || true
+        return 1
+}
+
 export -f require_llama_available
 export -f require_macos_capable_terminal
+export -f require_python3_available

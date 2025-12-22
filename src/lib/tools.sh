@@ -27,6 +27,8 @@ TOOLS_DIR="${TOOLS_SRC_ROOT}/tools"
 source "${TOOLS_LIB_DIR}/core/errors.sh"
 # shellcheck source=./core/logging.sh disable=SC1091
 source "${TOOLS_LIB_DIR}/core/logging.sh"
+# shellcheck source=./dependency_guards/dependency_guards.sh disable=SC1091
+source "${TOOLS_LIB_DIR}/dependency_guards/dependency_guards.sh"
 # shellcheck source=../tools/registry.sh disable=SC1091
 source "${TOOLS_DIR}/registry.sh"
 TOOL_WRITABLE_DIRECTORY_ALLOWLIST=(
@@ -53,15 +55,19 @@ source "${TOOLS_DIR}/feedback/index.sh"
 source "${TOOLS_DIR}/web/index.sh"
 
 tools_normalize_path() {
-	# Returns a normalized absolute path for allowlist checks.
-	# Arguments:
-	#   $1 - path to normalize (string)
-	if command -v realpath >/dev/null 2>&1 && realpath -m / >/dev/null 2>&1; then
-		realpath -m "$1"
-		return
-	fi
+        # Returns a normalized absolute path for allowlist checks.
+        # Arguments:
+        #   $1 - path to normalize (string)
+        if command -v realpath >/dev/null 2>&1 && realpath -m / >/dev/null 2>&1; then
+                realpath -m "$1"
+                return
+        fi
 
-	python3 - "$1" <<'PY'
+        if ! require_python3_available "path normalization fallback"; then
+                return 1
+        fi
+
+        python3 - "$1" <<'PY'
 import os, sys
 print(os.path.realpath(sys.argv[1]))
 PY
