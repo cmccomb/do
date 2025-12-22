@@ -96,6 +96,25 @@ lowercase() {
 	printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }
 
+score_planner_candidate() {
+	# Arguments:
+	#   $1 - normalized planner response JSON (string)
+	local normalized_json score
+	normalized_json="$1"
+
+	score=$(jq -er '
+                if .mode == "quickdraw" then
+                        0
+                else
+                        ((.plan | length) - 1) as $step_count
+                        | (if $step_count < 0 then 0 else $step_count end) as $safe_steps
+                        | ($safe_steps * 10) + (.plan | map(.tool) | unique | length)
+                end
+                ' <<<"${normalized_json}" 2>/dev/null) || score=0
+
+	printf '%s' "${score}"
+}
+
 generate_planner_response() {
 	# Arguments:
 	#   $1 - user query (string)
