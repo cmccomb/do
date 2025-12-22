@@ -7,7 +7,7 @@ setup() {
 }
 
 @test "score_planner_candidate rewards registered tools with satisfiable args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -33,7 +33,7 @@ SCRIPT
 }
 
 @test "score_planner_candidate penalizes unavailable tools and bad args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -60,7 +60,7 @@ SCRIPT
 }
 
 @test "score_planner_candidate prefers plans that defer side effects" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export PLANNER_MAX_PLAN_STEPS=4
 export VERBOSITY=0
@@ -76,13 +76,13 @@ printf "safer=%s\n" "${safer_score}"
 SCRIPT
 
 	[ "$status" -eq 0 ]
-        unsafe=$(printf '%s' "${lines[0]}" | cut -d= -f2)
-        safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
-        [[ "${safer}" -gt "${unsafe}" ]]
+	unsafe=$(printf '%s' "${lines[0]}" | cut -d= -f2)
+	safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
+	[[ "${safer}" -gt "${unsafe}" ]]
 }
 
 @test "score_planner_candidate emits informative INFO logs" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=1
 source ./src/lib/planning/scoring.sh
@@ -92,6 +92,6 @@ plan='{"mode":"plan","plan":[{"tool":"terminal","args":{},"thought":""},{"tool":
 score_planner_candidate "${plan}" >/dev/null
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "${output}" == *"Planner scoring summary"* ]]
+	[ "$status" -eq 0 ]
+	[[ "${output}" == *"Planner scoring summary"* ]]
 }
