@@ -468,9 +468,9 @@ react_loop() {
 			continue
 		fi
 
-                if [[ -z "${final_answer_payload}" ]]; then
-                        final_answer_payload="$(extract_tool_query "${tool}" "${normalized_args_json}")"
-                fi
+		if [[ -z "${final_answer_payload}" ]]; then
+			final_answer_payload="$(extract_tool_query "${tool}" "${normalized_args_json}")"
+		fi
 		query="${final_answer_payload}"
 		action_context="$(format_action_context "${thought}" "${tool}" "${normalized_args_json}")"
 

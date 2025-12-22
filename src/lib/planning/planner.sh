@@ -125,7 +125,7 @@ generate_planner_response() {
 	local planner_schema_text planner_prompt_prefix planner_suffix tool_lines prompt
 	planner_schema_text="$(load_schema_text planner_plan)"
 
-        tool_lines="$(format_tool_descriptions "$(printf '%s\n' "${planner_tools[@]}")" format_tool_line)"
+	tool_lines="$(format_tool_descriptions "$(printf '%s\n' "${planner_tools[@]}")" format_tool_line)"
 	planner_prompt_prefix="$(build_planner_prompt_static_prefix)"
 	planner_suffix="$(build_planner_prompt_dynamic_suffix "${user_query}" "${tool_lines}")"
 	prompt="${planner_prompt_prefix}${planner_suffix}"
@@ -317,21 +317,21 @@ emit_plan_json() {
 }
 
 derive_allowed_tools_from_plan() {
-        # Arguments:
-        #   $1 - planner response JSON (object or legacy plan array)
-        local plan_json tool seen
-        plan_json="${1:-[]}"
+	# Arguments:
+	#   $1 - planner response JSON (object or legacy plan array)
+	local plan_json tool seen
+	plan_json="${1:-[]}"
 
-        if jq -e '.mode == "quickdraw"' <<<"${plan_json}" >/dev/null 2>&1; then
-                return 0
-        fi
+	if jq -e '.mode == "quickdraw"' <<<"${plan_json}" >/dev/null 2>&1; then
+		return 0
+	fi
 
 	if jq -e '.mode == "plan" and (.plan | type == "array")' <<<"${plan_json}" >/dev/null 2>&1; then
 		plan_json="$(jq -c '.plan' <<<"${plan_json}")"
 	fi
 
-        seen=""
-        local -a required=()
+	seen=""
+	local -a required=()
 	local plan_contains_fallback=false
 	if jq -e '.[] | select(.tool == "react_fallback")' <<<"${plan_json}" >/dev/null 2>&1; then
 		plan_contains_fallback=true

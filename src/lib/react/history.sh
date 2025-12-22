@@ -37,16 +37,16 @@ initialize_react_state() {
 	#   $3 - allowed tools (string, newline delimited)
 	#   $4 - ranked plan entries (string)
 	#   $5 - plan outline text (string)
-        local state_prefix
-        state_prefix="$1"
+	local state_prefix
+	state_prefix="$1"
 
 	state_set_json_document "${state_prefix}" "$(jq -c -n \
 		--arg user_query "$2" \
 		--arg allowed_tools "$3" \
-                --arg plan_entries "$4" \
-                --arg plan_outline "$5" \
-                --argjson max_steps "${MAX_STEPS:-6}" \
-                '{
+		--arg plan_entries "$4" \
+		--arg plan_outline "$5" \
+		--argjson max_steps "${MAX_STEPS:-6}" \
+		'{
                         user_query: $user_query,
                         allowed_tools: $allowed_tools,
                         plan_entries: $plan_entries,

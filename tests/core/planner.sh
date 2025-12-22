@@ -142,7 +142,7 @@ SCRIPT
 }
 
 @test "derive_allowed_tools_from_plan de-duplicates web_search entries" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/planner.sh
@@ -155,8 +155,8 @@ done < <(derive_allowed_tools_from_plan "${plan_json}")
 printf "tools=%s\n" "${tools[*]}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "tools=web_search final_answer" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "tools=web_search final_answer" ]
 }
 
 @test "select_next_action uses deterministic plan when llama disabled" {

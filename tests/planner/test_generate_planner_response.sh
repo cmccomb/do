@@ -13,8 +13,8 @@
 #   Inherits Bats semantics; assertions fail the test case.
 
 @test "generate_planner_response omits web_search caps" {
-        run bash -lc "$(
-                cat <<'INNERSCRIPT'
+	run bash -lc "$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -44,8 +44,8 @@ prompt="$(cat /tmp/planner_prompt_budget_constraints)"
 [[ "${prompt}" != *"web_search discipline"* ]]
 [[ "${prompt}" != *"Cap web_search"* ]]
 INNERSCRIPT
-        )"
-        [ "$status" -eq 0 ]
+	)"
+	[ "$status" -eq 0 ]
 }
 
 @test "generate_planner_response lists tools without web_search caps" {
@@ -79,6 +79,6 @@ prompt="$(cat /tmp/planner_prompt_budget_tools)"
 
 [[ "${prompt}" != *"Budget: up to"* ]]
 INNERSCRIPT
-        )"
-        [ "$status" -eq 0 ]
+	)"
+	[ "$status" -eq 0 ]
 }
