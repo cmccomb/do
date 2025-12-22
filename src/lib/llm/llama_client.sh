@@ -136,7 +136,7 @@ llama_infer() {
 	fi
 
 	if [[ -n "${LLAMA_TEMPERATURE:-}" ]]; then
-		llama_args+=(-temp "${LLAMA_TEMPERATURE}")
+		llama_args+=(--temp "${LLAMA_TEMPERATURE}")
 	fi
 
 	rope_freq_base="${LLAMA_ROPE_FREQ_BASE:-}"
