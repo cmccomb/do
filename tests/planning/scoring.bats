@@ -1,13 +1,13 @@
 #!/usr/bin/env bats
 
 setup() {
-        unset -f chpwd _mise_hook __zsh_like_cd cd 2>/dev/null || true
-        # shellcheck disable=SC2034
-        chpwd_functions=()
+	unset -f chpwd _mise_hook __zsh_like_cd cd 2>/dev/null || true
+	# shellcheck disable=SC2034
+	chpwd_functions=()
 }
 
 @test "score_planner_candidate rewards registered tools with satisfiable args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 tool_names() { printf "%s\n" terminal final_answer; }
@@ -23,16 +23,16 @@ scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        scorecard=$(printf '%s\n' "${output}" | tail -n 1)
-        score=$(printf '%s' "${scorecard}" | jq -r '.score')
-        rationale=$(printf '%s' "${scorecard}" | jq -r '.rationale | join(" ")')
-        [[ "${score}" -gt 0 ]]
-        [[ "${rationale}" == *"final_answer"* ]]
+	[ "$status" -eq 0 ]
+	scorecard=$(printf '%s\n' "${output}" | tail -n 1)
+	score=$(printf '%s' "${scorecard}" | jq -r '.score')
+	rationale=$(printf '%s' "${scorecard}" | jq -r '.rationale | join(" ")')
+	[[ "${score}" -gt 0 ]]
+	[[ "${rationale}" == *"final_answer"* ]]
 }
 
 @test "score_planner_candidate penalizes unavailable tools and bad args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 tool_names() { printf "%s\n" terminal final_answer; }
@@ -51,14 +51,14 @@ printf "good=%s\n" "${good}"
 printf "bad=%s\n" "${bad}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        good=$(printf '%s' "${lines[0]}" | cut -d= -f2)
-        bad=$(printf '%s' "${lines[1]}" | cut -d= -f2)
-        [[ "${good}" -gt "${bad}" ]]
+	[ "$status" -eq 0 ]
+	good=$(printf '%s' "${lines[0]}" | cut -d= -f2)
+	bad=$(printf '%s' "${lines[1]}" | cut -d= -f2)
+	[[ "${good}" -gt "${bad}" ]]
 }
 
 @test "score_planner_candidate prefers plans that defer side effects" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export PLANNER_MAX_PLAN_STEPS=4
 source ./src/lib/planning/planner.sh
@@ -72,8 +72,8 @@ printf "unsafe=%s\n" "${unsafe_score}"
 printf "safer=%s\n" "${safer_score}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        unsafe=$(printf '%s' "${lines[0]}" | cut -d= -f2)
-        safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
-        [[ "${safer}" -gt "${unsafe}" ]]
+	[ "$status" -eq 0 ]
+	unsafe=$(printf '%s' "${lines[0]}" | cut -d= -f2)
+	safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
+	[[ "${safer}" -gt "${unsafe}" ]]
 }
