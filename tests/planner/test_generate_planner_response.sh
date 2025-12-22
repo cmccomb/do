@@ -13,8 +13,8 @@
 #   Inherits Bats semantics; assertions fail the test case.
 
 @test "generate_planner_response includes web_search budget constraints" {
-        run bash -lc "$(
-                cat <<'INNERSCRIPT'
+	run bash -lc "$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -43,13 +43,13 @@ prompt="$(cat /tmp/planner_prompt_budget_constraints)"
 [[ "${prompt}" == *"at most 2 short, targeted queries"* ]]
 [[ "${prompt}" == *"may not include more than 2 web_search steps"* ]]
 INNERSCRIPT
-        )"
-        [ "$status" -eq 0 ]
+	)"
+	[ "$status" -eq 0 ]
 }
 
 @test "generate_planner_response surfaces web_search budget in tool list" {
-        run bash -lc "$(
-                cat <<'INNERSCRIPT'
+	run bash -lc "$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -77,6 +77,6 @@ prompt="$(cat /tmp/planner_prompt_budget_tools)"
 
 [[ "${prompt}" == *"- web_search: Budget: up to 2 searches per plan"* ]]
 INNERSCRIPT
-        )"
-        [ "$status" -eq 0 ]
+	)"
+	[ "$status" -eq 0 ]
 }

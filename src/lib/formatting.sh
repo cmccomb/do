@@ -52,29 +52,29 @@ format_tool_descriptions() {
 }
 
 web_search_budget_cap_value() {
-        # Determines the maximum number of web_search steps allowed in a plan.
-        # Returns:
-        #   Resolved budget cap as an integer (string)
-        local cap
-        cap="${PLANNER_WEB_SEARCH_BUDGET_CAP:-2}"
+	# Determines the maximum number of web_search steps allowed in a plan.
+	# Returns:
+	#   Resolved budget cap as an integer (string)
+	local cap
+	cap="${PLANNER_WEB_SEARCH_BUDGET_CAP:-2}"
 
-        if [[ -z "${cap}" || ! "${cap}" =~ ^[0-9]+$ ]]; then
-                cap=2
-        fi
+	if [[ -z "${cap}" || ! "${cap}" =~ ^[0-9]+$ ]]; then
+		cap=2
+	fi
 
-        printf '%s' "${cap}"
+	printf '%s' "${cap}"
 }
 
 format_tool_details() {
-        # Arguments:
-        #   $1 - tool name (string)
-        #   $2 - include schema (bool, optional)
-        local tool description command safety include_schema args_schema web_search_cap
-        local -a details=()
-        local detail_text=""
-        tool="$1"
-        include_schema="${2:-false}"
-        description="$(tool_description "${tool}")"
+	# Arguments:
+	#   $1 - tool name (string)
+	#   $2 - include schema (bool, optional)
+	local tool description command safety include_schema args_schema web_search_cap
+	local -a details=()
+	local detail_text=""
+	tool="$1"
+	include_schema="${2:-false}"
+	description="$(tool_description "${tool}")"
 	command="$(tool_command "${tool}")"
 	safety="$(tool_safety "${tool}")"
 
@@ -93,18 +93,18 @@ format_tool_details() {
 		details+=("Example: ${command}")
 	fi
 
-        if [[ -n "${safety}" ]]; then
-                details+=("Safety: ${safety}")
-        fi
+	if [[ -n "${safety}" ]]; then
+		details+=("Safety: ${safety}")
+	fi
 
-        if [[ "${tool}" == "web_search" ]]; then
-                web_search_cap="$(web_search_budget_cap_value)"
-                details+=("Budget: up to ${web_search_cap} searches per plan")
-        fi
+	if [[ "${tool}" == "web_search" ]]; then
+		web_search_cap="$(web_search_budget_cap_value)"
+		details+=("Budget: up to ${web_search_cap} searches per plan")
+	fi
 
-        if ((${#details[@]} == 0)); then
-                return 0
-        fi
+	if ((${#details[@]} == 0)); then
+		return 0
+	fi
 
 	for i in $(seq 0 $((${#details[@]} - 1))); do
 		if ((i > 0)); then
