@@ -10,8 +10,8 @@
 #   - bash 3.2+
 
 @test "planner prompt threads examples into dynamic suffix" {
-        run bash -lc "$(
-                cat <<'INNERSCRIPT'
+	run bash -lc "$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -27,13 +27,13 @@ suffix="$(build_planner_prompt_dynamic_suffix 'What changed?' 'terminal' 'Search
 [[ "${suffix}" == *"# Planner examples"* ]]
 [[ "${suffix}" == *"Summarize the latest okso release notes."* ]]
 INNERSCRIPT
-        )"
-        [ "$status" -eq 0 ]
+	)"
+	[ "$status" -eq 0 ]
 }
 
 @test "planner prompt renders without examples file" {
-        run bash -lc "$(
-                cat <<'INNERSCRIPT'
+	run bash -lc "$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -53,6 +53,6 @@ suffix="$(build_planner_prompt_dynamic_suffix 'What changed?' 'terminal' 'Search
 [[ "${suffix}" == *"# Planner examples"* ]]
 [[ "${suffix}" != *'${planner_examples}'* ]]
 INNERSCRIPT
-        )"
-        [ "$status" -eq 0 ]
+	)"
+	[ "$status" -eq 0 ]
 }
