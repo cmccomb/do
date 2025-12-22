@@ -25,10 +25,6 @@ Current time: ${current_time} (local)
 Current weekday: ${current_weekday}
 Use this temporal context when scheduling or sequencing tasks.
 
-# Search context
-Web search already ran for this request. Use the findings below for grounding instead of scheduling new web_search steps. If the context is empty, proceed conservatively and prefer other tools over additional browsing.
-${search_context}
-
 # General Rules
 Format the output as a JSON object that either:
 - Uses `{"mode": "plan", "plan": [...]}` for tool-based work (each step shaped as {tool, args, thought}), or
@@ -42,6 +38,7 @@ Select only from the provided list of available tools.
 Each action must clearly indicate which tool will be used.
 If a query involves any kind of calculation or mathematical operation, recommend the python_repl tool.
 When describing tool usage, reference the structured argument fields each tool expects (for example terminal => {command, args}, notes_create => {title, body}, reminders_create => {title, time, notes}).
+
 # Output Format
 Respond ONLY with a JSON object.
 Specifically, constrain your response using this JSON schema:
@@ -52,5 +49,9 @@ ${tool_lines}
 
 # User request:
 ${user_query}
+
+# Search context
+A quick web search was executed using the query text. Use the findings below for grounding instead of scheduling new web_search steps.
+${search_context}
 
 # Plan:
