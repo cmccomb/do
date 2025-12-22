@@ -18,6 +18,10 @@
 #   PLAN_ONLY, DRY_RUN (bool): control execution and preview behaviour.
 #   APPROVE_ALL, FORCE_CONFIRM (bool): confirmation toggles.
 #   VERBOSITY (int): log level.
+#   PLANNER_SKIP_TOOL_LOAD (bool): skip sourcing the tool suite; useful for tests.
+#   PLANNER_SAMPLE_COUNT (int >=1): number of planner generations to sample; values below 1 are coerced to 1.
+#   PLANNER_TEMPERATURE (float 0-1): temperature forwarded to planner llama.cpp calls.
+#   PLANNER_DEBUG_LOG (string): JSONL sink for scored planner candidates; truncated at each invocation.
 #
 # Dependencies:
 #   - bash 3.2+
@@ -42,7 +46,11 @@ source "${PLANNING_LIB_DIR}/../core/errors.sh"
 # shellcheck source=../core/logging.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/../core/logging.sh"
 # shellcheck source=../tools.sh disable=SC1091
-source "${PLANNING_LIB_DIR}/../tools.sh"
+if [[ "${PLANNER_SKIP_TOOL_LOAD:-false}" != true ]]; then
+	source "${PLANNING_LIB_DIR}/../tools.sh"
+else
+	log "DEBUG" "Skipping tool suite load" "planner_skip_tool_load=true" >&2
+fi
 # shellcheck source=../assistant/respond.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/../assistant/respond.sh"
 # shellcheck source=../prompt/build_planner.sh disable=SC1091
@@ -59,27 +67,14 @@ source "${PLANNING_LIB_DIR}/../llm/llama_client.sh"
 source "${PLANNING_LIB_DIR}/../config.sh"
 # shellcheck source=./normalization.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/normalization.sh"
+# shellcheck source=./scoring.sh disable=SC1091
+source "${PLANNING_LIB_DIR}/scoring.sh"
 # shellcheck source=./prompting.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/prompting.sh"
-# shellcheck source=../exec/dispatch.sh disable=SC1091
-source "${PLANNING_LIB_DIR}/../exec/dispatch.sh"
-
-PLANNER_WEB_SEARCH_BUDGET_FILE=${PLANNER_WEB_SEARCH_BUDGET_FILE:-"${TMPDIR:-/tmp}/okso_planner_web_search_budget"}
-export PLANNER_WEB_SEARCH_BUDGET_FILE
-PLANNER_WEB_SEARCH_BUDGET_CAP=${PLANNER_WEB_SEARCH_BUDGET_CAP:-2}
-if [[ -z "${PLANNER_WEB_SEARCH_BUDGET_CAP}" || ! "${PLANNER_WEB_SEARCH_BUDGET_CAP}" =~ ^[0-9]+$ ]]; then
-	PLANNER_WEB_SEARCH_BUDGET_CAP=2
+if [[ "${PLANNER_SKIP_TOOL_LOAD:-false}" != true ]]; then
+	# shellcheck source=../exec/dispatch.sh disable=SC1091
+	source "${PLANNING_LIB_DIR}/../exec/dispatch.sh"
 fi
-export PLANNER_WEB_SEARCH_BUDGET_CAP
-
-planner_web_search_budget_value() {
-	if [[ -f "${PLANNER_WEB_SEARCH_BUDGET_FILE}" ]]; then
-		cat "${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || printf '0'
-	else
-		printf '0'
-	fi
-}
-export -f planner_web_search_budget_value
 
 initialize_planner_models() {
 	if [[ -z "${PLANNER_MODEL_REPO:-}" || -z "${PLANNER_MODEL_FILE:-}" || -z "${REACT_MODEL_REPO:-}" || -z "${REACT_MODEL_FILE:-}" ]]; then
@@ -87,6 +82,66 @@ initialize_planner_models() {
 	fi
 }
 export -f initialize_planner_models
+
+planner_format_search_context() {
+	# Formats web search JSON into readable prompt text.
+	# Arguments:
+	#   $1 - raw search payload (JSON string)
+	local raw_context formatted
+	raw_context="$1"
+
+	if [[ -z "${raw_context}" ]]; then
+		printf '%s' "Search context unavailable."
+		return 0
+	fi
+
+	if ! formatted=$(jq -r '
+                def fmt(idx; item): "\(idx). \(item.title // "Untitled"): \(item.snippet // "") [\(item.url // "")";
+                if (.items | length == 0) then
+                        "No search results were captured for this query."
+                else
+                        "Query: \(.query // "")\n" +
+                        ((.items // []) | to_entries | map(fmt(.key + 1; .value)) | join("\n"))
+                end
+        ' <<<"${raw_context}" 2>/dev/null); then
+		log "ERROR" "Failed to format search context" "planner_search_context_parse_error" >&2
+		printf '%s' "Search context unavailable."
+		return 0
+	fi
+
+	printf '%s' "${formatted}"
+}
+
+planner_fetch_search_context() {
+	# Executes a deterministic web search before planning.
+	# Arguments:
+	#   $1 - user query (string)
+	# Returns:
+	#   Formatted search context (string). Fallbacks are empty but non-fatal.
+	local user_query tool_args raw_context
+	user_query="$1"
+
+	if ! declare -F tool_web_search >/dev/null 2>&1; then
+		log "WARN" "web_search tool unavailable; skipping pre-plan search" "planner_tools_missing_web_search" >&2
+		printf '%s' "Search context unavailable."
+		return 0
+	fi
+
+	tool_args=$(jq -nc --arg query "${user_query}" '{query:$query, num:5}' 2>/dev/null)
+	if [[ -z "${tool_args}" ]]; then
+		log "WARN" "Failed to encode search args" "planner_search_args_encoding_failed" >&2
+		printf '%s' "Search context unavailable."
+		return 0
+	fi
+
+	if ! raw_context=$(TOOL_ARGS="${tool_args}" tool_web_search 2>/dev/null); then
+		log "WARN" "Pre-plan search failed" "planner_preplan_search_failed" >&2
+		printf '%s' "Search context unavailable."
+		return 0
+	fi
+
+	planner_format_search_context "${raw_context}"
+}
 
 lowercase() {
 	# Arguments:
@@ -123,30 +178,113 @@ generate_planner_response() {
 		done < <(tool_names)
 	fi
 
-	if ! printf '%s\0' "${planner_tools[@]}" | grep -Fxzq "web_search"; then
-		planner_tools+=("web_search")
-		log "INFO" "Web search enabled for planning" "planner_tools_appended=web_search" >&2
-	else
-		log "DEBUG" "Web search already available to planner" "planner_tools_present=web_search" >&2
-	fi
-
 	local planner_tool_catalog
 	planner_tool_catalog="$(printf '%s\n' "${planner_tools[@]}" | paste -sd ',' -)"
 	log "DEBUG" "Planner tool catalog" "${planner_tool_catalog}" >&2
 
-	local prompt raw_plan planner_schema_text planner_prompt_prefix planner_suffix tool_lines
+	local planner_schema_text planner_prompt_prefix planner_suffix tool_lines prompt search_context
 	planner_schema_text="$(load_schema_text planner_plan)"
 
-	tool_lines="$(format_tool_descriptions "$(printf '%s\n' "${planner_tools[@]}")" format_tool_summary_line)"
+	tool_lines="$(format_tool_descriptions "$(printf '%s\n' "${planner_tools[@]}")" format_tool_line)"
+	search_context="$(planner_fetch_search_context "${user_query}")"
 	planner_prompt_prefix="$(build_planner_prompt_static_prefix)"
-	planner_suffix="$(build_planner_prompt_dynamic_suffix "${user_query}" "${tool_lines}")"
+	planner_suffix="$(build_planner_prompt_dynamic_suffix "${user_query}" "${tool_lines}" "${search_context}")"
 	prompt="${planner_prompt_prefix}${planner_suffix}"
 	log "DEBUG" "Generated planner prompt" "${prompt}" >&2
-	raw_plan="$(llama_infer "${prompt}" '' 512 "${planner_schema_text}" "${PLANNER_MODEL_REPO:-}" "${PLANNER_MODEL_FILE:-}" "${PLANNER_CACHE_FILE:-}" "${planner_prompt_prefix}")" || raw_plan="[]"
-	if ! normalize_planner_response <<<"${raw_plan}"; then
-		log "ERROR" "Planner output failed validation; request regeneration" "${raw_plan}" >&2
+
+	local sample_count temperature debug_log_dir debug_log_file
+	sample_count="${PLANNER_SAMPLE_COUNT:-3}"
+	temperature="${PLANNER_TEMPERATURE:-0.2}"
+	# Capture the sampling configuration early so operators can verify the
+	# breadth of exploration before generation begins. This also doubles as
+	# a trace when investigating unexpected candidate rankings.
+	log "INFO" "Planner sampling configuration" "$(jq -nc --arg sample_count "${sample_count}" --arg temperature "${temperature}" '{sample_count:$sample_count,temperature:$temperature}')" >&2
+	# Sample count controls how many candidates are generated and scored.
+	# Validation clamps values below 1 to a single candidate so downstream
+	# selection always has material to review.
+	if ! [[ "${sample_count}" =~ ^[0-9]+$ ]] || ((sample_count < 1)); then
+		sample_count=1
+	fi
+
+	# Temperature is forwarded verbatim to llama.cpp; callers should keep
+	# values in a 0-1 range to avoid erratic generation.
+
+	debug_log_dir="${TMPDIR:-/tmp}"
+	# Each candidate is appended to PLANNER_DEBUG_LOG as a JSON object with
+	# score, tie-breaker, rationale, and the normalized response. The file
+	# is truncated per invocation to keep the latest run isolated.
+	debug_log_file="${PLANNER_DEBUG_LOG:-${debug_log_dir%/}/okso_planner_candidates.log}"
+	mkdir -p "$(dirname "${debug_log_file}")" 2>/dev/null || true
+	: >"${debug_log_file}" 2>/dev/null || true
+
+	local best_plan="" best_score=-1 best_tie_breaker=-9999 candidate_index=0 raw_plan normalized_plan
+	local candidate_score candidate_tie_breaker candidate_scorecard candidate_rationale
+	while ((candidate_index < sample_count)); do
+		candidate_index=$((candidate_index + 1))
+
+		# Each loop iteration generates a single candidate, normalizes it
+		# into the canonical schema, and scores it for downstream
+		# selection. Any failure to normalize or score results in the
+		# candidate being skipped, which keeps downstream selection
+		# deterministic and safe.
+		raw_plan="$(LLAMA_TEMPERATURE="${temperature}" llama_infer "${prompt}" '' 512 "${planner_schema_text}" "${PLANNER_MODEL_REPO:-}" "${PLANNER_MODEL_FILE:-}" "${PLANNER_CACHE_FILE:-}" "${planner_prompt_prefix}")" || raw_plan="[]"
+
+		if ! normalized_plan="$(normalize_planner_response <<<"${raw_plan}")"; then
+			log "ERROR" "Planner output failed validation; request regeneration" "${raw_plan}" >&2
+			continue
+		fi
+
+		local is_quickdraw=false
+		if jq -e '.mode == "quickdraw"' <<<"${normalized_plan}" >/dev/null 2>&1; then
+			is_quickdraw=true
+		fi
+
+		if ! candidate_scorecard="$(score_planner_candidate "${normalized_plan}")"; then
+			log "ERROR" "Planner output failed scoring" "${normalized_plan}" >&2
+			continue
+		fi
+
+		candidate_score="$(jq -er '.score' <<<"${candidate_scorecard}" 2>/dev/null || printf '0')"
+		candidate_tie_breaker="$(jq -er '.tie_breaker // 0' <<<"${candidate_scorecard}" 2>/dev/null || printf '0')"
+		candidate_rationale="$(jq -c '.rationale // []' <<<"${candidate_scorecard}" 2>/dev/null || printf '[]')"
+
+		# Emit a detailed INFO log for each candidate so operators can
+		# trace how the scorer evaluated the plan. The rationale array
+		# is preserved intact for downstream debugging.
+		log "INFO" "Planner candidate scored" "$(jq -nc \
+			--argjson index "${candidate_index}" \
+			--argjson score "${candidate_score}" \
+			--argjson tie_breaker "${candidate_tie_breaker}" \
+			--argjson rationale "${candidate_rationale}" \
+			'{index:$index,score:$score,tie_breaker:$tie_breaker,rationale:$rationale}')" >&2
+
+		jq -nc \
+			--argjson index "${candidate_index}" \
+			--argjson score "${candidate_score}" \
+			--argjson tie_breaker "${candidate_tie_breaker}" \
+			--argjson rationale "${candidate_rationale}" \
+			--argjson response "${normalized_plan}" \
+			'{index:$index, score:$score, tie_breaker:$tie_breaker, rationale:$rationale, response:$response}' >>"${debug_log_file}" 2>/dev/null || true
+
+		if ((candidate_score > best_score)) || { ((candidate_score == best_score)) && ((candidate_tie_breaker > best_tie_breaker)); }; then
+			best_score=${candidate_score}
+			best_tie_breaker=${candidate_tie_breaker}
+			best_plan="${normalized_plan}"
+		fi
+
+		if [[ "${is_quickdraw}" == true && ${candidate_index} -eq 1 ]]; then
+			log "DEBUG" "Quickdraw response returned immediately" "candidate_index=${candidate_index}" >&2
+			printf '%s' "${best_plan}"
+			return 0
+		fi
+	done
+
+	if [[ -z "${best_plan}" ]]; then
+		log "ERROR" "Planner output failed validation; request regeneration" "no_valid_candidates" >&2
 		return 1
 	fi
+
+	printf '%s' "${best_plan}"
 }
 
 generate_plan_outline() {
@@ -242,17 +380,8 @@ emit_plan_json() {
 derive_allowed_tools_from_plan() {
 	# Arguments:
 	#   $1 - planner response JSON (object or legacy plan array)
-	local plan_json tool seen web_search_cap web_search_count
+	local plan_json tool seen
 	plan_json="${1:-[]}"
-	web_search_cap="${PLANNER_WEB_SEARCH_BUDGET_CAP}"
-
-	if [[ -z "${web_search_cap}" || ! "${web_search_cap}" =~ ^[0-9]+$ ]]; then
-		web_search_cap=2
-	fi
-
-	PLANNER_WEB_SEARCH_BUDGET=0
-	export PLANNER_WEB_SEARCH_BUDGET
-	printf '%s' "${PLANNER_WEB_SEARCH_BUDGET}" >"${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || true
 
 	if jq -e '.mode == "quickdraw"' <<<"${plan_json}" >/dev/null 2>&1; then
 		return 0
@@ -260,18 +389,6 @@ derive_allowed_tools_from_plan() {
 
 	if jq -e '.mode == "plan" and (.plan | type == "array")' <<<"${plan_json}" >/dev/null 2>&1; then
 		plan_json="$(jq -c '.plan' <<<"${plan_json}")"
-	fi
-
-	web_search_count=$(jq -r '[.[] | select(.tool == "web_search")] | length' <<<"${plan_json}" 2>/dev/null || printf '0')
-	PLANNER_WEB_SEARCH_BUDGET="${web_search_count}"
-	export PLANNER_WEB_SEARCH_BUDGET
-	printf '%s' "${PLANNER_WEB_SEARCH_BUDGET}" >"${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || true
-	if ((web_search_count > web_search_cap)); then
-		log "ERROR" "Planner web_search budget exceeded" "$(printf 'requested=%s cap=%s' "${web_search_count}" "${web_search_cap}")" >&2 || true
-		return 1
-	fi
-	if ((web_search_count > 0)); then
-		log "INFO" "Planner web_search budget accepted" "$(printf 'requested=%s cap=%s' "${web_search_count}" "${web_search_cap}")" >&2 || true
 	fi
 
 	seen=""

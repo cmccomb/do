@@ -29,21 +29,15 @@ Use this temporal context when scheduling or sequencing tasks.
 Format the output as a JSON object that either:
 - Uses `{"mode": "plan", "plan": [...]}` for tool-based work (each step shaped as {tool, args, thought}), or
 - Uses `{"mode": "quickdraw", "quickdraw": {final_answer, confidence, rationale}}` only when tools are unnecessary.
-Block quickdraw and use tools whenever the request implies file/system mutations, searches/browsing/citations, or explicit verbs like create, edit, save, or run.
+Block quickdraw and use tools whenever the request implies any kind of calculation or mathematical operation, file/system mutations, searches/browsing/citations, or explicit verbs like create, edit, save, or run.
 If you are unsure, request a new plan rather than deferring to the ReAct agent.
 Do NOT include fully executable shell commands; keep the guidance conceptual.
 
 # Tool Selection Rules
 Select only from the provided list of available tools.
 Each action must clearly indicate which tool will be used.
-If a query involves any kind of calculation, recommend a calculation tool.
+If a query involves any kind of calculation or mathematical operation, recommend the python_repl tool.
 When describing tool usage, reference the structured argument fields each tool expects (for example terminal => {command, args}, notes_create => {title, body}, reminders_create => {title, time, notes}).
-# Web search discipline (rationale: keeps planning deterministic and cost-bounded while still allowing lightweight fact checks)
-Use web_search only when the user request cannot be planned without fresh context or public facts.
-Cap web_search to at most two short, targeted queries.
-You may not include more than two web_search steps in the plan; opt for fewer when possible.
-Plans requesting more than two searches will be rejected; keep searches concise or note why none are needed.
-Summarize results deterministically and solely to shape the plan; do not execute tasks or actions based on the search output.
 
 # Output Format
 Respond ONLY with a JSON object.
@@ -55,5 +49,9 @@ ${tool_lines}
 
 # User request:
 ${user_query}
+
+# Search context
+A quick web search was executed using the query text. Use the findings below for grounding instead of scheduling new web_search steps.
+${search_context}
 
 # Plan:
