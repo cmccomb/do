@@ -1,0 +1,15 @@
+# Example 1
+User request: "Summarize the latest okso release notes."
+Plan:
+- Tool: web_search — query "latest okso release notes" and capture the top results.
+- Tool: terminal — fetch the release notes from the official repository link.
+- Tool: terminal — summarize the key changes into bullet points.
+- Tool: terminal — prepare a concise user-facing summary.
+
+# Example 2
+User request: "Draft a checklist for migrating a PostgreSQL database."
+Plan:
+- Tool: notes_create — outline prerequisites (backups, maintenance window, version checks).
+- Tool: terminal — script the backup command and retention verification.
+- Tool: terminal — list the migration steps (dump, transfer, restore, verify).
+- Tool: notes_create — record post-migration validation tasks.

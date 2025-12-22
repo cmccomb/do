@@ -54,4 +54,8 @@ ${user_query}
 A quick web search was executed using the query text. Use the findings below for grounding instead of scheduling new web_search steps.
 ${search_context}
 
+# Planner examples
+The following examples illustrate the expected planning style and structure. Adapt them to the user's request without copying verbatim.
+${planner_examples}
+
 # Plan:
