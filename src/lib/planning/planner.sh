@@ -51,6 +51,8 @@ source "${PLANNING_LIB_DIR}/../prompt/build_planner.sh"
 source "${PLANNING_LIB_DIR}/../schema/schema.sh"
 # shellcheck source=../core/state.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/../core/state.sh"
+# shellcheck source=../dependency_guards/dependency_guards.sh disable=SC1091
+source "${PLANNING_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 # shellcheck source=../llm/llama_client.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/../llm/llama_client.sh"
 # shellcheck source=../config.sh disable=SC1091
@@ -82,6 +84,11 @@ generate_plan_json() {
 	local -a planner_tools=()
 	user_query="$1"
 
+	if ! require_llama_available "planner generation"; then
+		log "ERROR" "Planner cannot generate steps without llama.cpp" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
+		return 1
+	fi
+
 	local tools_decl
 	if tools_decl=$(declare -p TOOLS 2>/dev/null) && grep -q 'declare -a' <<<"${tools_decl}"; then
 		planner_tools=("${TOOLS[@]}")
@@ -91,12 +98,6 @@ generate_plan_json() {
 			[[ -z "${tool_name}" ]] && continue
 			planner_tools+=("${tool_name}")
 		done < <(tool_names)
-	fi
-
-	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
-		log "WARN" "Using static plan because llama is unavailable" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
-		printf '%s' '[{"tool":"final_answer","args":{},"thought":"Respond directly to the user request."}]'
-		return 0
 	fi
 
 	local prompt raw_plan planner_schema_text plan_json planner_prompt_prefix planner_suffix tool_lines
@@ -119,7 +120,9 @@ generate_plan_outline() {
 	# Arguments:
 	#   $1 - user query (string)
 	local plan_json
-	plan_json="$(generate_plan_json "$1")"
+	if ! plan_json="$(generate_plan_json "$1")"; then
+		return 1
+	fi
 	plan_json_to_outline "${plan_json}"
 }
 

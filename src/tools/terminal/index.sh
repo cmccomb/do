@@ -26,6 +26,8 @@
 source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/lib/core/logging.sh"
 # shellcheck source=../../lib/cli/output.sh disable=SC1091
 source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/lib/cli/output.sh"
+# shellcheck source=../../lib/dependency_guards/dependency_guards.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/terminal/index.sh}/lib/dependency_guards/dependency_guards.sh"
 # shellcheck source=../registry.sh disable=SC1091
 source "${BASH_SOURCE[0]%/terminal/index.sh}/registry.sh"
 
@@ -39,7 +41,6 @@ TERMINAL_ALLOWED_COMMANDS=(
 	"tail"
 	"find"
 	"grep"
-	"open"
 	"mkdir"
 	"rmdir"
 	"mv"
@@ -52,6 +53,12 @@ TERMINAL_ALLOWED_COMMANDS=(
 	"base64"
 	"date"
 )
+
+TERMINAL_HAS_OPEN=false
+if require_macos_capable_terminal "The 'open' command is only available on macOS" "DEBUG"; then
+	TERMINAL_ALLOWED_COMMANDS+=("open")
+	TERMINAL_HAS_OPEN=true
+fi
 
 TERMINAL_CMD=""      # string command parsed from TOOL_ARGS
 TERMINAL_CMD_ARGS=() # array command arguments parsed from TOOL_ARGS
@@ -377,18 +384,34 @@ tool_terminal() {
 	esac
 }
 
+terminal_command_enum_json() {
+	local -a commands
+	local enum_json
+	commands=("${TERMINAL_ALLOWED_COMMANDS[@]}")
+	enum_json="$(printf '"%s",' "${commands[@]}" | sed 's/,$//')"
+	printf '[%s]' "${enum_json}"
+}
+
 register_terminal() {
-	local args_schema
+	local args_schema description usage commands_synopsis
 
 	args_schema=$(
-		cat <<'JSON'
-{"type":"object","required":["command"],"properties":{"command":{"type":"string","enum":["status","pwd","ls","cd","cat","head","tail","find","grep","open","mkdir","rmdir","mv","cp","touch","rm","stat","wc","du","base64","date"]},"args":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
+		cat <<JSON
+{"type":"object","required":["command"],"properties":{"command":{"type":"string","enum":$(terminal_command_enum_json)},"args":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
 JSON
 	)
+	if [[ "${TERMINAL_HAS_OPEN}" == true ]]; then
+		commands_synopsis="terminal <status|pwd|ls|cd|cat|head|tail|find|grep|open|mkdir|rmdir|mv|cp|touch|rm|stat|wc|du|base64|date>"
+		description="Persistent terminal session for navigation, inspection, and safe mutations (pwd, ls, du, cd, cat, head, tail, find, grep, stat, wc, base64 encode/decode, mkdir, rmdir, mv, cp, touch, rm -i default; open on macOS)."
+	else
+		commands_synopsis="terminal <status|pwd|ls|cd|cat|head|tail|find|grep|mkdir|rmdir|mv|cp|touch|rm|stat|wc|du|base64|date>"
+		description="Persistent terminal session for navigation, inspection, and safe mutations (pwd, ls, du, cd, cat, head, tail, find, grep, stat, wc, base64 encode/decode, mkdir, rmdir, mv, cp, touch, rm -i default)."
+	fi
+	usage=${commands_synopsis}
 	register_tool \
 		"terminal" \
-		"Persistent terminal session for navigation, inspection, and safe mutations (pwd, ls, du, cd, cat, head, tail, find, grep, stat, wc, base64 encode/decode, mkdir, rmdir, mv, cp, touch, rm -i default; open on macOS)." \
-		"terminal <status|pwd|ls|cd|cat|head|tail|find|grep|open|mkdir|rmdir|mv|cp|touch|rm|stat|wc|du|base64|date>" \
+		"${description}" \
+		"${usage}" \
 		"Restricted command set with a per-query working directory; destructive operations default to interactive rm." \
 		tool_terminal \
 		"${args_schema}"

@@ -24,6 +24,8 @@ source "${REACT_LIB_DIR}/../schema/schema.sh"
 source "${REACT_LIB_DIR}/../core/logging.sh"
 # shellcheck source=../tools.sh disable=SC1091
 source "${REACT_LIB_DIR}/../tools.sh"
+# shellcheck source=../dependency_guards/dependency_guards.sh disable=SC1091
+source "${REACT_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 
 build_react_action_schema() {
 	# Constructs a JSON schema for allowed ReAct tools.
@@ -36,6 +38,11 @@ build_react_action_schema() {
 		initialize_tools >/dev/null 2>&1 || true
 	fi
 	registry_json="$(tool_registry_json)"
+
+	if ! require_python3_available "ReAct schema generation"; then
+		log "ERROR" "Unable to build ReAct action schema; python3 missing" "${allowed_tools}" >&2
+		return 1
+	fi
 
 	python3 - "${allowed_tools}" "${registry_json}" "${CANONICAL_TEXT_ARG_KEY:-input}" <<'PY'
 import json

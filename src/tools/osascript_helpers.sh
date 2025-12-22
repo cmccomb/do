@@ -21,6 +21,8 @@
 
 # shellcheck source=../lib/core/logging.sh disable=SC1091
 source "${BASH_SOURCE[0]%/tools/osascript_helpers.sh}/lib/core/logging.sh"
+# shellcheck source=../lib/dependency_guards/dependency_guards.sh disable=SC1091
+source "${BASH_SOURCE[0]%/tools/osascript_helpers.sh}/lib/dependency_guards/dependency_guards.sh"
 
 assert_osascript_available() {
 	# Ensures osascript-based tools only run on macOS with the binary available.
@@ -40,8 +42,7 @@ assert_osascript_available() {
 		return 2
 	fi
 
-	if [[ "${IS_MACOS}" != true ]]; then
-		log "WARN" "${platform_warning}" "${detail}" || true
+	if ! require_macos_capable_terminal "${platform_warning}" "WARN"; then
 		return 1
 	fi
 

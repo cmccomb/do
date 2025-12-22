@@ -20,6 +20,8 @@ PLANNING_NORMALIZATION_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # shellcheck source=../core/logging.sh disable=SC1091
 source "${PLANNING_NORMALIZATION_DIR}/../core/logging.sh"
+# shellcheck source=../dependency_guards/dependency_guards.sh disable=SC1091
+source "${PLANNING_NORMALIZATION_DIR}/../dependency_guards/dependency_guards.sh"
 
 # Normalize noisy planner output into a clean PlannerPlan JSON array of objects.
 # Reads from stdin, writes clean JSON array to stdout.
@@ -27,6 +29,11 @@ normalize_planner_plan() {
 	local raw plan_candidate normalized
 
 	raw="$(cat)"
+
+	if ! require_python3_available "planner output normalization"; then
+		log "ERROR" "normalize_planner_plan: python3 unavailable" "${raw}" >&2
+		return 1
+	fi
 
 	plan_candidate=$(
 		RAW_INPUT="${raw}" python3 - <<'PYTHON'

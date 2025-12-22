@@ -26,6 +26,8 @@ source "${REACT_LIB_DIR}/../core/state.sh"
 source "${REACT_LIB_DIR}/../assistant/respond.sh"
 # shellcheck source=../formatting.sh disable=SC1091
 source "${REACT_LIB_DIR}/../formatting.sh"
+# shellcheck source=../dependency_guards/dependency_guards.sh disable=SC1091
+source "${REACT_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 
 initialize_react_state() {
 	# Initializes the ReAct state document with user query, tools, and plan.
@@ -108,6 +110,12 @@ record_tool_execution() {
 		args_json="{}"
 	fi
 	args_json="$(jq -cS '.' <<<"${args_json}" 2>/dev/null || printf '{}')"
+
+	if ! require_python3_available "ReAct history serialization"; then
+		log "ERROR" "Failed to record tool execution; python3 missing" "${tool}" >&2
+		return 1
+	fi
+
 	entry=$(
 		python3 - "$step_index" "$thought" "$tool" "$args_json" "$observation" <<'PY'
 import json
