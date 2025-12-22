@@ -26,8 +26,10 @@ Current weekday: ${current_weekday}
 Use this temporal context when scheduling or sequencing tasks.
 
 # General Rules
-Format the output as a JSON array of objects with the following shape: {tool, args, thought}.
-Every step must choose a concrete tool from the allowed set and include structured args for that tool.
+Format the output as a JSON object that either:
+- Uses `{"mode": "plan", "plan": [...]}` for tool-based work (each step shaped as {tool, args, thought}), or
+- Uses `{"mode": "quickdraw", "quickdraw": {final_answer, confidence, rationale}}` only when tools are unnecessary.
+Block quickdraw and use tools whenever the request implies file/system mutations, searches/browsing/citations, or explicit verbs like create, edit, save, or run.
 If you are unsure, request a new plan rather than deferring to the ReAct agent.
 Do NOT include fully executable shell commands; keep the guidance conceptual.
 
@@ -38,7 +40,7 @@ If a query involves any kind of calculation, recommend a calculation tool.
 When describing tool usage, reference the structured argument fields each tool expects (for example terminal => {command, args}, notes_create => {title, body}, reminders_create => {title, time, notes}).
 
 # Output Format
-Respond ONLY with a JSON array of objects.
+Respond ONLY with a JSON object.
 Specifically, constrain your response using this JSON schema:
 ${planner_schema}
 
