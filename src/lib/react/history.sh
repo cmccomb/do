@@ -30,23 +30,29 @@ source "${REACT_LIB_DIR}/../formatting.sh"
 source "${REACT_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 
 initialize_react_state() {
-	# Initializes the ReAct state document with user query, tools, and plan.
-	# Arguments:
-	#   $1 - state prefix to populate (string)
-	#   $2 - user query (string)
-	#   $3 - allowed tools (string, newline delimited)
-	#   $4 - ranked plan entries (string)
-	#   $5 - plan outline text (string)
-	local state_prefix
-	state_prefix="$1"
+        # Initializes the ReAct state document with user query, tools, and plan.
+        # Arguments:
+        #   $1 - state prefix to populate (string)
+        #   $2 - user query (string)
+        #   $3 - allowed tools (string, newline delimited)
+        #   $4 - ranked plan entries (string)
+        #   $5 - plan outline text (string)
+        local state_prefix web_search_budget
+        state_prefix="$1"
 
-	state_set_json_document "${state_prefix}" "$(jq -c -n \
-		--arg user_query "$2" \
-		--arg allowed_tools "$3" \
-		--arg plan_entries "$4" \
-		--arg plan_outline "$5" \
-		--argjson max_steps "${MAX_STEPS:-6}" \
-		'{
+        web_search_budget="${PLANNER_WEB_SEARCH_BUDGET:-0}"
+        if ! [[ "${web_search_budget}" =~ ^[0-9]+$ ]]; then
+                web_search_budget=0
+        fi
+
+        state_set_json_document "${state_prefix}" "$(jq -c -n \
+                --arg user_query "$2" \
+                --arg allowed_tools "$3" \
+                --arg plan_entries "$4" \
+                --arg plan_outline "$5" \
+                --argjson max_steps "${MAX_STEPS:-6}" \
+                --argjson web_search_budget "${web_search_budget}" \
+                '{
                         user_query: $user_query,
                         allowed_tools: $allowed_tools,
                         plan_entries: $plan_entries,
@@ -55,6 +61,8 @@ initialize_react_state() {
                         step: 0,
                         plan_index: 0,
                         max_steps: $max_steps,
+                        web_search_budget: $web_search_budget,
+                        web_search_consumed: 0,
                         final_answer: "",
                         final_answer_action: "",
                         last_action: null
