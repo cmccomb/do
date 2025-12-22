@@ -59,6 +59,8 @@ PLANNER_DEBUG_LOG=${TMPDIR:-/tmp}/okso_planner_candidates.log
 
 Environment variables with the same names as the config keys take precedence over file values when set. Google Custom Search credentials can also be provided via `OKSO_GOOGLE_CSE_API_KEY` and `OKSO_GOOGLE_CSE_ID`.
 
+Planner sampling runs `PLANNER_SAMPLE_COUNT` generations at `PLANNER_TEMPERATURE` and logs each normalized candidate to `PLANNER_DEBUG_LOG` alongside its score, tie-breaker, and rationale. Lowering the temperature generally produces narrower plans, while increasing it explores more tool combinations. Candidates outside the `PLANNER_MAX_PLAN_STEPS` budget, that omit the final `final_answer` step, or that reference unknown tools drop in score and are unlikely to win when the best plan is selected.
+
 ReAct runs create a cache directory under `${OKSO_CACHE_DIR}/runs/${OKSO_RUN_ID}` for the duration of the invocation. Successful runs remove that directory, while failures keep it intact for debugging.
 
 API keys and other secrets belong in `~/.config/okso/config.env` or a locally sourced `.env` file—never commit them to version control. Consider adding local files containing secrets to `.gitignore` if you keep them alongside your working directory.

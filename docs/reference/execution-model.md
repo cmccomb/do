@@ -10,6 +10,10 @@ okso separates high-level planning from step-by-step execution so that tool call
 4. A side-effect-free scorer evaluates each sampled outline before selection. Plans that stay within the `PLANNER_MAX_PLAN_STEPS`
    budget, end with `final_answer`, use registered tools with schema-compliant arguments, and delay side-effecting actions receive
    higher scores and win ties when multiple candidates share the same numeric total.
+5. Each planner invocation samples `PLANNER_SAMPLE_COUNT` candidates at `PLANNER_TEMPERATURE`; the scored JSONL history is written
+   to `PLANNER_DEBUG_LOG` so you can audit how the winner was chosen.
+
+See [Planner sampling](./planner-sampling.md) for detailed scoring heuristics and debug log fields that help compare candidates.
 
 ## ReAct loop
 
