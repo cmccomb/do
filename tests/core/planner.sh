@@ -164,7 +164,7 @@ SCRIPT
 }
 
 @test "derive_allowed_tools_from_plan permits unlimited web_search entries" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export PLANNER_WEB_SEARCH_BUDGET_FILE="$(mktemp)"
 export VERBOSITY=0
@@ -176,8 +176,8 @@ budget="$(planner_web_search_budget_value)"
 printf "budget=%s\n" "${budget}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "budget=3" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "budget=3" ]
 }
 
 @test "select_next_action uses deterministic plan when llama disabled" {

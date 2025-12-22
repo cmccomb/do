@@ -329,10 +329,10 @@ emit_plan_json() {
 }
 
 derive_allowed_tools_from_plan() {
-        # Arguments:
-        #   $1 - planner response JSON (object or legacy plan array)
-        local plan_json tool seen web_search_count
-        plan_json="${1:-[]}"
+	# Arguments:
+	#   $1 - planner response JSON (object or legacy plan array)
+	local plan_json tool seen web_search_count
+	plan_json="${1:-[]}"
 
 	PLANNER_WEB_SEARCH_BUDGET=0
 	export PLANNER_WEB_SEARCH_BUDGET
@@ -346,13 +346,13 @@ derive_allowed_tools_from_plan() {
 		plan_json="$(jq -c '.plan' <<<"${plan_json}")"
 	fi
 
-        web_search_count=$(jq -r '[.[] | select(.tool == "web_search")] | length' <<<"${plan_json}" 2>/dev/null || printf '0')
-        PLANNER_WEB_SEARCH_BUDGET="${web_search_count}"
-        export PLANNER_WEB_SEARCH_BUDGET
-        printf '%s' "${PLANNER_WEB_SEARCH_BUDGET}" >"${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || true
+	web_search_count=$(jq -r '[.[] | select(.tool == "web_search")] | length' <<<"${plan_json}" 2>/dev/null || printf '0')
+	PLANNER_WEB_SEARCH_BUDGET="${web_search_count}"
+	export PLANNER_WEB_SEARCH_BUDGET
+	printf '%s' "${PLANNER_WEB_SEARCH_BUDGET}" >"${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || true
 
-        seen=""
-        local -a required=()
+	seen=""
+	local -a required=()
 	local plan_contains_fallback=false
 	if jq -e '.[] | select(.tool == "react_fallback")' <<<"${plan_json}" >/dev/null 2>&1; then
 		plan_contains_fallback=true

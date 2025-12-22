@@ -52,10 +52,10 @@ format_tool_descriptions() {
 }
 
 format_tool_details() {
-        # Arguments:
-        #   $1 - tool name (string)
-        #   $2 - include schema (bool, optional)
-        local tool description command safety include_schema args_schema
+	# Arguments:
+	#   $1 - tool name (string)
+	#   $2 - include schema (bool, optional)
+	local tool description command safety include_schema args_schema
 	local -a details=()
 	local detail_text=""
 	tool="$1"
@@ -79,13 +79,13 @@ format_tool_details() {
 		details+=("Example: ${command}")
 	fi
 
-        if [[ -n "${safety}" ]]; then
-                details+=("Safety: ${safety}")
-        fi
+	if [[ -n "${safety}" ]]; then
+		details+=("Safety: ${safety}")
+	fi
 
-        if ((${#details[@]} == 0)); then
-                return 0
-        fi
+	if ((${#details[@]} == 0)); then
+		return 0
+	fi
 
 	for i in $(seq 0 $((${#details[@]} - 1))); do
 		if ((i > 0)); then
