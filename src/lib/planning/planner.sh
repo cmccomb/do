@@ -71,11 +71,6 @@ source "${PLANNING_LIB_DIR}/../exec/dispatch.sh"
 
 PLANNER_WEB_SEARCH_BUDGET_FILE=${PLANNER_WEB_SEARCH_BUDGET_FILE:-"${TMPDIR:-/tmp}/okso_planner_web_search_budget"}
 export PLANNER_WEB_SEARCH_BUDGET_FILE
-PLANNER_WEB_SEARCH_BUDGET_CAP=${PLANNER_WEB_SEARCH_BUDGET_CAP:-2}
-if [[ -z "${PLANNER_WEB_SEARCH_BUDGET_CAP}" || ! "${PLANNER_WEB_SEARCH_BUDGET_CAP}" =~ ^[0-9]+$ ]]; then
-	PLANNER_WEB_SEARCH_BUDGET_CAP=2
-fi
-export PLANNER_WEB_SEARCH_BUDGET_CAP
 
 planner_web_search_budget_value() {
 	if [[ -f "${PLANNER_WEB_SEARCH_BUDGET_FILE}" ]]; then
@@ -334,15 +329,10 @@ emit_plan_json() {
 }
 
 derive_allowed_tools_from_plan() {
-	# Arguments:
-	#   $1 - planner response JSON (object or legacy plan array)
-	local plan_json tool seen web_search_cap web_search_count
-	plan_json="${1:-[]}"
-	web_search_cap="${PLANNER_WEB_SEARCH_BUDGET_CAP}"
-
-	if [[ -z "${web_search_cap}" || ! "${web_search_cap}" =~ ^[0-9]+$ ]]; then
-		web_search_cap=2
-	fi
+        # Arguments:
+        #   $1 - planner response JSON (object or legacy plan array)
+        local plan_json tool seen web_search_count
+        plan_json="${1:-[]}"
 
 	PLANNER_WEB_SEARCH_BUDGET=0
 	export PLANNER_WEB_SEARCH_BUDGET
@@ -356,20 +346,13 @@ derive_allowed_tools_from_plan() {
 		plan_json="$(jq -c '.plan' <<<"${plan_json}")"
 	fi
 
-	web_search_count=$(jq -r '[.[] | select(.tool == "web_search")] | length' <<<"${plan_json}" 2>/dev/null || printf '0')
-	PLANNER_WEB_SEARCH_BUDGET="${web_search_count}"
-	export PLANNER_WEB_SEARCH_BUDGET
-	printf '%s' "${PLANNER_WEB_SEARCH_BUDGET}" >"${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || true
-	if ((web_search_count > web_search_cap)); then
-		log "ERROR" "Planner web_search budget exceeded" "$(printf 'requested=%s cap=%s' "${web_search_count}" "${web_search_cap}")" >&2 || true
-		return 1
-	fi
-	if ((web_search_count > 0)); then
-		log "INFO" "Planner web_search budget accepted" "$(printf 'requested=%s cap=%s' "${web_search_count}" "${web_search_cap}")" >&2 || true
-	fi
+        web_search_count=$(jq -r '[.[] | select(.tool == "web_search")] | length' <<<"${plan_json}" 2>/dev/null || printf '0')
+        PLANNER_WEB_SEARCH_BUDGET="${web_search_count}"
+        export PLANNER_WEB_SEARCH_BUDGET
+        printf '%s' "${PLANNER_WEB_SEARCH_BUDGET}" >"${PLANNER_WEB_SEARCH_BUDGET_FILE}" 2>/dev/null || true
 
-	seen=""
-	local -a required=()
+        seen=""
+        local -a required=()
 	local plan_contains_fallback=false
 	if jq -e '.[] | select(.tool == "react_fallback")' <<<"${plan_json}" >/dev/null 2>&1; then
 		plan_contains_fallback=true

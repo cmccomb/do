@@ -53,7 +53,6 @@ llama_infer() {
 tool_names() { printf '%s\n' "terminal" "web_search"; }
 
 LLAMA_AVAILABLE=true
-PLANNER_WEB_SEARCH_BUDGET_CAP=2
 PLANNER_SAMPLE_COUNT=2
 PLANNER_TEMPERATURE=0.15
 PLANNER_DEBUG_LOG="/tmp/planner_candidates_test.log"
@@ -118,7 +117,6 @@ llama_infer() {
 tool_names() { printf '%s\n' "terminal" "web_search"; }
 
 LLAMA_AVAILABLE=true
-PLANNER_WEB_SEARCH_BUDGET_CAP=2
 PLANNER_SAMPLE_COUNT=2
 PLANNER_TEMPERATURE=0.15
 PLANNER_DEBUG_LOG="/tmp/planner_candidates_test.log"
