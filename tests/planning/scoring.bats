@@ -60,7 +60,7 @@ SCRIPT
 }
 
 @test "score_planner_candidate prefers plans that defer side effects" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export PLANNER_MAX_PLAN_STEPS=4
 export VERBOSITY=0
@@ -77,12 +77,12 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	unsafe=$(printf '%s' "${lines[0]}" | cut -d= -f2)
-        safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
-        [[ "${safer}" -gt "${unsafe}" ]]
+	safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
+	[[ "${safer}" -gt "${unsafe}" ]]
 }
 
 @test "score_planner_candidate treats read-only terminal steps as informational" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -99,13 +99,13 @@ scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
-        [[ "${rationale}" == *"Side-effecting actions are deferred until step 2."* ]]
+	[ "$status" -eq 0 ]
+	rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
+	[[ "${rationale}" == *"Side-effecting actions are deferred until step 2."* ]]
 }
 
 @test "score_planner_candidate penalizes mutating terminal steps immediately" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -122,13 +122,13 @@ scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
-        [[ "${rationale}" == *"First step is side-effecting before gathering information."* ]]
+	[ "$status" -eq 0 ]
+	rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
+	[[ "${rationale}" == *"First step is side-effecting before gathering information."* ]]
 }
 
 @test "python_repl_has_side_effects treats informational snippets as non-mutating" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/scoring.sh
 set +e
@@ -140,15 +140,15 @@ set -e
 printf '%s\n' "${print_status}" "${math_status}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        print_status=${lines[0]}
-        math_status=${lines[1]}
-        [[ "${print_status}" -eq 1 ]]
-        [[ "${math_status}" -eq 1 ]]
+	[ "$status" -eq 0 ]
+	print_status=${lines[0]}
+	math_status=${lines[1]}
+	[[ "${print_status}" -eq 1 ]]
+	[[ "${math_status}" -eq 1 ]]
 }
 
 @test "score_planner_candidate treats informational python_repl as informational" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -159,13 +159,13 @@ scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
-        [[ "${rationale}" == *"No side-effecting tools detected in the plan."* ]]
+	[ "$status" -eq 0 ]
+	rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
+	[[ "${rationale}" == *"No side-effecting tools detected in the plan."* ]]
 }
 
 @test "score_planner_candidate penalizes mutating python_repl steps" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -185,10 +185,10 @@ for snippet in "${mutating_snippets[@]}"; do
 done
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        for line in "${lines[@]}"; do
-                [[ "${line}" == *"First step is side-effecting before gathering information."* ]]
-        done
+	[ "$status" -eq 0 ]
+	for line in "${lines[@]}"; do
+		[[ "${line}" == *"First step is side-effecting before gathering information."* ]]
+	done
 }
 
 @test "score_planner_candidate emits informative INFO logs" {
