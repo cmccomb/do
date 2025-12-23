@@ -18,7 +18,7 @@ SCRIPT
 }
 
 @test "react_loop finalizes after invalid action selection" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -36,12 +36,12 @@ react_loop "what time is it" "alpha" "" ""
 printf 'final=%s step=%s' "$(state_get react_state final_answer)" "$(state_get react_state step)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "final=fallback_response step=1" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "final=fallback_response step=1" ]
 }
 
 @test "react_loop advances plan index after successful planned step" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -60,12 +60,12 @@ printf 'plan_index=%s pending=%s' \
         "$(state_get react_state pending_plan_step)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_index=1 pending=" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=1 pending=" ]
 }
 
 @test "react_loop records plan skip reason when execution is bypassed" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -85,12 +85,12 @@ printf 'plan_index=%s pending=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_index=1 pending= skip_reason=tool_not_permitted" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=1 pending= skip_reason=tool_not_permitted" ]
 }
 
 @test "react_loop records duplicate actions with warning observation" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=2
 LLAMA_AVAILABLE=false
