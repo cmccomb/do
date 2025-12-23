@@ -5,9 +5,27 @@ Rules:
 - Provide 1 to 3 items only.
 - Each item must be a concise, self-contained search phrase.
 - Do not include explanations or formatting outside the JSON array.
+- All searches should be noun phrases, not commands or requests
 
 JSON schema for the response:
 ${PLANNER_SEARCH_SCHEMA}
+
+Examples:
+
+User request:
+"Convert this XML file into JSON from the command line, and I'd like an alternative to xmllint for formatting."
+
+["converter xml to json command line","xmllint alternative format xml"]
+
+User request:
+"When does NYC congestion pricing start, and what exemptions apply?"
+
+["nyc congestion pricing start date","congestion pricing exemptions nyc","nyc congestion pricing exemptions"]
+
+User request:
+"Give me a quick spaghetti and meatballs recipe for a weeknight dinner."
+
+["quick spaghetti and meatballs recipes"]
 
 User request:
 "${USER_QUERY}"
