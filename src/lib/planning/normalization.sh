@@ -150,7 +150,7 @@ normalize_planner_response() {
 		return 1
 	fi
 
-normalized=$(jq -ec '
+	normalized=$(jq -ec '
   def normalize_plan($plan):
     ($plan | tostring | fromjson) as $raw_plan
     | ($raw_plan | tostring | fromjson) // $raw_plan;

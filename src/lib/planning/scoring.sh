@@ -174,16 +174,16 @@ planner_step_has_side_effects() {
 }
 
 planner_args_satisfiable() {
-  local schema_json args_json
-  schema_json=${1:-"{}"}
-  args_json=${2:-"{}"}
+	local schema_json args_json
+	schema_json=${1:-"{}"}
+	args_json=${2:-"{}"}
 
-  # Empty schema => accept.
-  if jq -e 'type=="object" and length==0' >/dev/null 2>&1 <<<"${schema_json}"; then
-    return 0
-  fi
+	# Empty schema => accept.
+	if jq -e 'type=="object" and length==0' >/dev/null 2>&1 <<<"${schema_json}"; then
+		return 0
+	fi
 
-  python3 - <<'PY' "${schema_json}" "${args_json}"
+	python3 - "${schema_json}" "${args_json}" <<'PY'
 import json, sys
 from jsonschema import Draft202012Validator
 
