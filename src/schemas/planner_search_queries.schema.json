@@ -8,10 +8,5 @@
     "minLength": 5,
     "maxLength": 50,
     "description": "Concise web search string derived from the user request."
-  },
-  "examples": [
-    ["convert xml to json command line", "xmllint alternative format xml"],
-    ["nyc congestion pricing start date", "congestion pricing exemptions nyc", "nyc congestion pricing exemptions"],
-    ["quick spaghetti and meatballs recipes"]
-  ]
+  }
 }

@@ -391,6 +391,32 @@ record_plan_skip_reason() {
 	state_set_json_document "${state_name}" "${updated_document}"
 }
 
+record_plan_skip_without_progress() {
+	# Logs and records a skip reason without advancing the plan index.
+	# Arguments:
+	#   $1 - state prefix
+	#   $2 - skip reason (string)
+	local state_name reason pending_plan_step current_plan_index updated_document
+	state_name="$1"
+	reason="$2"
+	pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+	current_plan_index="$(state_get "${state_name}" "plan_index")"
+	log "INFO" "Plan step skipped without advancement" "$(
+		printf 'reason=%s plan_index=%s pending_plan_step=%s' \
+			"${reason}" \
+			"${current_plan_index:-0}" \
+			"${pending_plan_step:-}"
+	)"
+
+	if ! updated_document="$(
+		state_get_json_document "${state_name}" |
+			jq -c --arg reason "${reason}" '.plan_skip_reason = $reason'
+	)"; then
+		return 1
+	fi
+	state_set_json_document "${state_name}" "${updated_document}"
+}
+
 complete_pending_plan_step() {
 	# Marks the pending plan step as completed after a successful tool run.
 	# Arguments:
@@ -496,7 +522,7 @@ react_loop() {
 
 		if ! select_next_action "${state_prefix}" action_json; then
 			log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
-			record_plan_skip_reason "${state_prefix}" "action_selection_failed"
+			record_plan_skip_without_progress "${state_prefix}" "action_selection_failed"
 			state_set "${state_prefix}" "step" "${current_step}"
 			continue
 		fi
@@ -514,7 +540,7 @@ react_loop() {
 		fi
 
 		if ! validate_tool_permission "${state_prefix}" "${tool}"; then
-			record_plan_skip_reason "${state_prefix}" "tool_not_permitted"
+			record_plan_skip_without_progress "${state_prefix}" "tool_not_permitted"
 			state_set "${state_prefix}" "step" "${current_step}"
 			continue
 		fi
@@ -523,7 +549,7 @@ react_loop() {
 			log "WARN" "Duplicate action detected" "${tool}"
 			observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
 			record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
-			record_plan_skip_reason "${state_prefix}" "duplicate_action"
+			record_plan_skip_without_progress "${state_prefix}" "duplicate_action"
 			state_set "${state_prefix}" "step" "${current_step}"
 			continue
 		fi
