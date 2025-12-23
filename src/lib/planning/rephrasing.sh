@@ -35,10 +35,12 @@ render_rephrase_prompt() {
 	# Renders the rephrasing prompt with the user query embedded.
 	# Arguments:
 	#   $1 - user query (string)
-	local user_query
+	local user_query schema_json
 	user_query="$1"
 
-	render_prompt_template "planner_rephrase" USER_QUERY "${user_query}"
+	schema_json="$(load_schema_text planner_search_queries 2>/dev/null || true)"
+
+	render_prompt_template "planner_rephrase" USER_QUERY "${user_query}" PLANNER_SEARCH_SCHEMA "${schema_json}"
 }
 
 validate_rephrase_output() {

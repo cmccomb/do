@@ -47,6 +47,20 @@ SCRIPT
 	[ "$status" -eq 0 ]
 }
 
+@test "render_rephrase_prompt embeds the planner search schema" {
+	run env -i HOME="$HOME" PATH="$PATH" bash <<'SCRIPT'
+set -euo pipefail
+PLANNER_SKIP_TOOL_LOAD=true
+export PLANNER_SKIP_TOOL_LOAD
+source ./src/lib/planning/planner.sh
+load_schema_text() { printf '{"type":"array"}'; }
+rendered=$(render_rephrase_prompt "example query")
+grep -F '"type":"array"' <<<"${rendered}" >/dev/null
+SCRIPT
+
+	[ "$status" -eq 0 ]
+}
+
 @test "planner_generate_search_queries falls back when too many outputs are returned" {
 	run env -i HOME="$HOME" PATH="$PATH" bash <<'SCRIPT'
 set -euo pipefail
