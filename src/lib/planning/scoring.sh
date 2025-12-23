@@ -33,39 +33,84 @@ planner_is_tool_available() {
 	grep -Fxq "${tool}" <<<"${available_tools}" 2>/dev/null
 }
 
-planner_is_side_effecting_tool() {
-	# Heuristic to detect tools that can mutate user data or environment.
-	# Arguments:
-	#   $1 - tool name (string)
-	case "$1" in
-	final_answer | web_search | notes_list | notes_read | notes_search | reminders_list | calendar_list | calendar_search | feedback)
-		return 1
-		;;
-	*) ;;
-	esac
+planner_terminal_command_has_side_effects() {
+        # Determines if a terminal command is likely to produce side effects.
+        # Arguments:
+        #   $1 - terminal args JSON (string)
+        # Returns 0 when side effects are likely; 1 otherwise.
+        local args_json command first_word
+        args_json=${1:-"{}"}
+        command=$(jq -r '.command // ""' <<<"${args_json}" 2>/dev/null)
 
-	# General-purpose tools: tools that produce side effects, but are also strongly informational.
-	case "$1" in
-	terminal | python_repl)
-		return 1
-		;;
-	esac
+        # Missing command defaults to side-effecting for safety.
+        if [[ -z "${command}" ]]; then
+                return 0
+        fi
 
-	if [[ "$1" =~ ^mail_ ]]; then
-		return 0
-	fi
+        # Trim leading whitespace to find the first token.
+        command=${command#"${command%%[![:space:]]*}"}
+        first_word=${command%%[[:space:]]*}
 
-	if [[ "$1" =~ (create|append|delete|update|send|write|draft) ]]; then
-		return 0
-	fi
+        # Redirections imply filesystem mutations.
+        if [[ "${command}" == *">"* ]] || [[ "${command}" == *">>"* ]] || [[ "${command}" == *"<<"* ]] || [[ "${command}" == *"2>"* ]] || [[ "${command}" == *"&>"* ]]; then
+                return 0
+        fi
 
-	case "$1" in
-	notes_create | notes_append | reminders_create | calendar_create | mail_send | mail_draft)
-		return 0
-		;;
-	esac
+        case "${first_word}" in
+        ls | cat | pwd | head | tail | grep | find)
+                return 1
+                ;;
+        rm | mv | cp | touch | tee | chmod | chown | mkdir | rmdir | ln | mktemp)
+                return 0
+                ;;
+        sed)
+                if [[ " ${command} " == *" -i"* ]]; then
+                        return 0
+                fi
+                return 1
+                ;;
+        esac
 
-	return 1
+        # Unknown commands default to side-effecting to avoid unsafe optimism.
+        return 0
+}
+
+planner_step_has_side_effects() {
+        # Heuristic to detect steps that can mutate user data or environment.
+        # Arguments:
+        #   $1 - tool name (string)
+        #   $2 - tool args JSON (string)
+        case "$1" in
+        final_answer | web_search | notes_list | notes_read | notes_search | reminders_list | calendar_list | calendar_search | feedback)
+                return 1
+                ;;
+        *) ;;
+        esac
+
+        if [[ "$1" == "python_repl" ]]; then
+                return 0
+        fi
+
+        if [[ "$1" == "terminal" ]]; then
+                planner_terminal_command_has_side_effects "$2"
+                return
+        fi
+
+        if [[ "$1" =~ ^mail_ ]]; then
+                return 0
+        fi
+
+        if [[ "$1" =~ (create|append|delete|update|send|write|draft) ]]; then
+                return 0
+        fi
+
+        case "$1" in
+        notes_create | notes_append | reminders_create | calendar_create | mail_send | mail_draft)
+                return 0
+                ;;
+        esac
+
+        return 1
 }
 
 planner_args_satisfiable() {
@@ -77,7 +122,7 @@ planner_args_satisfiable() {
 	schema_json=${1:-"{}"}
 	args_json=${2:-"{}"}
 
-	jq -e --argjson schema "${schema_json}" --argjson args "${args_json}" '
+        jq -ne --argjson schema "${schema_json}" --argjson args "${args_json}" '
                 def matches_type($value; $schema):
                         ($schema.type // "") as $t
                         | if $t == "" then true
@@ -187,9 +232,9 @@ score_planner_candidate() {
 			invalid_args=$((invalid_args + 1))
 		fi
 
-		if ((side_effect_index < 0)) && planner_is_side_effecting_tool "${tool}"; then
-			side_effect_index=${idx}
-		fi
+                if ((side_effect_index < 0)) && planner_step_has_side_effects "${tool}" "${args}"; then
+                        side_effect_index=${idx}
+                fi
 
 		idx=$((idx + 1))
 	done < <(jq -cr '.[]' <<<"${plan_json}")
@@ -228,6 +273,7 @@ score_planner_candidate() {
 }
 
 export -f planner_args_satisfiable
-export -f planner_is_side_effecting_tool
 export -f planner_is_tool_available
+export -f planner_step_has_side_effects
+export -f planner_terminal_command_has_side_effects
 export -f score_planner_candidate

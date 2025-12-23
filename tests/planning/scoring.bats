@@ -60,7 +60,7 @@ SCRIPT
 }
 
 @test "score_planner_candidate prefers plans that defer side effects" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 export PLANNER_MAX_PLAN_STEPS=4
 export VERBOSITY=0
@@ -77,8 +77,71 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	unsafe=$(printf '%s' "${lines[0]}" | cut -d= -f2)
-	safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
-	[[ "${safer}" -gt "${unsafe}" ]]
+        safer=$(printf '%s' "${lines[1]}" | cut -d= -f2)
+        [[ "${safer}" -gt "${unsafe}" ]]
+}
+
+@test "score_planner_candidate treats read-only terminal steps as informational" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=0
+source ./src/lib/planning/scoring.sh
+tool_names() { printf "%s\n" terminal notes_create final_answer; }
+tool_args_schema() {
+        if [[ "$1" == "terminal" ]]; then
+                jq -nc '{"type":"object","required":["command"],"properties":{"command":{"type":"string"}},"additionalProperties":false}'
+        else
+                printf '{}'
+        fi
+}
+plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"}},{"tool":"notes_create","args":{},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
+printf '%s\n' "${scorecard}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
+        [[ "${rationale}" == *"Side-effecting actions are deferred until step 2."* ]]
+}
+
+@test "score_planner_candidate penalizes mutating terminal steps immediately" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=0
+source ./src/lib/planning/scoring.sh
+tool_names() { printf "%s\n" terminal final_answer; }
+tool_args_schema() {
+        if [[ "$1" == "terminal" ]]; then
+                jq -nc '{"type":"object","required":["command"],"properties":{"command":{"type":"string"}},"additionalProperties":false}'
+        else
+                printf '{}'
+        fi
+}
+plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"rm -rf /tmp/demo"},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
+printf '%s\n' "${scorecard}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
+        [[ "${rationale}" == *"First step is side-effecting before gathering information."* ]]
+}
+
+@test "score_planner_candidate always treats python_repl as side effecting" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=0
+source ./src/lib/planning/scoring.sh
+tool_names() { printf "%s\n" python_repl final_answer; }
+tool_args_schema() { printf '{}'; }
+plan='{"mode":"plan","plan":[{"tool":"python_repl","args":{},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
+printf '%s\n' "${scorecard}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        rationale=$(printf '%s' "${output}" | tail -n 1 | jq -r '.rationale | join(" ")')
+        [[ "${rationale}" == *"First step is side-effecting before gathering information."* ]]
 }
 
 @test "score_planner_candidate emits informative INFO logs" {
