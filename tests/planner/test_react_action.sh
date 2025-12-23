@@ -369,8 +369,14 @@ if [[ ! -s "${llama_prompt_file}" ]]; then
 fi
 
 plan_index="$(state_get "${state_prefix}" "plan_index")"
-if [[ "${plan_index}" -ne 1 ]]; then
-        echo "plan index did not advance: ${plan_index}"
+if [[ "${plan_index}" -ne 0 ]]; then
+        echo "plan index should not advance until execution succeeds: ${plan_index}"
+        exit 1
+fi
+
+pending_plan_step="$(state_get "${state_prefix}" "pending_plan_step")"
+if [[ "${pending_plan_step}" -ne 0 ]]; then
+        echo "pending plan step missing"
         exit 1
 fi
 

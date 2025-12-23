@@ -20,6 +20,23 @@ react_loop "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}
 - `plan_entries`: newline-delimited JSON plan rows (optional; planner-provided).
 - `plan_outline`: plain-text planner outline used to guide the loop.
 
+### Plan skip tracking
+
+When a planned step cannot run (for example, a tool is not permitted, the model emits an
+invalid action, or the loop detects a duplicate call), the loop records a skip reason and
+keeps the current plan index unchanged. Callers can inspect `plan_skip_reason` and
+`pending_plan_step` in the state to understand why a plan step was bypassed.
+
+### Budgeting and completion
+
+The loop derives its attempt budget from the number of planned steps plus the
+`REACT_RETRY_BUFFER` environment variable (default: 2). The `max_steps` state field reflects
+that dynamic budget, while `attempts` and `retry_count` capture how many actions have been
+tried and how many of those failed to make progress. The `step` counter only increases when a
+tool run succeeds or a plan step is explicitly advanced, so retries on a pending step do not
+consume the plan budget. Completion always requires a successful `final_answer` action; if it
+is missing when the budget is exhausted, the loop will synthesize a fallback answer.
+
 ## Dependencies
 
 - bash 3.2+
