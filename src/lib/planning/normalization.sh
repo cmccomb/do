@@ -91,7 +91,7 @@ normalize_planner_plan() {
 	if [[ -n "${plan_candidate:-}" ]]; then
 		normalized=$(jq -ec '
                         def with_canonical_args($args):
-                                if ($args // {}) | type != "object" then
+                                if ($args | type) != "object" then
                                         {}
                                 elif ($args | has("input")) then
                                         $args
@@ -109,6 +109,8 @@ normalize_planner_plan() {
 
                         if type != "array" then
                                 error("plan must be an array")
+                        elif length == 0 then
+                                error("plan must contain at least one step")
                         elif any(.[]; (type != "object") or (valid_step | not)) then
                                 error("plan contains invalid steps")
                         else
@@ -126,12 +128,12 @@ normalize_planner_plan() {
 }
 
 normalize_planner_response() {
-	# Normalizes any planner output into a canonical object that the
-	# scoring and execution layers understand. The helper tolerates both
-	# legacy plan arrays and modern objects that may represent either a
-	# structured plan or a "quickdraw" direct answer, ensuring downstream
-	# tooling always receives the final_answer stub.
-	local raw candidate normalized plan_clean
+        # Normalizes any planner output into a canonical object that the
+        # scoring and execution layers understand. The helper tolerates both
+        # legacy plan arrays and modern objects that represent structured
+        # plans, ensuring downstream tooling always receives the final_answer
+        # stub.
+        local raw candidate normalized plan_clean
 	raw="$(cat)"
 
 	if ! require_python3_available "planner output normalization"; then
@@ -148,27 +150,15 @@ normalize_planner_response() {
 		return 1
 	fi
 
-	normalized=$(jq -ec '
-                def clamp_confidence:
-                        if . == null then null
-                        elif . < 0 then 0
-                        elif . > 1 then 1
-                        else . end;
-
+        normalized=$(jq -ec '
                 def normalize_plan($plan):
                         ($plan | tostring | fromjson) as $raw_plan
                         | ($raw_plan | tostring | fromjson) // $raw_plan;
 
                 if type == "array" then
-                        {mode: "plan", plan: (normalize_plan(.) | . + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}]), quickdraw: null}
-                elif (type == "object") and (.mode // "") == "quickdraw" then
-                        {mode: "quickdraw", plan: [], quickdraw: {
-                                final_answer: (.final_answer // .quickdraw.final_answer // ""),
-                                rationale: (.rationale // .quickdraw.rationale // ""),
-                                confidence: ((.confidence // .quickdraw.confidence // null) | clamp_confidence)
-                        }} | select(.quickdraw.final_answer != "" and .quickdraw.rationale != "")
+                        {mode: "plan", plan: (normalize_plan(.) | . + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}])}
                 elif (type == "object") and (.mode // "") == "plan" then
-                        {mode: "plan", plan: (normalize_plan(.plan) | . + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}]), quickdraw: null}
+                        {mode: "plan", plan: (normalize_plan(.plan) | . + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}])}
                 else
                         error("unrecognized planner response shape")
                 end
@@ -179,16 +169,14 @@ normalize_planner_response() {
 		return 1
 	fi
 
-	if jq -e '.mode == "plan"' <<<"${normalized}" >/dev/null 2>&1; then
-		plan_clean="$(jq -ce '.plan' <<<"${normalized}" | normalize_planner_plan)" || {
-			log "ERROR" "normalize_planner_response: unable to parse planner output" "${raw}" >&2
-			return 1
-		}
+        plan_clean="$(jq -ce '.plan' <<<"${normalized}" | normalize_planner_plan)" || {
+                log "ERROR" "normalize_planner_response: unable to parse planner output" "${raw}" >&2
+                return 1
+        }
 
-		normalized="$(jq --argjson plan "${plan_clean}" '.plan = $plan' <<<"${normalized}" 2>/dev/null || true)"
-	fi
+        normalized="$(jq --argjson plan "${plan_clean}" '.plan = $plan' <<<"${normalized}" 2>/dev/null || true)"
 
-	printf '%s' "${normalized}"
+        printf '%s' "${normalized}"
 }
 
 extract_plan_array() {
@@ -198,13 +186,9 @@ extract_plan_array() {
 	local payload plan_json
 	payload="${1:-[]}"
 
-	if jq -e '.mode == "quickdraw"' <<<"${payload}" >/dev/null 2>&1; then
-		return 10
-	fi
-
-	if jq -e '.mode == "plan" and (.plan | type == "array")' <<<"${payload}" >/dev/null 2>&1; then
-		plan_json="$(jq -c '.plan' <<<"${payload}")"
-	elif jq -e 'type == "array"' <<<"${payload}" >/dev/null 2>&1; then
+        if jq -e '.mode == "plan" and (.plan | type == "array")' <<<"${payload}" >/dev/null 2>&1; then
+                plan_json="$(jq -c '.plan' <<<"${payload}")"
+        elif jq -e 'type == "array"' <<<"${payload}" >/dev/null 2>&1; then
 		plan_json="${payload}"
 	else
 		plan_json="$(printf '%s' "${payload}" | normalize_planner_plan)" || return 1

@@ -2,48 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PlannerPlan",
   "type": "object",
-  "oneOf": [
-    {
-      "title": "Tool-based plan",
-      "required": ["mode", "plan"],
-      "properties": {
-        "mode": {
-          "const": "plan",
-          "description": "Planner expects downstream execution of tool steps."
-        },
-        "plan": {
-          "$ref": "#/definitions/plan_steps"
-        },
-        "quickdraw": {
-          "const": null,
-          "description": "Quickdraw payload must be null when mode=plan."
-        }
-      },
-      "additionalProperties": false
+  "title": "Tool-based plan",
+  "required": ["mode", "plan"],
+  "properties": {
+    "mode": {
+      "const": "plan",
+      "description": "Planner expects downstream execution of tool steps."
     },
-    {
-      "title": "Quickdraw response",
-      "required": ["mode", "quickdraw"],
-      "properties": {
-        "mode": {
-          "const": "quickdraw",
-          "description": "Planner is confident no tools are required."
-        },
-        "quickdraw": {
-          "$ref": "#/definitions/quickdraw_payload"
-        },
-        "plan": {
-          "type": "array",
-          "maxItems": 0,
-          "description": "No tool steps allowed in quickdraw mode."
-        }
-      },
-      "additionalProperties": false
+    "plan": {
+      "$ref": "#/definitions/plan_steps"
     }
-  ],
+  },
+  "additionalProperties": false,
   "definitions": {
     "plan_steps": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": ["tool", "args"],
@@ -67,7 +41,6 @@
           }
         }
       },
-      "minItems": 1,
       "description": "Ordered list of high-level plan steps represented as objects with tool, args, and thought fields.",
       "examples": [
         [
@@ -101,29 +74,6 @@
           }
         ]
       ]
-    },
-    "quickdraw_payload": {
-      "type": "object",
-      "required": ["final_answer", "confidence", "rationale"],
-      "additionalProperties": false,
-      "properties": {
-        "final_answer": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The complete, ready-to-send response for the user."
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "description": "Planner confidence in skipping tool use (0-1)."
-        },
-        "rationale": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Short explanation of why tools are unnecessary."
-        }
-      }
     }
   }
 }

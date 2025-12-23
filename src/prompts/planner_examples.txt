@@ -1,7 +1,7 @@
-# Example 1 (quickdraw, 1 step)
+# Example 1 (1 step, plan-only)
 User request: "What does 'idempotent' mean in the context of a CLI tool?"
 Plan:
-- Quickdraw: mode=quickdraw with rationale and final_answer describing how an idempotent CLI command behaves when repeated.
+- {"tool":"final_answer","args":{"input":"Define idempotence for CLI tools and note that repeated runs do not change the result after the first execution."},"thought":"Provide a concise definition."}
 
 # Example 2 (3 steps, notes → reminders workflow)
 User request: "Turn my note titled 'LC-Guard action items' into reminders, and leave the note intact."
@@ -48,10 +48,11 @@ Plan:
 - {"tool":"notes_create","args":{"title":"TODO inventory","body":"Sorted list + totals."},"thought":"Persist the summary."}
 - {"tool":"final_answer","args":{"input":"Share the top offenders and the note title."},"thought":"Report back."}
 
-# Example 7 (quickdraw, 1 step)
+# Example 7 (2 steps, plan-only)
 User request: "Write a two-sentence status update I can paste into Slack about finishing a draft and waiting on feedback."
 Plan:
-- Quickdraw: mode=quickdraw with a two-sentence final_answer and supporting rationale (no tools required).
+- {"tool":"notes_create","args":{"title":"Status update draft","body":"Two-sentence Slack-ready status about finishing the draft and awaiting feedback."},"thought":"Capture the status for reuse."}
+- {"tool":"final_answer","args":{"input":"Share the two-sentence status update and mention the saved note title."},"thought":"Provide the ready-to-paste text."}
 
 # Example 8 (4 steps, web_search then local capture)
 User request: "What’s the latest stable Node.js version, and store it in a note for my setup checklist."

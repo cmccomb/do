@@ -227,17 +227,9 @@ score_planner_candidate() {
 		max_steps=6
 	fi
 
-	mode=$(jq -r '.mode // ""' <<<"${normalized_json}" 2>/dev/null)
-	if [[ "${mode}" == "quickdraw" ]]; then
-		rationale+=("Quickdraw response with direct final_answer.")
-		rationale_json=$(printf '%s\0' "${rationale[@]}" | jq -Rs 'split("\u0000") | map(select(length>0))')
-		log "INFO" "Scoring quickdraw planner response" "$(jq -nc --arg mode "${mode}" --argjson rationale "${rationale_json}" '{mode:$mode,rationale:$rationale}')" >&2
-		jq -nc --argjson score 10 --argjson rationale "${rationale_json}" '{score:$score,tie_breaker:0,plan_length:0,max_steps:0,rationale:$rationale}'
-		return 0
-	fi
-
-	plan_json=$(jq -c '.plan' <<<"${normalized_json}" 2>/dev/null) || return 1
-	plan_length=$(jq -r 'length' <<<"${plan_json}" 2>/dev/null)
+        mode=$(jq -r '.mode // ""' <<<"${normalized_json}" 2>/dev/null)
+        plan_json=$(jq -c '.plan' <<<"${normalized_json}" 2>/dev/null) || return 1
+        plan_length=$(jq -r 'length' <<<"${plan_json}" 2>/dev/null)
 
 	log "INFO" "Evaluating planner plan structure" "$(jq -nc --arg mode "${mode}" --argjson length "${plan_length}" --argjson max_steps "${max_steps}" '{mode:$mode,plan_length:$length,max_steps:$max_steps}')" >&2
 

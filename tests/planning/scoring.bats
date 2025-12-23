@@ -19,7 +19,7 @@ tool_args_schema() {
                 printf '{}'
         fi
 }
-plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"},"thought":""},{"tool":"final_answer","args":{},"thought":""}]}'
 scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
@@ -45,8 +45,8 @@ tool_args_schema() {
                 printf '{}'
         fi
 }
-valid='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
-invalid='{"mode":"plan","plan":[{"tool":"missing_tool","args":{"command":5}},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+valid='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"},"thought":""},{"tool":"final_answer","args":{},"thought":""}]}'
+invalid='{"mode":"plan","plan":[{"tool":"missing_tool","args":{"command":5}},{"tool":"final_answer","args":{},"thought":""}]}'
 good=$(score_planner_candidate "${valid}" | tail -n 1 | jq -r '.score')
 bad=$(score_planner_candidate "${invalid}" | tail -n 1 | jq -r '.score')
 printf "good=%s\n" "${good}"
@@ -67,8 +67,8 @@ export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
 tool_names() { printf "%s\n" web_search notes_create final_answer; }
 tool_args_schema() { printf '{}'; }
-unsafe_first='{"mode":"plan","plan":[{"tool":"notes_create","args":{},"thought":"start"},{"tool":"web_search","args":{},"thought":"research"},{"tool":"final_answer","args":{},"thought":"summarize"}],"quickdraw":null}'
-safer_first='{"mode":"plan","plan":[{"tool":"web_search","args":{},"thought":"research"},{"tool":"notes_create","args":{},"thought":"capture"},{"tool":"final_answer","args":{},"thought":"summarize"}],"quickdraw":null}'
+unsafe_first='{"mode":"plan","plan":[{"tool":"notes_create","args":{},"thought":"start"},{"tool":"web_search","args":{},"thought":"research"},{"tool":"final_answer","args":{},"thought":"summarize"}]}'
+safer_first='{"mode":"plan","plan":[{"tool":"web_search","args":{},"thought":"research"},{"tool":"notes_create","args":{},"thought":"capture"},{"tool":"final_answer","args":{},"thought":"summarize"}]}'
 unsafe_score=$(score_planner_candidate "${unsafe_first}" | tail -n 1 | jq -r '.score')
 safer_score=$(score_planner_candidate "${safer_first}" | tail -n 1 | jq -r '.score')
 printf "unsafe=%s\n" "${unsafe_score}"
@@ -94,7 +94,7 @@ tool_args_schema() {
                 printf '{}'
         fi
 }
-plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"}},{"tool":"notes_create","args":{},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"ls"}},{"tool":"notes_create","args":{},"thought":""},{"tool":"final_answer","args":{},"thought":""}]}'
 scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
@@ -117,7 +117,7 @@ tool_args_schema() {
                 printf '{}'
         fi
 }
-plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"rm -rf /tmp/demo"},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+plan='{"mode":"plan","plan":[{"tool":"terminal","args":{"command":"rm -rf /tmp/demo"},"thought":""},{"tool":"final_answer","args":{},"thought":""}]}'
 scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
@@ -154,7 +154,7 @@ export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
 tool_names() { printf "%s\n" python_repl final_answer; }
 tool_args_schema() { printf '{}'; }
-plan=$(jq -nc '{"mode":"plan","plan":[{"tool":"python_repl","args":{"code":"print(2+2)"},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}')
+plan=$(jq -nc '{"mode":"plan","plan":[{"tool":"python_repl","args":{"code":"print(2+2)"},"thought":""},{"tool":"final_answer","args":{},"thought":""}]}')
 scorecard=$(score_planner_candidate "${plan}" | tail -n 1)
 printf '%s\n' "${scorecard}"
 SCRIPT
@@ -179,7 +179,7 @@ mutating_snippets=(
 )
 
 for snippet in "${mutating_snippets[@]}"; do
-        plan=$(jq -nc --argjson args "${snippet}" '{"mode":"plan","plan":[{"tool":"python_repl","args":$args,"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}')
+        plan=$(jq -nc --argjson args "${snippet}" '{"mode":"plan","plan":[{"tool":"python_repl","args":$args,"thought":""},{"tool":"final_answer","args":{},"thought":""}]}')
         rationale=$(score_planner_candidate "${plan}" | tail -n 1 | jq -r '.rationale | join(" ")')
         printf '%s\n' "${rationale}"
 done
@@ -198,7 +198,7 @@ export VERBOSITY=1
 source ./src/lib/planning/scoring.sh
 tool_names() { printf "%s\n" terminal final_answer; }
 tool_args_schema() { printf '{}'; }
-plan='{"mode":"plan","plan":[{"tool":"terminal","args":{},"thought":""},{"tool":"final_answer","args":{},"thought":""}],"quickdraw":null}'
+plan='{"mode":"plan","plan":[{"tool":"terminal","args":{},"thought":""},{"tool":"final_answer","args":{},"thought":""}]}'
 score_planner_candidate "${plan}" >/dev/null
 SCRIPT
 

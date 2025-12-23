@@ -8,21 +8,22 @@ setup() {
 }
 
 @test "generate_plan_json falls back when llama is unavailable" {
-	run env -i HOME="$HOME" PATH="$PATH" bash <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 PLANNER_SKIP_TOOL_LOAD=true
 export PLANNER_SKIP_TOOL_LOAD
 planner_fetch_search_context() { printf 'Search context unavailable.'; }
 LLAMA_AVAILABLE=false
+PLANNER_SAMPLE_COUNT=1
 generate_plan_json "tell me a joke"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	mode=$(printf '%s' "${output}" | tail -n 1 | jq -r '.mode')
-	answer=$(printf '%s' "${output}" | tail -n 1 | jq -r '.quickdraw.final_answer')
-	[ "${mode}" = "quickdraw" ]
-	[ -n "${answer}" ]
+        [ "$status" -eq 0 ]
+        plan_length=$(printf '%s' "${output}" | tail -n 1 | jq -r 'length')
+        final_tool=$(printf '%s' "${output}" | tail -n 1 | jq -r '.[-1].tool')
+        [ "${plan_length}" -ge 1 ]
+        [ "${final_tool}" = "final_answer" ]
 }
 
 @test "generate_plan_json appends final step to llama output" {
@@ -36,6 +37,7 @@ PLANNER_MODEL_REPO=fake
 PLANNER_MODEL_FILE=fake
 planner_fetch_search_context() { printf 'Search context unavailable.'; }
 llama_infer() { printf '[{"tool":"terminal","args":{},"thought":"do"}]'; }
+PLANNER_SAMPLE_COUNT=1
 generate_plan_json "list" | jq -r '.[].tool'
 SCRIPT
 

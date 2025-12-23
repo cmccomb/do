@@ -30,16 +30,15 @@ SCRIPT
 	[ "${lines[1]}" = "2. finish" ]
 }
 
-@test "plan_json_to_outline formats quickdraw responses" {
-	run bash <<'SCRIPT'
+@test "plan_json_to_outline rejects non-plan payloads" {
+        run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/prompting.sh
 quickdraw='{"mode":"quickdraw","quickdraw":{"rationale":"direct","final_answer":"done","confidence":0.42}}'
 plan_json_to_outline "${quickdraw}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "${output}" = "Quickdraw (confidence: 0.42) - direct" ]
+        [ "$status" -ne 0 ]
 }
 
 @test "build_planner_prompt_with_tools injects tool descriptions when provided" {

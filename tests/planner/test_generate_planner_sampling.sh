@@ -12,9 +12,9 @@
 # Exit codes:
 #   Inherits Bats semantics; assertions fail the test case.
 
-@test "generate_planner_response short-circuits when the first candidate is quickdraw" {
-	run bash -lc "$(
-		cat <<'INNERSCRIPT'
+@test "generate_planner_response skips invalid non-plan candidates and continues sampling" {
+        run bash -lc "$(
+                cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -66,17 +66,15 @@ response_json="$(generate_planner_response "Run a task")"
 
 call_count=$(<"${LLAMA_CALL_COUNTER_FILE}")
 
-[[ "${call_count}" -eq 1 ]]
+[[ "${call_count}" -eq 2 ]]
 [[ -f "${PLANNER_DEBUG_LOG}" ]]
 [[ "$(wc -l <"${PLANNER_DEBUG_LOG}")" -eq 1 ]]
-[[ "$(grep -c '"mode":"quickdraw"' "${PLANNER_DEBUG_LOG}")" -eq 1 ]]
-
-jq -e '.mode == "quickdraw"' <<<"${response_json}" >/dev/null
+jq -e '.mode == "plan"' <<<"${response_json}" >/dev/null
 [[ "$(cat /tmp/planner_temperature_1)" == "0.15" ]]
-[[ ! -f /tmp/planner_temperature_2 ]]
+[[ "$(cat /tmp/planner_temperature_2)" == "0.15" ]]
 INNERSCRIPT
-	)"
-	[ "$status" -eq 0 ]
+        )"
+        [ "$status" -eq 0 ]
 }
 
 @test "generate_planner_response performs pre-plan search once per session" {
