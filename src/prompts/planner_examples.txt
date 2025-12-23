@@ -3,13 +3,11 @@ User request: "What does 'idempotent' mean in the context of a CLI tool?"
 Plan:
 - Quickdraw: provide a definition for idempotent in the context of a CLI tool
 
-# Example 2 (5 steps, notes → reminders workflow)
+# Example 2 (3 steps, notes → reminders workflow)
 User request: "Turn my note titled 'LC-Guard action items' into reminders, and leave the note intact."
 Plan:
 - Tool: notes_read - read "LC-Guard action items" to extract candidate tasks.
-- Tool: python_repl - parse the note into a clean task list (dedupe, normalize verbs, drop headers).
 - Tool: reminders_create - create one reminder per task (title = task, notes = source note title + any context).
-- Tool: notes_append - append a short “Exported to Reminders on <date>” line to "LC-Guard action items" with the created reminder titles.
 - Tool: final_answer - list the reminders created and confirm the source note title updated.
 
 # Example 3 (4 steps, inbox summarization)
