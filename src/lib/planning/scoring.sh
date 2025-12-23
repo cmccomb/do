@@ -202,7 +202,7 @@ score_planner_candidate() {
 	# Scores a normalized planner response for downstream selection.
 	# Arguments:
 	#   $1 - normalized planner response JSON (string)
-	local normalized_json mode plan_json plan_length max_steps available_tools availability_known
+	local normalized_json plan_json plan_length max_steps available_tools availability_known
 	local score tie_breaker over_budget rationale_json final_tool
 	local -a rationale=()
 
