@@ -65,7 +65,7 @@ SCRIPT
 }
 
 @test "react_loop records plan skip reason without advancing index when execution is bypassed" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -85,12 +85,12 @@ printf 'plan_index=%s pending=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_index=0 pending=0 skip_reason=tool_not_permitted" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=0 pending=0 skip_reason=tool_not_permitted" ]
 }
 
 @test "react_loop logs skip reasons without plan progress" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -114,8 +114,8 @@ printf 'plan_index=%s pending=%s skip_reason=%s logs=%s' \
         "$(printf '%s' "${log_messages[*]}")"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == "plan_index=0 pending=0 skip_reason=tool_not_permitted logs="*"reason=tool_not_permitted"* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == "plan_index=0 pending=0 skip_reason=tool_not_permitted logs="*"reason=tool_not_permitted"* ]]
 }
 
 @test "react_loop records duplicate actions with warning observation" {
