@@ -8,7 +8,7 @@
 #
 # Environment variables:
 #   CANONICAL_TEXT_ARG_KEY (string): key for single-string tool arguments; default: "input".
-#   MAX_STEPS (int): maximum number of ReAct turns; default: 6.
+#   REACT_RETRY_BUFFER (int): extra attempts beyond plan length; default: 2.
 #
 # Dependencies:
 #   - bash 3.2+
@@ -334,9 +334,14 @@ select_next_action() {
 	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
 	if [[ -n "${planned_entry}" ]]; then
-		local pending_index_json
+		local pending_index_json pending_index_current preserved_reason
 		pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
-		state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c --argjson pending_plan_step "${pending_index_json}" '.pending_plan_step = $pending_plan_step | .plan_skip_reason = ""')"
+		pending_index_current="$(state_get "${state_name}" "pending_plan_step")"
+		preserved_reason=""
+		if [[ -n "${pending_index_current}" && "${pending_index_current}" -eq "${plan_index}" ]]; then
+			preserved_reason="$(state_get "${state_name}" "plan_skip_reason")"
+		fi
+		state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c --argjson pending_plan_step "${pending_index_json}" --arg preserved_reason "${preserved_reason}" '.pending_plan_step = $pending_plan_step | .plan_skip_reason = $preserved_reason')"
 	else
 		state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c '.pending_plan_step = null | .plan_skip_reason = ""')"
 	fi
@@ -396,21 +401,27 @@ record_plan_skip_without_progress() {
 	# Arguments:
 	#   $1 - state prefix
 	#   $2 - skip reason (string)
-	local state_name reason pending_plan_step current_plan_index updated_document
+	local state_name reason pending_plan_step current_plan_index updated_document existing_reason recorded_reason
 	state_name="$1"
 	reason="$2"
 	pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
 	current_plan_index="$(state_get "${state_name}" "plan_index")"
+	existing_reason="$(state_get "${state_name}" "plan_skip_reason")"
+	recorded_reason="${reason}"
+
+	if [[ -n "${existing_reason}" ]]; then
+		recorded_reason="${existing_reason}"
+	fi
 	log "INFO" "Plan step skipped without advancement" "$(
 		printf 'reason=%s plan_index=%s pending_plan_step=%s' \
-			"${reason}" \
+			"${recorded_reason}" \
 			"${current_plan_index:-0}" \
 			"${pending_plan_step:-}"
 	)"
 
 	if ! updated_document="$(
 		state_get_json_document "${state_name}" |
-			jq -c --arg reason "${reason}" '.plan_skip_reason = $reason'
+			jq -c --arg reason "${recorded_reason}" '.plan_skip_reason = $reason'
 	)"; then
 		return 1
 	fi
@@ -503,6 +514,23 @@ is_duplicate_action() {
 	return 1
 }
 
+increment_retry_count() {
+	# Increments the retry counter stored in state.
+	# Arguments:
+	#   $1 - state prefix
+	local state_name updated_document
+	state_name="$1"
+
+	if ! updated_document="$(
+		state_get_json_document "${state_name}" |
+			jq -c '.retry_count = ((try (.retry_count|tonumber) catch 0) + 1)'
+	)"; then
+		return 1
+	fi
+
+	state_set_json_document "${state_name}" "${updated_document}"
+}
+
 react_loop() {
 	local user_query allowed_tools plan_entries plan_outline action_json tool query observation current_step thought args_json action_context
 	local normalized_args_json final_answer_payload pending_plan_step
@@ -516,14 +544,34 @@ react_loop() {
 	initialize_react_state "${state_prefix}" "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}"
 	action_json=""
 
-	while (($(state_get "${state_prefix}" "step") < $(state_get "${state_prefix}" "max_steps"))); do
-		current_step=$(($(state_get "${state_prefix}" "step") + 1))
+	while :; do
+		local max_steps attempts
+		max_steps=$(state_get "${state_prefix}" "max_steps")
+		attempts=$(state_get "${state_prefix}" "attempts")
+		if ! [[ "${max_steps}" =~ ^[0-9]+$ ]]; then
+			max_steps=0
+		fi
+		if ! [[ "${attempts}" =~ ^[0-9]+$ ]]; then
+			attempts=0
+		fi
+
+		if ((attempts >= max_steps)); then
+			break
+		fi
+
+		current_step=$((attempts + 1))
+		state_set "${state_prefix}" "attempts" "${current_step}"
 		action_json=""
+
+		local progress_step progress_made plan_completed
+		progress_step=$(($(state_get "${state_prefix}" "step") + 1))
+		progress_made=false
+		plan_completed=false
 
 		if ! select_next_action "${state_prefix}" action_json; then
 			log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
 			record_plan_skip_without_progress "${state_prefix}" "action_selection_failed"
-			state_set "${state_prefix}" "step" "${current_step}"
+			increment_retry_count "${state_prefix}"
 			continue
 		fi
 		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
@@ -541,7 +589,7 @@ react_loop() {
 
 		if ! validate_tool_permission "${state_prefix}" "${tool}"; then
 			record_plan_skip_without_progress "${state_prefix}" "tool_not_permitted"
-			state_set "${state_prefix}" "step" "${current_step}"
+			increment_retry_count "${state_prefix}"
 			continue
 		fi
 
@@ -550,7 +598,7 @@ react_loop() {
 			observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
 			record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
 			record_plan_skip_without_progress "${state_prefix}" "duplicate_action"
-			state_set "${state_prefix}" "step" "${current_step}"
+			increment_retry_count "${state_prefix}"
 			continue
 		fi
 
@@ -570,6 +618,7 @@ react_loop() {
 			if [[ -n "${planned_tool}" && "${planned_tool}" != "${tool}" ]]; then
 				plan_step_matches_action=false
 				record_plan_skip_without_progress "${state_prefix}" "plan_tool_mismatch"
+				increment_retry_count "${state_prefix}"
 			fi
 		fi
 
@@ -585,12 +634,16 @@ react_loop() {
 		if [[ $- == *e* ]]; then
 			errexit_enabled=true
 		fi
+		local observation_file
+		observation_file="$(mktemp)"
 		set +e
-		observation="$(execute_tool_action "${tool}" "${query}" "${action_context}" "${normalized_args_json}")"
+		execute_tool_action "${tool}" "${query}" "${action_context}" "${normalized_args_json}" >"${observation_file}"
 		tool_status=$?
 		if [[ "${errexit_enabled}" == true ]]; then
 			set -e
 		fi
+		observation="$(cat "${observation_file}" 2>/dev/null || printf '')"
+		rm -f "${observation_file}"
 		if ((tool_status != 0)); then
 			failure_detail="Tool ${tool} failed to run (exit ${tool_status}). Check stderr logs for details."
 			log "ERROR" "Tool execution failed" "$(printf 'step=%s tool=%s exit_code=%s' "${current_step}" "${tool}" "${tool_status}")"
@@ -622,6 +675,10 @@ react_loop() {
 				'{output:$output,error:$error,exit_code:$exit_code}')
 		fi
 
+		if [[ "${tool}" == "final_answer" && ${exit_code} -eq 0 && -n "${final_answer_payload}" ]]; then
+			observation="${final_answer_payload}"
+		fi
+
 		local failure_record failure_error
 		failure_error=$(printf '%s' "${observation}" | jq -r '.error // empty' 2>/dev/null || printf '')
 		if ((exit_code != 0)); then
@@ -635,10 +692,26 @@ react_loop() {
 			log "ERROR" "Tool reported failure" "$(printf 'step=%s tool=%s exit_code=%s error=%s' "${current_step}" "${tool}" "${exit_code}" "${failure_error:-"(none)"}")"
 		else
 			state_set_json_document "${state_prefix}" "$(state_get_json_document "${state_prefix}" | jq -c '.last_tool_error = null')"
+			progress_made=true
 		fi
 
 		if ((exit_code == 0)) && [[ "${plan_step_matches_action}" == true ]]; then
 			complete_pending_plan_step "${state_prefix}"
+			local plan_length_value plan_index_value
+			plan_length_value=$(state_get "${state_prefix}" "plan_length")
+			plan_index_value=$(state_get "${state_prefix}" "plan_index")
+			if [[ "${plan_length_value}" =~ ^[0-9]+$ && ${plan_length_value} -gt 0 ]]; then
+				if ! [[ "${plan_index_value}" =~ ^[0-9]+$ ]]; then
+					plan_index_value=0
+				fi
+				if ((plan_index_value < plan_length_value)); then
+					state_set "${state_prefix}" "plan_index" "${plan_length_value}"
+					plan_index_value=${plan_length_value}
+				fi
+				if ((plan_index_value >= plan_length_value)); then
+					plan_completed=true
+				fi
+			fi
 		fi
 
 		record_tool_execution "${state_prefix}" "${tool}" "${thought}" "${normalized_args_json}" "${observation}" "${current_step}"
@@ -649,15 +722,21 @@ react_loop() {
 				log "INFO" "Tool failed during planned execution; falling back to LLM" "${tool}"
 				state_set "${state_prefix}" "plan_entries" ""
 			fi
+			increment_retry_count "${state_prefix}"
 		fi
 
 		local normalized_action
 		normalized_action="$(normalize_action "${tool}" "${normalized_args_json}")"
 		state_set_json_document "${state_prefix}" "$(state_get_json_document "${state_prefix}" | jq -c --argjson action "${normalized_action}" --argjson exit_code "${exit_code}" '.last_action = ($action + {exit_code:$exit_code})')"
 
-		state_set "${state_prefix}" "step" "${current_step}"
+		if [[ "${progress_made}" == true ]]; then
+			state_set "${state_prefix}" "step" "${progress_step}"
+		fi
 		if [[ "${tool}" == "final_answer" && ${exit_code} -eq 0 ]]; then
 			state_set "${state_prefix}" "final_answer" "${observation}"
+			break
+		fi
+		if [[ "${plan_completed}" == true ]]; then
 			break
 		fi
 	done
