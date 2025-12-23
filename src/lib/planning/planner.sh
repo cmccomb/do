@@ -213,7 +213,7 @@ generate_planner_response() {
 	local sample_count temperature debug_log_dir debug_log_file max_generation_tokens
 	sample_count="${PLANNER_SAMPLE_COUNT:-3}"
 	temperature="${PLANNER_TEMPERATURE:-0.2}"
-	max_generation_tokens="${PLANNER_MAX_OUTPUT_TOKENS:-768}"
+	max_generation_tokens="${PLANNER_MAX_OUTPUT_TOKENS:-1024}"
 	# Capture the sampling configuration early so operators can verify the
 	# breadth of exploration before generation begins. This also doubles as
 	# a trace when investigating unexpected candidate rankings.
@@ -226,7 +226,7 @@ generate_planner_response() {
 	fi
 
 	if ! [[ "${max_generation_tokens}" =~ ^[0-9]+$ ]] || ((max_generation_tokens < 1)); then
-		max_generation_tokens=768
+		max_generation_tokens=1024
 	fi
 
 	# Temperature is forwarded verbatim to llama.cpp; callers should keep

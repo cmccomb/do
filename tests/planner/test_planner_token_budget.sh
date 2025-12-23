@@ -40,7 +40,7 @@ if ! generate_planner_response "Need more tokens"; then
         exit 1
 fi
 
-expected="768"
+expected="1024"
 actual="$(cat /tmp/planner_token_budget)"
 
 [[ "${actual}" == "${expected}" ]]
