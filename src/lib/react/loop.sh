@@ -321,48 +321,105 @@ _select_action_from_llama() {
 }
 
 select_next_action() {
-	# Chooses the next action either from the plan or LLM.
-	# Arguments:
-	#   $1 - state prefix
-	#   $2 - (optional) name of variable to receive JSON action output
+        # Chooses the next action either from the plan or LLM.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - (optional) name of variable to receive JSON action output
 	local state_name output_name react_fallback_action react_action_json plan_index planned_entry planned_thought planned_args_json
 	state_name="$1"
 	output_name="${2:-}"
 
-	plan_index="$(state_get "${state_name}" "plan_index")"
-	plan_index=${plan_index:-0}
-	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
+        plan_index="$(state_get "${state_name}" "plan_index")"
+        plan_index=${plan_index:-0}
+        planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-	if [[ -n "${planned_entry}" ]]; then
-		react_fallback_action=$(jq -nc --arg thought "$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')" --arg tool "$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')" --argjson args "$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null || printf '{}')" '{thought:$thought,tool:$tool,args:$args}')
-	else
-		react_fallback_action=""
-	fi
+        if [[ -n "${planned_entry}" ]]; then
+                local pending_index_json
+                pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
+                state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c --argjson pending_plan_step "${pending_index_json}" '.pending_plan_step = $pending_plan_step | .plan_skip_reason = ""')"
+        else
+                state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c '.pending_plan_step = null | .plan_skip_reason = ""')"
+        fi
 
-	if ! _select_action_from_llama "${state_name}" react_action_json; then
-		if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
-			return 1
-		fi
-		if [[ -z "${react_fallback_action}" ]]; then
-			return 1
-		fi
-		react_action_json="${react_fallback_action}"
-		state_set "${state_name}" "plan_index" "$((plan_index + 1))"
-	else
-		state_set "${state_name}" "plan_index" "$((plan_index + 1))"
-	fi
+        if [[ -n "${planned_entry}" ]]; then
+                react_fallback_action=$(jq -nc --arg thought "$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')" --arg tool "$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')" --argjson args "$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null || printf '{}')" '{thought:$thought,tool:$tool,args:$args}')
+        else
+                react_fallback_action=""
+        fi
 
-	if [[ -n "${output_name}" ]]; then
-		printf -v "${output_name}" '%s' "${react_action_json}"
-	else
-		printf '%s' "${react_action_json}"
-	fi
+        if ! _select_action_from_llama "${state_name}" react_action_json; then
+                if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
+                        return 1
+                fi
+                if [[ -z "${react_fallback_action}" ]]; then
+                        return 1
+                fi
+                react_action_json="${react_fallback_action}"
+        fi
+
+        if [[ -n "${output_name}" ]]; then
+                printf -v "${output_name}" '%s' "${react_action_json}"
+        else
+                printf '%s' "${react_action_json}"
+        fi
+}
+
+record_plan_skip_reason() {
+        # Records a skip reason for the current pending plan step and advances the index.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - skip reason (string)
+        local state_name reason pending_plan_step updated_document
+        state_name="$1"
+        reason="$2"
+        pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+
+        if [[ -z "${pending_plan_step}" ]]; then
+                return 0
+        fi
+
+        if ! updated_document="$(
+                state_get_json_document "${state_name}" |
+                        jq -c --arg reason "${reason}" '
+                                .plan_skip_reason = $reason
+                                | .plan_index = ((try (.plan_index|tonumber) catch 0) + 1)
+                                | .pending_plan_step = null
+                        '
+        )"; then
+                return 1
+        fi
+        state_set_json_document "${state_name}" "${updated_document}"
+}
+
+complete_pending_plan_step() {
+        # Marks the pending plan step as completed after a successful tool run.
+        # Arguments:
+        #   $1 - state prefix
+        local state_name pending_plan_step updated_document
+        state_name="$1"
+        pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+
+        if [[ -z "${pending_plan_step}" ]]; then
+                return 0
+        fi
+
+        if ! updated_document="$(
+                state_get_json_document "${state_name}" |
+                        jq -c '
+                                .plan_index = ((try (.plan_index|tonumber) catch 0) + 1)
+                                | .pending_plan_step = null
+                                | .plan_skip_reason = ""
+                        '
+        )"; then
+                return 1
+        fi
+        state_set_json_document "${state_name}" "${updated_document}"
 }
 
 validate_tool_permission() {
-	# Confirms that the provided tool is permitted for the current run.
-	# Arguments:
-	#   $1 - state prefix
+        # Confirms that the provided tool is permitted for the current run.
+        # Arguments:
+        #   $1 - state prefix
 	#   $2 - tool name to validate
 	local state_name tool
 	state_name="$1"
@@ -437,11 +494,12 @@ react_loop() {
 		current_step=$(($(state_get "${state_prefix}" "step") + 1))
 		action_json=""
 
-		if ! select_next_action "${state_prefix}" action_json; then
-			log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
+                if ! select_next_action "${state_prefix}" action_json; then
+                        log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
+                        record_plan_skip_reason "${state_prefix}" "action_selection_failed"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
 		thought="$(printf '%s' "${action_json}" | jq -r '.thought // empty' 2>/dev/null || true)"
 		args_json="$(printf '%s' "${action_json}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
@@ -455,18 +513,20 @@ react_loop() {
 			state_set "${state_prefix}" "final_answer_action" "${final_answer_payload}"
 		fi
 
-		if ! validate_tool_permission "${state_prefix}" "${tool}"; then
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
+                if ! validate_tool_permission "${state_prefix}" "${tool}"; then
+                        record_plan_skip_reason "${state_prefix}" "tool_not_permitted"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 
-		if is_duplicate_action "${last_action}" "${tool}" "${normalized_args_json}"; then
-			log "WARN" "Duplicate action detected" "${tool}"
-			observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
-			record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
+                if is_duplicate_action "${last_action}" "${tool}" "${normalized_args_json}"; then
+                        log "WARN" "Duplicate action detected" "${tool}"
+                        observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
+                        record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
+                        record_plan_skip_reason "${state_prefix}" "duplicate_action"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 
 		if [[ -z "${final_answer_payload}" ]]; then
 			final_answer_payload="$(extract_tool_query "${tool}" "${normalized_args_json}")"
@@ -517,9 +577,9 @@ react_loop() {
 				'{output:$output,error:$error,exit_code:$exit_code}')
 		fi
 
-		local failure_record failure_error
-		failure_error=$(printf '%s' "${observation}" | jq -r '.error // empty' 2>/dev/null || printf '')
-		if ((exit_code != 0)); then
+                local failure_record failure_error
+                failure_error=$(printf '%s' "${observation}" | jq -r '.error // empty' 2>/dev/null || printf '')
+                if ((exit_code != 0)); then
 			failure_record=$(jq -nc \
 				--arg tool "${tool}" \
 				--argjson step "${current_step}" \
@@ -530,10 +590,14 @@ react_loop() {
 			log "ERROR" "Tool reported failure" "$(printf 'step=%s tool=%s exit_code=%s error=%s' "${current_step}" "${tool}" "${exit_code}" "${failure_error:-"(none)"}")"
 		else
 			state_set_json_document "${state_prefix}" "$(state_get_json_document "${state_prefix}" | jq -c '.last_tool_error = null')"
-		fi
+                fi
 
-		record_tool_execution "${state_prefix}" "${tool}" "${thought}" "${normalized_args_json}" "${observation}" "${current_step}"
-		if ((exit_code != 0)); then
+                if ((exit_code == 0)); then
+                        complete_pending_plan_step "${state_prefix}"
+                fi
+
+                record_tool_execution "${state_prefix}" "${tool}" "${thought}" "${normalized_args_json}" "${observation}" "${current_step}"
+                if ((exit_code != 0)); then
 			local plan_entries_text
 			plan_entries_text="$(state_get "${state_prefix}" "plan_entries")"
 			if [[ -n "${plan_entries_text}" && "${LLAMA_AVAILABLE}" == true ]]; then

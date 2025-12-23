@@ -54,6 +54,8 @@ initialize_react_state() {
                         history: [],
                         step: 0,
                         plan_index: 0,
+                        pending_plan_step: null,
+                        plan_skip_reason: "",
                         max_steps: $max_steps,
                         final_answer: "",
                         final_answer_action: "",

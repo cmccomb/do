@@ -227,8 +227,14 @@ LLAMA_AVAILABLE=false
 select_next_action "${state_prefix}" action_json
 printf "%s\n" "${action_json}"
 plan_index="$(state_get "${state_prefix}" "plan_index")"
-if [[ "${plan_index}" -ne 1 ]]; then
-        echo "expected plan index to advance for fallback action"
+pending_plan_step="$(state_get "${state_prefix}" "pending_plan_step")"
+if [[ "${plan_index}" -ne 0 ]]; then
+        echo "expected plan index to stay constant until execution"
+        exit 1
+fi
+
+if [[ "${pending_plan_step}" -ne 0 ]]; then
+        echo "expected pending plan step to be tracked"
         exit 1
 fi
 SCRIPT
