@@ -30,25 +30,25 @@ source "${PLANNING_REPHRASING_DIR}/../core/logging.sh"
 source "${PLANNING_REPHRASING_DIR}/../llm/llama_client.sh"
 
 render_rephrase_prompt() {
-        # Renders the rephrasing prompt with the user query embedded.
-        # Arguments:
-        #   $1 - user query (string)
-        local user_query
-        user_query="$1"
+	# Renders the rephrasing prompt with the user query embedded.
+	# Arguments:
+	#   $1 - user query (string)
+	local user_query
+	user_query="$1"
 
-        render_prompt_template "planner_rephrase" USER_QUERY "${user_query}"
+	render_prompt_template "planner_rephrase" USER_QUERY "${user_query}"
 }
 
 validate_rephrase_output() {
-        # Validates and normalizes LLM output for search rephrasing.
-        # Arguments:
-        #   $1 - raw LLM output (string)
-        # Returns:
-        #   Sanitized JSON array of 1-3 non-empty strings.
-        local raw sanitized length
-        raw="$1"
+	# Validates and normalizes LLM output for search rephrasing.
+	# Arguments:
+	#   $1 - raw LLM output (string)
+	# Returns:
+	#   Sanitized JSON array of 1-3 non-empty strings.
+	local raw sanitized length
+	raw="$1"
 
-        if ! sanitized=$(jq -c '
+	if ! sanitized=$(jq -c '
                 def strip_ws: gsub("^\\s+";"") | gsub("\\s+$";"");
                 if (type == "array") then
                         map(if type == "string" then strip_ws else "" end) | map(select(. != ""))
@@ -56,57 +56,57 @@ validate_rephrase_output() {
                         []
                 end
         ' <<<"${raw}" 2>/dev/null); then
-                return 1
-        fi
+		return 1
+	fi
 
-        length=$(jq -er 'length' <<<"${sanitized}" 2>/dev/null || printf '0')
-        if ((length < 1)) || ((length > 3)); then
-                return 1
-        fi
+	length=$(jq -er 'length' <<<"${sanitized}" 2>/dev/null || printf '0')
+	if ((length < 1)) || ((length > 3)); then
+		return 1
+	fi
 
-        printf '%s' "${sanitized}"
+	printf '%s' "${sanitized}"
 }
 
 planner_generate_search_queries() {
-        # Generates up to three search queries for the planner search stage.
-        # Arguments:
-        #   $1 - user query (string)
-        # Returns:
-        #   JSON array of 1-3 search queries (strings).
-        local user_query prompt raw sanitized max_generation_tokens
-        user_query="$1"
-        max_generation_tokens=${REPHRASER_MAX_OUTPUT_TOKENS:-256}
+	# Generates up to three search queries for the planner search stage.
+	# Arguments:
+	#   $1 - user query (string)
+	# Returns:
+	#   JSON array of 1-3 search queries (strings).
+	local user_query prompt raw sanitized max_generation_tokens
+	user_query="$1"
+	max_generation_tokens=${REPHRASER_MAX_OUTPUT_TOKENS:-256}
 
-        if ! [[ "${max_generation_tokens}" =~ ^[0-9]+$ ]] || ((max_generation_tokens < 1)); then
-                max_generation_tokens=256
-        fi
+	if ! [[ "${max_generation_tokens}" =~ ^[0-9]+$ ]] || ((max_generation_tokens < 1)); then
+		max_generation_tokens=256
+	fi
 
-        if [[ "${LLAMA_AVAILABLE}" != true ]]; then
-                log "WARN" "llama unavailable; using raw query for search" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
-                jq -nc --arg query "${user_query}" '[ $query ]'
-                return 0
-        fi
+	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
+		log "WARN" "llama unavailable; using raw query for search" "LLAMA_AVAILABLE=${LLAMA_AVAILABLE}" >&2
+		jq -nc --arg query "${user_query}" '[ $query ]'
+		return 0
+	fi
 
-        prompt="$(render_rephrase_prompt "${user_query}")" || {
-                log "ERROR" "Failed to render rephrase prompt" "planner_rephrase_prompt_render_failed" >&2
-                jq -nc --arg query "${user_query}" '[ $query ]'
-                return 0
-        }
+	prompt="$(render_rephrase_prompt "${user_query}")" || {
+		log "ERROR" "Failed to render rephrase prompt" "planner_rephrase_prompt_render_failed" >&2
+		jq -nc --arg query "${user_query}" '[ $query ]'
+		return 0
+	}
 
-        raw="$(LLAMA_TEMPERATURE=0 llama_infer "${prompt}" '' "${max_generation_tokens}" '' "${SEARCH_REPHRASER_MODEL_REPO:-}" "${SEARCH_REPHRASER_MODEL_FILE:-}" "${SEARCH_REPHRASER_CACHE_FILE:-}" "${prompt}")" || raw=""
+	raw="$(LLAMA_TEMPERATURE=0 llama_infer "${prompt}" '' "${max_generation_tokens}" '' "${SEARCH_REPHRASER_MODEL_REPO:-}" "${SEARCH_REPHRASER_MODEL_FILE:-}" "${SEARCH_REPHRASER_CACHE_FILE:-}" "${prompt}")" || raw=""
 
-        if [[ -z "${raw}" ]]; then
-                log "WARN" "Rephrase model returned empty output" "planner_rephrase_empty" >&2
-                jq -nc --arg query "${user_query}" '[ $query ]'
-                return 0
-        fi
+	if [[ -z "${raw}" ]]; then
+		log "WARN" "Rephrase model returned empty output" "planner_rephrase_empty" >&2
+		jq -nc --arg query "${user_query}" '[ $query ]'
+		return 0
+	fi
 
-        if sanitized="$(validate_rephrase_output "${raw}")"; then
-                printf '%s' "${sanitized}"
-        else
-                log "WARN" "Rephrase output failed validation; falling back to user query" "${raw}" >&2
-                jq -nc --arg query "${user_query}" '[ $query ]'
-        fi
+	if sanitized="$(validate_rephrase_output "${raw}")"; then
+		printf '%s' "${sanitized}"
+	else
+		log "WARN" "Rephrase output failed validation; falling back to user query" "${raw}" >&2
+		jq -nc --arg query "${user_query}" '[ $query ]'
+	fi
 }
 
 export -f planner_generate_search_queries

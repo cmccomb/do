@@ -72,7 +72,7 @@ set_by_name() {
 }
 
 settings_field_mappings() {
-        cat <<'EOF'
+	cat <<'EOF'
 version VERSION
 llama_bin LLAMA_BIN
 default_model_file DEFAULT_MODEL_FILE
