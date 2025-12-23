@@ -20,6 +20,13 @@ react_loop "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}
 - `plan_entries`: newline-delimited JSON plan rows (optional; planner-provided).
 - `plan_outline`: plain-text planner outline used to guide the loop.
 
+### Plan skip tracking
+
+When a planned step cannot run (for example, a tool is not permitted, the model emits an
+invalid action, or the loop detects a duplicate call), the loop records a skip reason and
+keeps the current plan index unchanged. Callers can inspect `plan_skip_reason` and
+`pending_plan_step` in the state to understand why a plan step was bypassed.
+
 ## Dependencies
 
 - bash 3.2+

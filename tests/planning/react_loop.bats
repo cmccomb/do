@@ -64,8 +64,8 @@ SCRIPT
 	[ "$output" = "plan_index=1 pending=" ]
 }
 
-@test "react_loop records plan skip reason when execution is bypassed" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+@test "react_loop records plan skip reason without advancing index when execution is bypassed" {
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -85,8 +85,37 @@ printf 'plan_index=%s pending=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "$output" = "plan_index=1 pending= skip_reason=tool_not_permitted" ]
+        [ "$status" -eq 0 ]
+        [ "$output" = "plan_index=0 pending=0 skip_reason=tool_not_permitted" ]
+}
+
+@test "react_loop logs skip reasons without plan progress" {
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+MAX_STEPS=1
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+log_messages=()
+log() {
+        log_messages+=("$1:$2:${3:-}")
+}
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback_response'; }
+validate_tool_permission() { return 1; }
+execute_tool_action() { printf '{"output":"ok","exit_code":0}'; }
+plan_entry=$(jq -nc '{tool:"alpha",thought:"planned",args:{}}')
+react_loop "question" "alpha" "${plan_entry}" ""
+printf 'plan_index=%s pending=%s skip_reason=%s logs=%s' \
+        "$(state_get react_state plan_index)" \
+        "$(state_get react_state pending_plan_step)" \
+        "$(state_get react_state plan_skip_reason)" \
+        "$(printf '%s' "${log_messages[*]}")"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [[ "$output" == "plan_index=0 pending=0 skip_reason=tool_not_permitted logs="*"reason=tool_not_permitted"* ]]
 }
 
 @test "react_loop records duplicate actions with warning observation" {

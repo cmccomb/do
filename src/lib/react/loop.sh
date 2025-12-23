@@ -365,30 +365,56 @@ select_next_action() {
 }
 
 record_plan_skip_reason() {
-	# Records a skip reason for the current pending plan step and advances the index.
-	# Arguments:
-	#   $1 - state prefix
-	#   $2 - skip reason (string)
-	local state_name reason pending_plan_step updated_document
-	state_name="$1"
-	reason="$2"
-	pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+        # Records a skip reason for the current pending plan step and advances the index.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - skip reason (string)
+        local state_name reason pending_plan_step updated_document
+        state_name="$1"
+        reason="$2"
+        pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
 
-	if [[ -z "${pending_plan_step}" ]]; then
-		return 0
-	fi
+        if [[ -z "${pending_plan_step}" ]]; then
+                return 0
+        fi
 
-	if ! updated_document="$(
-		state_get_json_document "${state_name}" |
-			jq -c --arg reason "${reason}" '
+        if ! updated_document="$(
+                state_get_json_document "${state_name}" |
+                        jq -c --arg reason "${reason}" '
                                 .plan_skip_reason = $reason
                                 | .plan_index = ((try (.plan_index|tonumber) catch 0) + 1)
                                 | .pending_plan_step = null
                         '
-	)"; then
-		return 1
-	fi
-	state_set_json_document "${state_name}" "${updated_document}"
+        )"; then
+                return 1
+        fi
+        state_set_json_document "${state_name}" "${updated_document}"
+}
+
+record_plan_skip_without_progress() {
+        # Logs and records a skip reason without advancing the plan index.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - skip reason (string)
+        local state_name reason pending_plan_step current_plan_index updated_document
+        state_name="$1"
+        reason="$2"
+        pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+        current_plan_index="$(state_get "${state_name}" "plan_index")"
+        log "INFO" "Plan step skipped without advancement" "$(
+                printf 'reason=%s plan_index=%s pending_plan_step=%s' \
+                        "${reason}" \
+                        "${current_plan_index:-0}" \
+                        "${pending_plan_step:-}" \
+        )"
+
+        if ! updated_document="$(
+                state_get_json_document "${state_name}" |
+                        jq -c --arg reason "${reason}" '.plan_skip_reason = $reason'
+        )"; then
+                return 1
+        fi
+        state_set_json_document "${state_name}" "${updated_document}"
 }
 
 complete_pending_plan_step() {
@@ -494,12 +520,12 @@ react_loop() {
 		current_step=$(($(state_get "${state_prefix}" "step") + 1))
 		action_json=""
 
-		if ! select_next_action "${state_prefix}" action_json; then
-			log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
-			record_plan_skip_reason "${state_prefix}" "action_selection_failed"
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
+                if ! select_next_action "${state_prefix}" action_json; then
+                        log "WARN" "Skipping step due to invalid action selection" "step=${current_step}"
+                        record_plan_skip_without_progress "${state_prefix}" "action_selection_failed"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 		tool="$(printf '%s' "${action_json}" | jq -r '.tool // empty' 2>/dev/null || true)"
 		thought="$(printf '%s' "${action_json}" | jq -r '.thought // empty' 2>/dev/null || true)"
 		args_json="$(printf '%s' "${action_json}" | jq -c '.args // {}' 2>/dev/null || printf '{}')"
@@ -513,20 +539,20 @@ react_loop() {
 			state_set "${state_prefix}" "final_answer_action" "${final_answer_payload}"
 		fi
 
-		if ! validate_tool_permission "${state_prefix}" "${tool}"; then
-			record_plan_skip_reason "${state_prefix}" "tool_not_permitted"
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
+                if ! validate_tool_permission "${state_prefix}" "${tool}"; then
+                        record_plan_skip_without_progress "${state_prefix}" "tool_not_permitted"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 
-		if is_duplicate_action "${last_action}" "${tool}" "${normalized_args_json}"; then
-			log "WARN" "Duplicate action detected" "${tool}"
-			observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
-			record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
-			record_plan_skip_reason "${state_prefix}" "duplicate_action"
-			state_set "${state_prefix}" "step" "${current_step}"
-			continue
-		fi
+                if is_duplicate_action "${last_action}" "${tool}" "${normalized_args_json}"; then
+                        log "WARN" "Duplicate action detected" "${tool}"
+                        observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
+                        record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
+                        record_plan_skip_without_progress "${state_prefix}" "duplicate_action"
+                        state_set "${state_prefix}" "step" "${current_step}"
+                        continue
+                fi
 
 		if [[ -z "${final_answer_payload}" ]]; then
 			final_answer_payload="$(extract_tool_query "${tool}" "${normalized_args_json}")"
