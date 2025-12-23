@@ -704,10 +704,6 @@ react_loop() {
 				if ! [[ "${plan_index_value}" =~ ^[0-9]+$ ]]; then
 					plan_index_value=0
 				fi
-				if ((plan_index_value < plan_length_value)); then
-					state_set "${state_prefix}" "plan_index" "${plan_length_value}"
-					plan_index_value=${plan_length_value}
-				fi
 				if ((plan_index_value >= plan_length_value)); then
 					plan_completed=true
 				fi

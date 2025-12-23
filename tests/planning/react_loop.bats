@@ -66,6 +66,36 @@ SCRIPT
 	[ "$output" = "plan_index=1 pending=" ]
 }
 
+@test "react_loop completes multi-step plans before emitting fallback" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback_response'; }
+validate_tool_permission() { return 0; }
+execute_tool_action() { printf '{"output":"ok","exit_code":0}'; }
+_select_action_from_llama() { return 1; }
+
+plan_step_one=$(jq -nc '{tool:"alpha",thought:"step1",args:{}}')
+plan_step_two=$(jq -nc '{tool:"final_answer",thought:"step2",args:{input:"done"}}')
+plan_entries=$(printf '%s\n%s' "${plan_step_one}" "${plan_step_two}")
+
+react_loop "question" "alpha" "${plan_entries}" ""
+
+printf 'final=%s plan_index=%s attempts=%s' \
+        "$(state_get react_state final_answer)" \
+        "$(state_get react_state plan_index)" \
+        "$(state_get react_state attempts)"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "final=done plan_index=2 attempts=2" ]
+}
+
 @test "react_loop keeps plan index when llama returns invalid JSON" {
 	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
@@ -390,6 +420,75 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	[ "$output" = "final=complete step=1" ]
+}
+
+@test "react_loop derives attempt budget from plan length" {
+	run env -i HOME="$HOME" PATH="$PATH" REACT_RETRY_BUFFER=1 bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback'; }
+validate_tool_permission() { return 0; }
+selection=0
+select_next_action() {
+        if [[ ${selection:-0} -eq 0 ]]; then
+                selection=1
+                return 1
+        fi
+        printf -v "$2" '{"thought":"finish","tool":"final_answer","args":{"input":"done"}}'
+}
+execute_tool_action() { printf '{"output":"ok","exit_code":0}'; }
+plan_entry=$(jq -nc '{tool:"alpha"}')
+react_loop "question" "final_answer" "${plan_entry}" ""
+printf 'max_steps=%s attempts=%s step=%s retry_count=%s final=%s' \
+        "$(state_get react_state max_steps)" \
+        "$(state_get react_state attempts)" \
+        "$(state_get react_state step)" \
+        "$(state_get react_state retry_count)" \
+        "$(state_get react_state final_answer)"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "max_steps=2 attempts=2 step=1 retry_count=1 final=done" ]
+}
+
+@test "react_loop retries planned step without consuming step counter" {
+	run env -i HOME="$HOME" PATH="$PATH" REACT_RETRY_BUFFER=2 bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'done'; }
+validate_tool_permission() { return 0; }
+_select_action_from_llama() { return 1; }
+execution_count=0
+execute_tool_action() {
+        execution_count=$((execution_count + 1))
+        if [[ ${execution_count} -eq 1 ]]; then
+                printf '{"output":"fail","exit_code":1}'
+                return 1
+        fi
+        printf '{"output":"ok","exit_code":0}'
+}
+plan_entry=$(jq -nc '{tool:"alpha"}')
+react_loop "question" "alpha" "${plan_entry}" ""
+printf 'plan_index=%s step=%s attempts=%s retry_count=%s pending=%s' \
+        "$(state_get react_state plan_index)" \
+        "$(state_get react_state step)" \
+        "$(state_get react_state attempts)" \
+        "$(state_get react_state retry_count)" \
+        "$(state_get react_state pending_plan_step)"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=1 step=1 attempts=2 retry_count=1 pending=" ]
 }
 
 @test "react_loop derives attempt budget from plan length" {
