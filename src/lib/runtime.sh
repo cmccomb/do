@@ -278,10 +278,6 @@ render_plan_outputs() {
 		log_pretty "INFO" "Plan outline" "${plan_outline}"
 	fi
 
-	if jq -e '.mode == "quickdraw"' <<<"${plan_json}" >/dev/null 2>&1; then
-		log_pretty "INFO" "Quickdraw summary" "${plan_json}"
-	fi
-
 	if [[ "$(settings_get "${settings_prefix}" "plan_only")" == true ]]; then
 		# plan-only short-circuits execution and dry-run emission; callers handle
 		# the resulting action_ref to exit early.
@@ -316,7 +312,7 @@ select_response_strategy() {
 	local settings_prefix
 	settings_prefix="$1"
 	shift
-	local required_tools plan_entries plan_outline plan_response direct_response
+	local required_tools plan_entries plan_outline plan_response
 	required_tools="$1"
 	plan_entries="$2"
 	plan_outline="$3"
@@ -324,29 +320,9 @@ select_response_strategy() {
 
 	apply_settings_to_globals "${settings_prefix}"
 
-	if jq -e '.mode == "quickdraw"' <<<"${plan_response}" >/dev/null 2>&1; then
-		local quickdraw_answer quickdraw_confidence
-		quickdraw_answer="$(jq -r '.quickdraw.final_answer // ""' <<<"${plan_response}" 2>/dev/null || printf '')"
-		quickdraw_confidence="$(jq -r '.quickdraw.confidence // "n/a"' <<<"${plan_response}" 2>/dev/null || printf '')"
-
-		log "INFO" "Planner quickdraw selected" "$(printf 'confidence=%s' "${quickdraw_confidence}")"
-		if [[ -n "${quickdraw_answer}" ]]; then
-			user_output_line "${quickdraw_answer}"
-		fi
-		emit_boxed_summary "${USER_QUERY}" "${plan_outline}" "" "${quickdraw_answer}"
-		return 0
-	fi
-
 	if [[ -z "${required_tools}" ]]; then
-		# The planner may occasionally decline tools; fall back to direct text
-		# responses so the user still receives output.
-		log "ERROR" "No tools selected; responding directly" "${USER_QUERY}"
-		log "INFO" "Planner emitted no tools; using direct response" "${USER_QUERY}"
-		direct_response="$(respond_text "${USER_QUERY}" 256)"
-		log_pretty "INFO" "Final answer" "${direct_response}"
-		log "INFO" "Execution summary" "No tool runs"
-		emit_boxed_summary "${USER_QUERY}" "${plan_outline}" "" "${direct_response}"
-		return 0
+		log "ERROR" "Planner emitted an empty tool list" "${USER_QUERY}"
+		return 1
 	fi
 
 	react_loop "${USER_QUERY}" "${required_tools}" "${plan_entries}" "${plan_outline}"

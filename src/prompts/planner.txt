@@ -26,10 +26,8 @@ Current weekday: ${current_weekday}
 Use this temporal context when scheduling or sequencing tasks.
 
 # General Rules
-Format the output as a JSON object that either:
-- Uses `{"mode": "plan", "plan": [...]}` for tool-based work (each step shaped as {tool, args, thought}), or
-- Uses `{"mode": "quickdraw", "quickdraw": {final_answer, confidence, rationale}}` only when tools are unnecessary.
-AVOID quickdraw and use tools whenever the request implies any kind of calculation or mathematical operation, file/system mutations, searches/browsing/citations, or explicit verbs like create, edit, save, or run.
+Format the output as a JSON object shaped as `{"mode": "plan", "plan": [...]}` (each step shaped as {tool, args, thought}).
+Always return at least one plan step; the final step must use the `final_answer` tool.
 
 # Tool Selection Rules
 Select only from the provided list of available tools.

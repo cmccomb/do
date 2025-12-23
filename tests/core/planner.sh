@@ -139,18 +139,6 @@ SCRIPT
 	[ "${lines[1]}" = "final_answer" ]
 }
 
-@test "derive_allowed_tools_from_plan short-circuits quickdraw responses" {
-	run bash <<'SCRIPT'
-set -euo pipefail
-source ./src/lib/planning/planner.sh
-quickdraw='{"mode":"quickdraw","quickdraw":{"final_answer":"done","rationale":"direct"}}'
-derive_allowed_tools_from_plan "${quickdraw}" | wc -l
-SCRIPT
-
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" -eq 0 ]
-}
-
 @test "derive_allowed_tools_from_plan expands react_fallback to available tools" {
 	run bash <<'SCRIPT'
 set -euo pipefail
@@ -169,6 +157,17 @@ SCRIPT
 	[ "${lines[1]}" = "notes_create" ]
 	[ "${lines[2]}" = "calendar_list" ]
 	[ "${lines[3]}" = "final_answer" ]
+}
+
+@test "derive_allowed_tools_from_plan rejects non-plan payloads" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/planning/planner.sh
+invalid='{"mode":"quickdraw","quickdraw":{"final_answer":"done","rationale":"direct"}}'
+derive_allowed_tools_from_plan "${invalid}" >/dev/null
+SCRIPT
+
+	[ "$status" -ne 0 ]
 }
 
 @test "derive_allowed_tools_from_plan de-duplicates web_search entries" {
@@ -202,16 +201,15 @@ SCRIPT
 	[ "${lines[1]}" = '{"tool":"final_answer","args":{}}' ]
 }
 
-@test "plan_json_to_entries short-circuits quickdraw responses" {
+@test "plan_json_to_entries errors on non-plan payloads" {
 	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
-quickdraw='{"mode":"quickdraw","quickdraw":{"final_answer":"done","rationale":"direct"}}'
-plan_json_to_entries "${quickdraw}" | wc -l
+invalid='{"mode":"quickdraw","quickdraw":{"final_answer":"done","rationale":"direct"}}'
+plan_json_to_entries "${invalid}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "${lines[0]}" -eq 0 ]
+	[ "$status" -ne 0 ]
 }
 
 @test "select_next_action uses deterministic plan when llama disabled" {

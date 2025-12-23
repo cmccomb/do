@@ -53,7 +53,7 @@ PLANNING_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 #   3. Prompt builders render a prefix + suffix prompt that injects schemas,
 #      tool descriptions, and examples into a llama.cpp completion request.
 #   4. Raw model responses are normalized into the canonical planner schema
-#      (plan array or quickdraw object) and scored for safety + viability.
+#      and scored for safety + viability.
 #   5. The best candidate's plan and allowed tools are forwarded to the ReAct
 #      loop, which handles execution, approvals, and final answers.
 #
@@ -180,8 +180,7 @@ generate_planner_response() {
 		fallback="LLM unavailable. Request received: ${user_query}"
 		jq -nc \
 			--arg answer "${fallback}" \
-			--arg rationale "Respond directly; tools skipped because llama.cpp is unavailable." \
-			'{mode:"quickdraw", plan: [], quickdraw:{final_answer:$answer, confidence:0, rationale:$rationale}}'
+			'{mode:"plan", plan:[{tool:"final_answer", args:{input:$answer}, thought:"Provide the direct response."}]}'
 		return 0
 	fi
 
@@ -261,11 +260,6 @@ generate_planner_response() {
 			continue
 		fi
 
-		local is_quickdraw=false
-		if jq -e '.mode == "quickdraw"' <<<"${normalized_plan}" >/dev/null 2>&1; then
-			is_quickdraw=true
-		fi
-
 		if ! candidate_scorecard="$(score_planner_candidate "${normalized_plan}")"; then
 			log "ERROR" "Planner output failed scoring" "${normalized_plan}" >&2
 			continue
@@ -299,11 +293,6 @@ generate_planner_response() {
 			best_plan="${normalized_plan}"
 		fi
 
-		if [[ "${is_quickdraw}" == true && ${candidate_index} -eq 1 ]]; then
-			log "DEBUG" "Quickdraw response returned immediately" "candidate_index=${candidate_index}" >&2
-			printf '%s' "${best_plan}"
-			return 0
-		fi
 	done
 
 	if [[ -z "${best_plan}" ]]; then
@@ -416,9 +405,6 @@ derive_allowed_tools_from_plan() {
 		status=$?
 	fi
 	if [[ ${status} -ne 0 ]]; then
-		if [[ ${status} -eq 10 ]]; then
-			return 0
-		fi
 		return 1
 	fi
 
@@ -466,9 +452,6 @@ plan_json_to_entries() {
 		status=$?
 	fi
 	if [[ ${status} -ne 0 ]]; then
-		if [[ ${status} -eq 10 ]]; then
-			return 0
-		fi
 		return 1
 	fi
 

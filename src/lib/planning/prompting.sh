@@ -61,10 +61,6 @@ plan_json_to_outline() {
 	fi
 
 	if [[ ${status} -ne 0 ]]; then
-		if [[ ${status} -eq 10 ]]; then
-			jq -r '"Quickdraw (confidence: " + ((.quickdraw.confidence // "n/a")|tostring) + ") - " + (.quickdraw.rationale // "")' <<<"${plan_json}" 2>/dev/null || return 1
-			return 0
-		fi
 		return 1
 	fi
 
