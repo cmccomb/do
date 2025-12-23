@@ -97,20 +97,20 @@ PYTHON
 }
 
 normalize_planner_response() {
-        # Normalizes any planner output into a canonical object that the
-        # scoring and execution layers understand. The helper tolerates both
-        # legacy plan arrays and modern objects that may represent either a
-        # structured plan or a "quickdraw" direct answer, ensuring downstream
-        # tooling always receives the final_answer stub.
-        local raw candidate normalized
-        raw="$(cat)"
+	# Normalizes any planner output into a canonical object that the
+	# scoring and execution layers understand. The helper tolerates both
+	# legacy plan arrays and modern objects that may represent either a
+	# structured plan or a "quickdraw" direct answer, ensuring downstream
+	# tooling always receives the final_answer stub.
+	local raw candidate normalized
+	raw="$(cat)"
 
-        if ! require_python3_available "planner output normalization"; then
-                log "ERROR" "normalize_planner_response: python3 unavailable" "${raw}" >&2
-                return 1
-        fi
+	if ! require_python3_available "planner output normalization"; then
+		log "ERROR" "normalize_planner_response: python3 unavailable" "${raw}" >&2
+		return 1
+	fi
 
-        candidate=$(
+	candidate=$(
 		RAW_INPUT="${raw}" python3 - <<'PYTHON'
 import json
 import os
