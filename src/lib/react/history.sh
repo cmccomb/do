@@ -7,7 +7,7 @@
 #   source "${BASH_SOURCE[0]%/history.sh}/history.sh"
 #
 # Environment variables:
-#   MAX_STEPS (int): maximum number of ReAct turns; default: 6.
+#   REACT_RETRY_BUFFER (int): extra attempts beyond the plan length; default: 2.
 #
 # Dependencies:
 #   - bash 3.2+
@@ -30,29 +30,51 @@ source "${REACT_LIB_DIR}/../formatting.sh"
 source "${REACT_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 
 initialize_react_state() {
-	# Initializes the ReAct state document with user query, tools, and plan.
-	# Arguments:
-	#   $1 - state prefix to populate (string)
-	#   $2 - user query (string)
-	#   $3 - allowed tools (string, newline delimited)
-	#   $4 - ranked plan entries (string)
-	#   $5 - plan outline text (string)
-	local state_prefix
-	state_prefix="$1"
+        # Initializes the ReAct state document with user query, tools, and plan.
+        # Arguments:
+        #   $1 - state prefix to populate (string)
+        #   $2 - user query (string)
+        #   $3 - allowed tools (string, newline delimited)
+        #   $4 - ranked plan entries (string)
+        #   $5 - plan outline text (string)
+        local state_prefix
+        state_prefix="$1"
 
-	state_set_json_document "${state_prefix}" "$(jq -c -n \
-		--arg user_query "$2" \
-		--arg allowed_tools "$3" \
-		--arg plan_entries "$4" \
-		--arg plan_outline "$5" \
-		--argjson max_steps "${MAX_STEPS:-6}" \
-		'{
+        local plan_entries plan_length retry_buffer max_steps
+        plan_entries="$4"
+
+        plan_length=$(printf '%s\n' "${plan_entries}" | jq -s 'map(try (if type=="string" then fromjson else . end) catch empty) | length' 2>/dev/null || printf '0')
+        if ! [[ "${plan_length}" =~ ^[0-9]+$ ]]; then
+                plan_length=0
+        fi
+
+        retry_buffer=${REACT_RETRY_BUFFER:-2}
+        if ! [[ "${retry_buffer}" =~ ^[0-9]+$ ]] || ((retry_buffer < 0)); then
+                retry_buffer=2
+        fi
+
+        max_steps=$((plan_length + retry_buffer))
+        if ((max_steps < 1)); then
+                max_steps=retry_buffer
+        fi
+
+        state_set_json_document "${state_prefix}" "$(jq -c -n \
+                --arg user_query "$2" \
+                --arg allowed_tools "$3" \
+                --arg plan_entries "$4" \
+                --arg plan_outline "$5" \
+                --argjson max_steps "${max_steps}" \
+                --argjson plan_length "${plan_length}" \
+                --argjson retry_buffer "${retry_buffer}" \
+                '{
                         user_query: $user_query,
                         allowed_tools: $allowed_tools,
                         plan_entries: $plan_entries,
                         plan_outline: $plan_outline,
                         history: [],
                         step: 0,
+                        attempts: 0,
+                        retry_count: 0,
                         plan_index: 0,
                         pending_plan_step: null,
                         plan_skip_reason: "",
@@ -61,6 +83,9 @@ initialize_react_state() {
                         final_answer_action: "",
                         last_action: null
                 }')"
+
+        state_set "${state_prefix}" "plan_length" "${plan_length}"
+        state_set "${state_prefix}" "retry_buffer" "${retry_buffer}"
 }
 
 record_history() {
