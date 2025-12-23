@@ -24,7 +24,9 @@ source "${PLANNING_NORMALIZATION_DIR}/../core/logging.sh"
 source "${PLANNING_NORMALIZATION_DIR}/../dependency_guards/dependency_guards.sh"
 
 # Normalize noisy planner output into a clean PlannerPlan JSON array of objects.
-# Reads from stdin, writes clean JSON array to stdout.
+# Reads from stdin, writes clean JSON array to stdout. This sits between the raw
+# llama.cpp stream and the scoring/execution layers so downstream components can
+# rely on a consistent schema regardless of how the model formats responses.
 normalize_planner_plan() {
 	local raw plan_candidate normalized
 
@@ -95,6 +97,11 @@ PYTHON
 }
 
 normalize_planner_response() {
+	# Normalizes any planner output into a canonical object that the
+	# scoring and execution layers understand. The helper tolerates both
+	# legacy plan arrays and modern objects that may represent either a
+	# structured plan or a "quickdraw" direct answer, ensuring downstream
+	# tooling always receives the final_answer stub.
 	local raw candidate normalized
 	raw="$(cat)"
 

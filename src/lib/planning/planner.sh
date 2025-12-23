@@ -41,6 +41,23 @@ chpwd_functions=()
 
 PLANNING_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# Planner architecture overview
+# -----------------------------
+# The planner performs a short, deterministic pass before the ReAct loop
+# executes any tools. The high-level flow is:
+#   1. Tools and schemas are sourced so the planner understands which actions
+#      are available and how they should be called.
+#   2. A lightweight web search seeds context that the planner can cite when
+#      drafting the outline (optional when the search tool is absent).
+#   3. Prompt builders render a prefix + suffix prompt that injects schemas,
+#      tool descriptions, and examples into a llama.cpp completion request.
+#   4. Raw model responses are normalized into the canonical planner schema
+#      (plan array or quickdraw object) and scored for safety + viability.
+#   5. The best candidate's plan and allowed tools are forwarded to the ReAct
+#      loop, which handles execution, approvals, and final answers.
+#
+# This file owns steps (1)–(4); execution dispatch lives in ../react/react.sh.
+
 # shellcheck source=../core/errors.sh disable=SC1091
 source "${PLANNING_LIB_DIR}/../core/errors.sh"
 # shellcheck source=../core/logging.sh disable=SC1091
