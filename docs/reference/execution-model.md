@@ -5,8 +5,8 @@ okso separates high-level planning from step-by-step execution so that tool call
 ## Planner pass
 
 1. The planner drafts a numbered outline that mentions the tools to use for each step.
-2. A dedicated rephrasing step asks a Qwen3 1.7B model for 1–3 focused web search strings and runs a search for each, folding the
-   aggregated snippets into the planner prompt.
+2. A dedicated rephrasing step asks a Qwen3 1.7B model for 1–3 focused web search strings (constrained by a JSON schema) and runs
+   a search for each, folding the aggregated snippets into the planner prompt.
 3. The outline is emitted as structured JSON for logging and optional downstream automation.
 4. Approval prompts give you a chance to refine or abort the plan before any commands run.
 5. A side-effect-free scorer evaluates each sampled outline before selection. Plans that stay within the `PLANNER_MAX_PLAN_STEPS`

@@ -18,9 +18,10 @@ execute tool calls and emit final answers.
 1. **Tool + schema discovery:** `planner.sh` loads tool registrations and the planner
    JSON schema so the model knows what actions exist and how to call them.
 2. **Search query rephrasing:** `rephrasing.sh` asks a lightweight Qwen3 1.7B model to
-   generate 1–3 focused web search queries derived from the user's request. The output
-   is strictly validated (non-empty JSON list, max three strings) with automatic
-   fallback to the original query when validation fails.
+   generate 1–3 focused web search queries derived from the user's request. llama.cpp
+   constrains decoding with a JSON schema, and the output is validated (non-empty JSON
+   list, max three strings) with automatic fallback to the original query when
+   validation fails.
 3. **Context collection:** `planner_fetch_search_context` executes a web search for each
    rephrased query and aggregates the results into a prompt-ready summary that the
    planner can cite when drafting an outline.
