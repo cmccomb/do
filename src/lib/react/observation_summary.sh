@@ -52,9 +52,13 @@ summarize_text_block() {
 	local text_payload head tail line_count byte_count
 	text_payload="$1"
 
+	# shellcheck disable=SC2016
 	head=$(run_without_pipefail bash -c 'printf "%s" "$1" | head -c "$2"' _ "${text_payload}" "${OBS_HEAD_TAIL_BYTES}")
+	# shellcheck disable=SC2016
 	tail=$(run_without_pipefail bash -c 'printf "%s" "$1" | tail -c "$2"' _ "${text_payload}" "${OBS_HEAD_TAIL_BYTES}")
+	# shellcheck disable=SC2016
 	line_count=$(run_without_pipefail bash -c 'printf "%s" "$1" | wc -l | tr -d " "' _ "${text_payload}")
+	# shellcheck disable=SC2016
 	byte_count=$(run_without_pipefail bash -c 'printf "%s" "$1" | wc -c | tr -d " "' _ "${text_payload}")
 
 	jq -ncS --arg head "${head}" --arg tail "${tail}" --argjson lines "${line_count}" --argjson bytes "${byte_count}" \
