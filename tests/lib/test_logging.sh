@@ -43,6 +43,20 @@ setup() {
 	[[ "${detail}" == "more-detail" ]]
 }
 
+@test "log handles large detail payloads without blowing argv" {
+	run bash -lc '
+                source ./src/lib/core/logging.sh
+
+                detail=$(perl -e "print '"'"'a'"'"' x 200000")
+                VERBOSITY=1 log INFO "large" "${detail}"
+        '
+
+	[ "$status" -eq 0 ]
+	detail_length=$(jq -r '.detail | length' <<<"${output}")
+
+	[[ "${detail_length}" -eq 200000 ]]
+}
+
 @test "log debug messages honor verbosity" {
 	run bash -lc '
                 source ./src/lib/core/logging.sh

@@ -56,17 +56,17 @@ log_emit() {
 		return 0
 	fi
 
-	payload=$(jq -n \
+	payload=$(printf '%s' "${detail}" | jq -n \
 		--arg time "${timestamp}" \
 		--arg level "${level}" \
 		--arg message "${message}" \
-		--arg detail "${detail}" \
+		--rawfile detail /dev/stdin \
 		'{
-			time: $time,
-			level: $level,
-			message: $message,
-			detail: $detail
-		}')
+                        time: $time,
+                        level: $level,
+                        message: $message,
+                        detail: $detail
+                }')
 
 	case "${format_style}" in
 	pretty)
