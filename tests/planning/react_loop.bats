@@ -405,7 +405,7 @@ SCRIPT
 }
 
 @test "react_loop clears plan entries after tool failure" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
@@ -425,12 +425,12 @@ plan_steps=$(jq length <<<"${PLAN_JSON:-[]}")
 printf 'history_len=%s plan_steps=%s' "${history_len}" "${plan_steps}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "history_len=0 plan_steps=0" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "history_len=0 plan_steps=0" ]
 }
 
 @test "react_loop replans after failed tool run and forwards transcript" {
-        run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 MAX_STEPS=4 LLAMA_AVAILABLE=true bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 MAX_STEPS=4 LLAMA_AVAILABLE=true bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 log() { :; }
@@ -483,8 +483,8 @@ fi
 printf 'final=%s outline=%s transcript_count=%s' "${final_answer}" "${outline_flat}" "${transcript_count}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == "final=done outline=1. retry\\n2. wrap transcript_count="* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == "final=done outline=1. retry\\n2. wrap transcript_count="* ]]
 }
 
 @test "react_loop stops after final_answer" {

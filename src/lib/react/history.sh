@@ -66,7 +66,7 @@ initialize_react_state() {
 		--argjson max_steps "${max_steps}" \
 		--argjson plan_length "${plan_length}" \
 		--argjson retry_buffer "${retry_buffer}" \
-                '{
+		'{
                         user_query: $user_query,
                         allowed_tools: $allowed_tools,
                         plan_entries: $plan_entries,
