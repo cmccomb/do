@@ -27,6 +27,8 @@ source "${REACT_LIB_DIR}/../prompt/build_react.sh"
 source "${REACT_LIB_DIR}/../llm/llama_client.sh"
 # shellcheck source=../exec/dispatch.sh disable=SC1091
 source "${REACT_LIB_DIR}/../exec/dispatch.sh"
+# shellcheck source=./observation_summary.sh disable=SC1091
+source "${REACT_LIB_DIR}/observation_summary.sh"
 # shellcheck source=../core/logging.sh disable=SC1091
 source "${REACT_LIB_DIR}/../core/logging.sh"
 # shellcheck source=../core/state.sh disable=SC1091
@@ -596,7 +598,7 @@ react_loop() {
 		if is_duplicate_action "${last_action}" "${tool}" "${normalized_args_json}"; then
 			log "WARN" "Duplicate action detected" "${tool}"
 			observation="Duplicate action detected. Please try a different approach or call final_answer if you are stuck."
-			record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${current_step}"
+			record_tool_execution "${state_prefix}" "${tool}" "${thought} (REPEATED)" "${normalized_args_json}" "${observation}" "${observation}" "${current_step}"
 			record_plan_skip_without_progress "${state_prefix}" "duplicate_action"
 			increment_retry_count "${state_prefix}"
 			continue
@@ -679,6 +681,9 @@ react_loop() {
 			observation="${final_answer_payload}"
 		fi
 
+		local observation_summary
+		observation_summary="$(select_observation_summary "${tool}" "${observation}" "$(pwd)")"
+
 		local failure_record failure_error
 		failure_error=$(printf '%s' "${observation}" | jq -r '.error // empty' 2>/dev/null || printf '')
 		if ((exit_code != 0)); then
@@ -710,7 +715,7 @@ react_loop() {
 			fi
 		fi
 
-		record_tool_execution "${state_prefix}" "${tool}" "${thought}" "${normalized_args_json}" "${observation}" "${current_step}"
+		record_tool_execution "${state_prefix}" "${tool}" "${thought}" "${normalized_args_json}" "${observation}" "${observation_summary}" "${current_step}"
 		if ((exit_code != 0)); then
 			local plan_entries_text
 			plan_entries_text="$(state_get "${state_prefix}" "plan_entries")"

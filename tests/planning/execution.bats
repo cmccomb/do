@@ -44,6 +44,8 @@ SCRIPT
 	payload=$(printf '%s' "${output}")
 	body=$(printf '%s' "${payload}" | jq -r '.output')
 	exit_code=$(printf '%s' "${payload}" | jq -r '.exit_code')
+	summary_exit=$(printf '%s' "${payload}" | jq -r '.summary | fromjson | .exit_code')
 	[ "${body}" = 'ran:do it:{"foo":1}' ]
 	[ "${exit_code}" -eq 0 ]
+	[ "${summary_exit}" -eq 0 ]
 }

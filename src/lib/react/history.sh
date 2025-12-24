@@ -103,13 +103,37 @@ state_get_history_lines() {
 	# Arguments:
 	#   $1 - state prefix (string)
 	# Returns:
-	#   Newline-delimited string of history entries.
+	#   Newline-delimited string of history entries where past steps include
+	#   observation summaries and the latest step favors raw output when available.
 	local state_prefix history_raw
 	state_prefix="$1"
 	history_raw="$(state_get "${state_prefix}" "history")"
 
 	if jq -e 'type == "array"' <<<"${history_raw}" >/dev/null 2>&1; then
-		jq -r '.[]' <<<"${history_raw}"
+		jq -cr '
+                        (. // []) as $entries
+                        | ($entries | length) as $len
+                        | $entries
+                        | to_entries
+                        | map(
+                                . as $entry
+                                | ($entry.value | try (fromjson // .) catch .) as $parsed
+                                | if ($parsed | type == "object") then
+                                        ($parsed + {
+                                                observation: (
+                                                        if $entry.key == ($len - 1) then
+                                                                ($parsed.observation_raw // $parsed.observation_summary // $parsed.observation // "")
+                                                        else
+                                                                ($parsed.observation_summary // $parsed.observation // $parsed.observation_raw // "")
+                                                        end
+                                                )
+                                        })
+                                else
+                                        $parsed
+                                end
+                        )
+                        | .[]
+                ' <<<"${history_raw}"
 		return 0
 	fi
 
@@ -123,20 +147,26 @@ record_tool_execution() {
 	#   $2 - tool name
 	#   $3 - thought text
 	#   $4 - args JSON
-	#   $5 - observation text
-	#   $6 - step index
+	#   $5 - observation raw payload
+	#   $6 - observation summary
+	#   $7 - step index
 	local state_name
-	local tool thought args_json observation step_index entry
+	local tool thought args_json observation_raw observation_summary step_index entry
 	state_name="$1"
 	tool="$2"
 	thought="$3"
 	args_json="$4"
-	observation="$5"
-	step_index="$6"
+	observation_raw="$5"
+	observation_summary="$6"
+	step_index="$7"
 	if [[ -z "${args_json}" ]]; then
 		args_json="{}"
 	fi
 	args_json="$(jq -cS '.' <<<"${args_json}" 2>/dev/null || printf '{}')"
+
+	if [[ -z "${observation_summary}" ]]; then
+		observation_summary="${observation_raw}"
+	fi
 
 	if ! require_python3_available "ReAct history serialization"; then
 		log "ERROR" "Failed to record tool execution; python3 missing" "${tool}" >&2
@@ -144,7 +174,7 @@ record_tool_execution() {
 	fi
 
 	entry=$(
-		python3 - "$step_index" "$thought" "$tool" "$args_json" "$observation" <<'PY'
+		python3 - "$step_index" "$thought" "$tool" "$args_json" "$observation_raw" "$observation_summary" <<'PY'
 import json
 import sys
 
@@ -152,7 +182,8 @@ step = int(sys.argv[1])
 thought = sys.argv[2]
 tool = sys.argv[3]
 args_raw = sys.argv[4]
-observation = sys.argv[5]
+observation_raw = sys.argv[5]
+observation_summary = sys.argv[6]
 
 try:
     args = json.loads(args_raw)
@@ -160,15 +191,22 @@ except Exception:  # noqa: BLE001
     args = {}
 
 try:
-    obs_payload = json.loads(observation)
+    obs_raw_payload = json.loads(observation_raw)
 except Exception:  # noqa: BLE001
-    obs_payload = observation
+    obs_raw_payload = observation_raw
+
+try:
+    obs_summary_payload = json.loads(observation_summary)
+except Exception:  # noqa: BLE001
+    obs_summary_payload = observation_summary
 
 print(json.dumps({
     "step": step,
     "thought": thought,
     "action": {"tool": tool, "args": args},
-    "observation": obs_payload,
+    "observation_raw": obs_raw_payload,
+    "observation_summary": obs_summary_payload,
+    "observation": obs_summary_payload,
 }, separators=(",", ":")))
 PY
 	)
