@@ -52,10 +52,26 @@ EOF
 }
 
 @test "format_tool_history collects multi-line observations case-insensitively" {
-	run bash -lc '
+        run bash -lc '
                 set -e
                 cd "$(git rev-parse --show-toplevel)" || exit 1
                 source ./src/lib/formatting.sh
+
+                if ! command -v mapfile >/dev/null 2>&1; then
+                        mapfile() {
+                                if [[ "$1" == "-t" ]]; then
+                                        shift
+                                fi
+
+                                local array_name="$1"
+                                shift
+
+                                local line
+                                while IFS= read -r line; do
+                                        eval "${array_name}+=(\"${line}\")"
+                                done
+                        }
+                fi
 
                 tool_history=$(printf "Step 1 action search query=weather\nobservation: first line\n  second line\ntrailing text\nStep 2 action finalize\nObservation: done")
                 output=$(format_tool_history "${tool_history}")
