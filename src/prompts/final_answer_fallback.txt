@@ -36,7 +36,7 @@ Current weekday: ${current_weekday}
 Relevant context and agent trace:
 ---------------- AGENT TRACE BEGINS ----------------
 ${context}
----------------- AGENT TRACE ENDS ----------------
+----------------  AGENT TRACE ENDS  ----------------
 
 # User Request
 ${user_query}
@@ -45,3 +45,5 @@ ${user_query}
 Respond with a single string that follows the schema above.
 Base the answer entirely on the provided context and agent trace.
 If information is missing, name the gap before giving your best final answer.
+
+Final Answer to User Request:
