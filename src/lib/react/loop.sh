@@ -27,6 +27,8 @@ source "${REACT_LIB_DIR}/../prompt/build_react.sh"
 source "${REACT_LIB_DIR}/../llm/llama_client.sh"
 # shellcheck source=../exec/dispatch.sh disable=SC1091
 source "${REACT_LIB_DIR}/../exec/dispatch.sh"
+# shellcheck source=./observation_summary.sh disable=SC1091
+source "${REACT_LIB_DIR}/observation_summary.sh"
 # shellcheck source=../core/logging.sh disable=SC1091
 source "${REACT_LIB_DIR}/../core/logging.sh"
 # shellcheck source=../core/state.sh disable=SC1091
@@ -679,8 +681,8 @@ react_loop() {
 			observation="${final_answer_payload}"
 		fi
 
-		local observation_summary
-		observation_summary="$(render_observation_text "${tool}" "${observation}")"
+                local observation_summary
+                observation_summary="$(select_observation_summary "${tool}" "${observation}" "$(pwd)")"
 
 		local failure_record failure_error
 		failure_error=$(printf '%s' "${observation}" | jq -r '.error // empty' 2>/dev/null || printf '')
