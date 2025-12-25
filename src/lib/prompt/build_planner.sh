@@ -62,12 +62,14 @@ build_planner_prompt_dynamic_suffix() {
 	#   $1 - user query (string)
 	#   $2 - formatted tool descriptions (string)
 	#   $3 - pre-computed search context (string)
+	#   $4 - execution transcript with stderr/stdout and exit codes (string)
 	# Returns:
 	#   The dynamic suffix for the planner prompt (string).
-	local user_query tool_lines search_context planner_examples planner_schema current_date current_time current_weekday rendered prefix
+	local user_query tool_lines search_context execution_transcript planner_examples planner_schema current_date current_time current_weekday rendered prefix
 	user_query="$1"
 	tool_lines="$2"
 	search_context="$3"
+	execution_transcript="${4:-Execution transcript unavailable.}"
 	planner_examples="$(load_planner_examples)"
 	planner_schema="$(load_schema_text planner_plan)"
 	current_date="$(current_date_local)"
@@ -78,6 +80,7 @@ build_planner_prompt_dynamic_suffix() {
 		user_query "${user_query}" \
 		tool_lines "${tool_lines}" \
 		search_context "${search_context}" \
+		execution_transcript "${execution_transcript}" \
 		planner_examples "${planner_examples}" \
 		planner_schema "${planner_schema}" \
 		current_date "${current_date}" \
@@ -93,11 +96,12 @@ build_planner_prompt() {
 	#   $1 - user query (string)
 	#   $2 - formatted tool descriptions (string)
 	#   $3 - pre-computed search context (string)
+	#   $4 - execution transcript (string, optional)
 	# Returns:
 	#   The full prompt text (string).
 	local prefix suffix
 	prefix="$(build_planner_prompt_static_prefix)" || return 1
-	suffix="$(build_planner_prompt_dynamic_suffix "$1" "$2" "$3")" || return 1
+	suffix="$(build_planner_prompt_dynamic_suffix "$1" "$2" "$3" "${4:-Execution transcript unavailable.}")" || return 1
 	printf '%s%s' "${prefix}" "${suffix}"
 }
 

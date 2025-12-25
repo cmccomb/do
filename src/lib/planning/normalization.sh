@@ -101,21 +101,32 @@ normalize_planner_plan() {
                                         $args
                                 end;
 
-                        def valid_step:
-                                (.tool | type == "string")
-                                and (.tool | length) > 0
-                                and ((.args | type == "object") or (.args == null))
-                                and (.thought | type == "string")
-                                and (.thought | length) > 0;
+                        def normalized_step($step):
+                                $step as $s
+                                | $s.tool as $tool
+                                | $s.thought as $thought
+                                | with_canonical_args($s.args // $s.required_args // {}) as $args
+                                | {
+                                        tool: $tool,
+                                        thought: $thought,
+                                        args: (if ($args | type) == "object" then $args else {} end)
+                                };
+
+                        def valid_step($step):
+                                ($step.tool | type == "string")
+                                and ($step.tool | length) > 0
+                                and (($step.args | type == "object") or ($step.args == null))
+                                and ($step.thought | type == "string")
+                                and ($step.thought | length) > 0;
 
                         if type != "array" then
                                 error("plan must be an array")
                         elif length == 0 then
                                 error("plan must contain at least one step")
-                        elif any(.[]; (type != "object") or (valid_step | not)) then
+                        elif any(.[]; (type != "object") or (valid_step(.) | not)) then
                                 error("plan contains invalid steps")
                         else
-                                map({tool: .tool, args: with_canonical_args(.args), thought: .thought})
+                                map(normalized_step(.))
                         end
                         ' <<<"${plan_candidate}" 2>/dev/null || true)
 		if [[ -n "${normalized}" && "${normalized}" != "[]" ]]; then

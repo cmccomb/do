@@ -122,6 +122,66 @@ SCRIPT
 	[ "$output" = "plan_index=0 skip_reason=action_selection_failed" ]
 }
 
+@test "_select_action_from_llama injects required args and allows optional overrides" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=true
+USE_REACT_LLAMA=true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf '%s' "$1"; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+build_react_action_schema() { local tmp; tmp=$(mktemp); printf '{"type":"object"}' >"${tmp}"; printf '%s' "${tmp}"; }
+validate_react_action() { printf '%s' "$1"; }
+llama_infer() { printf '{"thought":"model","tool":"terminal","args":{"command":"pwd","args":["-a"]}}'; }
+state_prefix=react_state
+plan_step=$(jq -nc '{tool:"terminal",thought:"planned",required_args:{command:"ls"},optional_args:{args:["-l"]}}')
+initialize_react_state "${state_prefix}" "demo" "terminal" "${plan_step}" "outline"
+_select_action_from_llama "${state_prefix}" action_json
+printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-a" ]
+}
+
+@test "_select_action_from_llama fills optional args when model omits them" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=true
+USE_REACT_LLAMA=true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf '%s' "$1"; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+build_react_action_schema() { local tmp; tmp=$(mktemp); printf '{"type":"object"}' >"${tmp}"; printf '%s' "${tmp}"; }
+validate_react_action() { printf '%s' "$1"; }
+llama_infer() { printf '{"thought":"model","tool":"terminal","args":{}}'; }
+state_prefix=react_state
+plan_step=$(jq -nc '{tool:"terminal",thought:"planned",required_args:{command:"ls"},optional_args:{args:["-l"]}}')
+initialize_react_state "${state_prefix}" "demo" "terminal" "${plan_step}" "outline"
+_select_action_from_llama "${state_prefix}" action_json
+printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-l" ]
+}
+
 @test "react_loop records plan skip reason without advancing index when execution is bypassed" {
 	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
@@ -145,6 +205,37 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	[ "$output" = "plan_index=0 pending=0 skip_reason=tool_not_permitted" ]
+}
+
+@test "react_loop logs gating metadata when actions are blocked" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+MAX_STEPS=1
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+gate_logs=()
+log() {
+        if [[ "$2" == "Action gate evaluation" ]]; then
+                gate_logs+=("$3")
+        fi
+}
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback_response'; }
+select_next_action() { printf -v "$2" '{"thought":"planned","tool":"alpha","args":{}}'; }
+validate_tool_permission() { return 1; }
+execute_tool_action() { printf '{"output":"ok","exit_code":0}'; }
+react_loop "question" "alpha" '{"tool":"alpha"}' ""
+printf '%s\n' "${gate_logs[@]}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	gate_log=$(printf '%s' "$output" | head -n1)
+	[[ "$(jq -r '.reason' <<<"${gate_log}")" == "tool_not_permitted" ]]
+	[[ "$(jq -r '.allowed' <<<"${gate_log}")" == "false" ]]
+	[[ "$(jq -r '.flags.tool_permitted' <<<"${gate_log}")" == "false" ]]
+	[[ "$(jq -r '.plan_index' <<<"${gate_log}")" == "0" ]]
 }
 
 @test "react_loop keeps plan index when a planned tool fails" {
@@ -237,6 +328,54 @@ SCRIPT
 	[ "$output" = "first_thought=first second_thought=second (REPEATED)" ]
 }
 
+@test "react_loop retries duplicate selections with revised llama action" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+MAX_STEPS=3
+USE_REACT_LLAMA=true
+LLAMA_AVAILABLE=true
+LLAMA_BIN=/bin/true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+respond_text() { printf 'done'; }
+format_tool_history() { printf '%s' "$1"; }
+validate_tool_permission() { return 0; }
+execute_tool_action() { printf '{"output":"ok","exit_code":0}'; }
+selection_counter=0
+select_next_action() {
+        selection_counter=$((selection_counter + 1))
+        if (( selection_counter == 1 )); then
+                printf -v "$2" '{"thought":"seed","tool":"alpha","args":{}}'
+        else
+                printf -v "$2" '{"thought":"repeat","tool":"alpha","args":{}}'
+        fi
+}
+rejection_hint_seen=""
+llama_calls=0
+_select_action_from_llama() {
+        local state_name output_name
+        state_name="$1"
+        output_name="$2"
+        llama_calls=$((llama_calls + 1))
+        rejection_hint_seen="$(state_get "${state_name}" "action_rejection_hint")"
+        printf -v "${output_name}" '{"thought":"revised","tool":"beta","args":{}}'
+}
+react_loop "question" "alpha" "" ""
+history_lines="$(state_get_history_lines react_state)"
+printf 'entries=%s skip_reason=%s hint=%s llama_calls=%s final_tool=%s' \
+        "$(printf '%s\n' "${history_lines}" | wc -l | tr -d ' ')" \
+        "$(state_get react_state plan_skip_reason)" \
+        "${rejection_hint_seen}" \
+        "${llama_calls}" \
+        "$(printf '%s\n' "${history_lines}" | tail -n1 | jq -r '.action.tool')"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == "entries=3 skip_reason= hint=Proposed action duplicated the last successful step (tool=alpha). Suggest a different tool or updated arguments. llama_calls=1 final_tool=beta" ]]
+}
+
 @test "state_get_history_lines prefers summaries except for the latest raw observation" {
 	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
@@ -291,6 +430,39 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	[ "$output" = "plan_index=0 skip_reason=plan_tool_mismatch" ]
+}
+
+@test "react_loop logs gating metadata when planned actions proceed" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+MAX_STEPS=1
+LLAMA_AVAILABLE=false
+source ./src/lib/react/react.sh
+gate_logs=()
+log() {
+        if [[ "$2" == "Action gate evaluation" ]]; then
+                gate_logs+=("$3")
+        fi
+}
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback_response'; }
+select_next_action() { printf -v "$2" '{"thought":"planned","tool":"alpha","args":{}}'; }
+validate_tool_permission() { return 0; }
+execute_tool_action() { printf '{"output":"ok","exit_code":0}'; }
+plan_entry=$(jq -nc '{tool:"alpha",thought:"planned",args:{}}')
+react_loop "question" "alpha" "${plan_entry}" ""
+printf '%s\n' "${gate_logs[@]}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	gate_log=$(printf '%s' "$output" | head -n1)
+	[[ "$(jq -r '.reason' <<<"${gate_log}")" == "validated" ]]
+	[[ "$(jq -r '.allowed' <<<"${gate_log}")" == "true" ]]
+	[[ "$(jq -r '.plan_index' <<<"${gate_log}")" == "0" ]]
+	[[ "$(jq -r '.flags.plan_step_matches_action' <<<"${gate_log}")" == "true" ]]
+	[[ "$(jq -r '.flags.duplicate_detected' <<<"${gate_log}")" == "false" ]]
 }
 
 @test "react_loop identifies duplicates with reordered args" {
@@ -429,6 +601,273 @@ SCRIPT
 	[ "$output" = "history_len=0 plan_steps=0" ]
 }
 
+@test "react_loop replans after failed tool run and forwards transcript" {
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 MAX_STEPS=4 LLAMA_AVAILABLE=true bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback'; }
+validate_tool_permission() { return 0; }
+select_observation_summary() { printf '%s' "$2"; }
+
+transcript_sink=$(mktemp)
+generate_planner_response() {
+        printf '%s' "$2" >"${transcript_sink}"
+        printf '%s' '[{"tool":"alpha","thought":"retry","args":{"input":"retry"}},{"tool":"final_answer","thought":"wrap","args":{"input":"done"}}]'
+}
+plan_json_to_entries() {
+        printf '%s\n' '{"tool":"alpha","thought":"retry","args":{"input":"retry"}}' '{"tool":"final_answer","thought":"wrap","args":{"input":"done"}}'
+}
+plan_json_to_outline() { printf '1. retry\n2. wrap'; }
+derive_allowed_tools_from_plan() { printf '%s\n' 'alpha' 'final_answer'; }
+
+call_count=0
+execute_tool_action() {
+        call_count=$((call_count + 1))
+        if [[ ${call_count} -eq 1 ]]; then
+                printf '{"output":"oops","error":"boom","exit_code":9}'
+                return 9
+        fi
+        if [[ "$1" == "final_answer" ]]; then
+                printf '{"output":"done","exit_code":0}'
+                return 0
+        fi
+        printf '{"output":"ok","exit_code":0}'
+}
+
+plan_entry=$(jq -nc '{tool:"alpha",thought:"start",args:{input:"start"}}')
+react_loop "question" $'alpha\nfinal_answer' "${plan_entry}" "initial outline"
+
+final_answer=$(state_get react_state final_answer)
+outline_raw=$(state_get react_state plan_outline)
+outline_flat=${outline_raw//$'\n'/\\n}
+transcript=$(cat "${transcript_sink}")
+rm -f "${transcript_sink}"
+
+transcript_count=$(grep -c exit_code <<<"${transcript}" || true)
+if [[ ${transcript_count:-0} -lt 1 ]]; then
+        echo "transcript missing exit codes"
+        exit 1
+fi
+
+printf 'final=%s outline=%s transcript_count=%s' "${final_answer}" "${outline_flat}" "${transcript_count}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == "final=done outline=1. retry\\n2. wrap transcript_count="* ]]
+}
+
+@test "_select_action_from_llama uses executor mode for planned steps" {
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log() { :; }
+log_pretty() { :; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+format_tool_history() { printf '%s' "$1"; }
+
+state_prefix="react_state"
+plan_entry=$(jq -nc '{tool:"alpha",thought:"plan",required_args:{input:"do"},optional_args:{mode:"fast"}}')
+initialize_react_state "${state_prefix}" "question" "" "${plan_entry}" ""
+
+llama_infer() {
+printf '%s' "$4" >schema_capture.json
+printf '{"thought":"brief","args":{"mode":"refined","input":"do"}}'
+}
+
+build_react_action_schema() {
+echo "should not be called" 1>&2
+exit 99
+}
+
+_select_action_from_llama "${state_prefix}" action_out
+
+schema_title=$(jq -r '.title' schema_capture.json)
+args_required=$(jq -c '.properties.args.required' schema_capture.json)
+
+printf 'action=%s\nschema_title=%s\nrequired=%s' "${action_out}" "${schema_title}" "${args_required}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"tool":"alpha"'* ]]
+	[[ "$output" == *'"input":"do"'* ]]
+	[[ "$output" == *'"mode":"refined"'* ]]
+	[[ "$output" == *'schema_title=ReactExecutorArgs'* ]]
+}
+
+@test "_select_action_from_llama builds default tool set without plan" {
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log() { :; }
+log_pretty() { :; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf -- '- %s' "$1"; }
+format_tool_history() { printf '%s' "$1"; }
+
+state_prefix="react_state"
+initialize_react_state "${state_prefix}" "question" $'alpha\nbeta' "" ""
+
+llama_infer() {
+printf '%s' "$4" >schema_capture.json
+printf '{"thought":"ok","tool":"alpha","args":{}}'
+}
+
+build_react_action_schema() {
+printf '%s' "$1" >allowed_capture.txt
+jq -nc --arg tools "$1" '{oneOf: ($tools|split("\n")|map(select(length>0))|map({properties:{tool:{const:.},args:{}}}))}' >/tmp/schema.json
+printf '/tmp/schema.json'
+}
+
+validate_react_action() { printf '%s' "$1"; }
+
+_select_action_from_llama "${state_prefix}" action_out
+
+allowed_list=$(cat allowed_capture.txt | paste -sd',' -)
+schema_tools=$(jq -rc '.oneOf[].properties.tool.const' schema_capture.json | paste -sd',' -)
+
+printf 'allowed=%s\nschema=%s' "${allowed_list}" "${schema_tools}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == $'allowed=alpha,beta,final_answer,replan_token\n'* ]]
+	[[ "$output" == *"schema=alpha,beta,final_answer,replan_token" ]]
+}
+
+@test "react_loop blocks off-plan tool selection and triggers replan" {
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true MAX_STEPS=1 bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback'; }
+select_observation_summary() { printf '%s' "$2"; }
+
+replan_flag=$(mktemp)
+maybe_trigger_replan() { echo "replan" >"${replan_flag}"; }
+
+validate_tool_permission() { return 1; }
+execute_tool_action() { echo "should not execute" 1>&2; return 99; }
+record_tool_execution() { :; }
+
+_select_action_from_llama() {
+printf -v "$2" '{"thought":"off-plan","tool":"beta","args":{}}'
+return 0
+}
+
+plan_entry=$(jq -nc '{tool:"alpha",thought:"start",args:{input:"start"}}')
+react_loop "question" $'alpha\nfinal_answer' "${plan_entry}" "outline"
+
+if [[ -f "${replan_flag}" ]]; then
+printf 'replan_called=true'
+fi
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"replan_called=true"* ]]
+}
+
+@test "maybe_trigger_replan logs skip metadata when below threshold" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log_messages=()
+log() { log_messages+=("$1:$2:$3"); }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+
+state_prefix="react_state"
+state_set "${state_prefix}" "failure_count" "1"
+
+maybe_trigger_replan "${state_prefix}" 1 false
+
+joined=$(printf '%s\n' "${log_messages[@]}" | tr '\n' '|')
+printf 'logs=%s' "${joined}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"reason":"conditions_not_met"'* ]]
+	[[ "$output" == *'"plan_diverged":false'* ]]
+}
+
+@test "maybe_trigger_replan logs applied plan metadata" {
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log_messages=()
+log() { log_messages+=("$1:$2:$3"); }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+
+build_execution_transcript() { printf 'summary'; }
+generate_planner_response() { printf '[{"tool":"alpha","thought":"redo","args":{"input":"retry"}}]'; }
+plan_json_to_entries() { printf '{"tool":"alpha","args":{"input":"retry"}}\n'; }
+plan_json_to_outline() { printf '1. redo'; }
+derive_allowed_tools_from_plan() { printf 'alpha'; }
+
+state_prefix="react_state"
+state_set "${state_prefix}" "failure_count" "1"
+state_set "${state_prefix}" "retry_buffer" "1"
+
+maybe_trigger_replan "${state_prefix}" 2 false
+
+joined=$(printf '%s\n' "${log_messages[@]}" | tr '\n' '|')
+printf 'logs=%s' "${joined}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"plan_length":1'* ]]
+	[[ "$output" == *'"action":"state_updated"'* ]]
+	[[ "$output" == *'"last_replan_attempt":2'* ]]
+}
+
+@test "maybe_trigger_replan logs apply failure metadata" {
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log_messages=()
+log() { log_messages+=("$1:$2:$3"); }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+
+build_execution_transcript() { printf 'summary'; }
+generate_planner_response() { printf '[]'; }
+plan_json_to_entries() { printf '[]'; }
+plan_json_to_outline() { printf 'outline'; }
+derive_allowed_tools_from_plan() { printf 'alpha'; }
+apply_replan_result() { return 1; }
+
+state_prefix="react_state"
+state_set "${state_prefix}" "failure_count" "1"
+
+maybe_trigger_replan "${state_prefix}" 3 false || true
+
+joined=$(printf '%s\n' "${log_messages[@]}" | tr '\n' '|')
+printf 'logs=%s' "${joined}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"reason":"apply_failed"'* ]]
+	[[ "$output" == *'"attempt":3'* ]]
+}
+
 @test "react_loop stops after final_answer" {
 	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
@@ -452,7 +891,7 @@ SCRIPT
 	[ "$output" = "final=complete step=1" ]
 }
 
-@test "react_loop derives attempt budget from plan length" {
+@test "react_loop derives attempt budget after initial retry" {
 	run env -i HOME="$HOME" PATH="$PATH" REACT_RETRY_BUFFER=1 bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 LLAMA_AVAILABLE=false
@@ -486,7 +925,7 @@ SCRIPT
 	[ "$output" = "max_steps=2 attempts=2 step=1 retry_count=1 final=done" ]
 }
 
-@test "react_loop retries planned step without consuming step counter" {
+@test "react_loop retries planned step without consuming step counter after failure" {
 	run env -i HOME="$HOME" PATH="$PATH" REACT_RETRY_BUFFER=2 bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 LLAMA_AVAILABLE=false

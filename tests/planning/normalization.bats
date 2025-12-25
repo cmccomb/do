@@ -47,6 +47,33 @@ SCRIPT
 	[ "${lines[1]}" = "false" ]
 }
 
+@test "normalize_planner_plan preserves required and optional args" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/planning/normalization.sh
+raw_plan='[{"tool":"terminal","required_args":{"command":"ls"},"optional_args":{"args":["-la"]},"thought":"list"}]'
+normalize_planner_plan <<<"${raw_plan}" | jq -r '.[0].required_args.command,.[0].optional_args.args[0],.[0].args.command'
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-la" ]
+	[ "${lines[2]}" = "ls" ]
+}
+
+@test "normalize_planner_plan maps legacy args to required_args" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/planning/normalization.sh
+raw_plan='[{"tool":"terminal","args":{"command":"pwd"},"thought":"check"}]'
+normalize_planner_plan <<<"${raw_plan}" | jq -r '.[0].required_args.command,.[0].optional_args|tostring'
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "pwd" ]
+	[ "${lines[1]}" = "{}" ]
+}
+
 @test "normalize_planner_response normalizes code alias inside plan" {
 	run bash <<'SCRIPT'
 set -euo pipefail
