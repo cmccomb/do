@@ -328,52 +328,57 @@ _select_action_from_llama() {
 }
 
 select_next_action() {
-	# Chooses the next action either from the plan or LLM.
-	# Arguments:
-	#   $1 - state prefix
-	#   $2 - (optional) name of variable to receive JSON action output
-	local state_name output_name react_fallback_action react_action_json plan_index planned_entry planned_thought planned_args_json
-	state_name="$1"
-	output_name="${2:-}"
+        # Chooses the next action either from the plan or LLM.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - (optional) name of variable to receive JSON action output
+        local state_name output_name react_fallback_action react_action_json plan_index planned_entry planned_thought planned_args_json
+        state_name="$1"
+        output_name="${2:-}"
 
-	plan_index="$(state_get "${state_name}" "plan_index")"
-	plan_index=${plan_index:-0}
-	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
+        planned_args_json="{}"
 
-	if [[ -n "${planned_entry}" ]]; then
-		local pending_index_json pending_index_current preserved_reason
-		pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
-		pending_index_current="$(state_get "${state_name}" "pending_plan_step")"
-		preserved_reason=""
-		if [[ -n "${pending_index_current}" && "${pending_index_current}" -eq "${plan_index}" ]]; then
-			preserved_reason="$(state_get "${state_name}" "plan_skip_reason")"
-		fi
-		state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c --argjson pending_plan_step "${pending_index_json}" --arg preserved_reason "${preserved_reason}" '.pending_plan_step = $pending_plan_step | .plan_skip_reason = $preserved_reason')"
-	else
-		state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c '.pending_plan_step = null | .plan_skip_reason = ""')"
-	fi
+        plan_index="$(state_get "${state_name}" "plan_index")"
+        plan_index=${plan_index:-0}
+        planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-	if [[ -n "${planned_entry}" ]]; then
-		react_fallback_action=$(jq -nc --arg thought "$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')" --arg tool "$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')" --argjson args "${planned_args_json}" '{thought:$thought,tool:$tool,args:$args}')
-	else
-		react_fallback_action=""
-	fi
+        if [[ -n "${planned_entry}" ]]; then
+                if ! planned_args_json="$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null)"; then
+                        planned_args_json="{}"
+                fi
+                local pending_index_json pending_index_current preserved_reason
+                pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
+                pending_index_current="$(state_get "${state_name}" "pending_plan_step")"
+                preserved_reason=""
+                if [[ -n "${pending_index_current}" && "${pending_index_current}" -eq "${plan_index}" ]]; then
+                        preserved_reason="$(state_get "${state_name}" "plan_skip_reason")"
+                fi
+                state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c --argjson pending_plan_step "${pending_index_json}" --arg preserved_reason "${preserved_reason}" '.pending_plan_step = $pending_plan_step | .plan_skip_reason = $preserved_reason')"
+        else
+                state_set_json_document "${state_name}" "$(state_get_json_document "${state_name}" | jq -c '.pending_plan_step = null | .plan_skip_reason = ""')"
+        fi
 
-	if ! _select_action_from_llama "${state_name}" react_action_json; then
-		if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
-			return 1
-		fi
-		if [[ -z "${react_fallback_action}" ]]; then
-			return 1
-		fi
-		react_action_json="${react_fallback_action}"
-	fi
+        if [[ -n "${planned_entry}" ]]; then
+                react_fallback_action=$(jq -nc --arg thought "$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')" --arg tool "$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')" --argjson args "${planned_args_json}" '{thought:$thought,tool:$tool,args:$args}')
+        else
+                react_fallback_action=""
+        fi
 
-	if [[ -n "${output_name}" ]]; then
-		printf -v "${output_name}" '%s' "${react_action_json}"
-	else
-		printf '%s' "${react_action_json}"
-	fi
+        if ! _select_action_from_llama "${state_name}" react_action_json; then
+                if [[ "${USE_REACT_LLAMA:-false}" == true && "${LLAMA_AVAILABLE}" == true ]]; then
+                        return 1
+                fi
+                if [[ -z "${react_fallback_action}" ]]; then
+                        return 1
+                fi
+                react_action_json="${react_fallback_action}"
+        fi
+
+        if [[ -n "${output_name}" ]]; then
+                printf -v "${output_name}" '%s' "${react_action_json}"
+        else
+                printf '%s' "${react_action_json}"
+        fi
 }
 
 record_plan_skip_reason() {
