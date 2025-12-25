@@ -234,7 +234,7 @@ SCRIPT
 }
 
 @test "react_loop records duplicate actions with warning observation" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=2
 LLAMA_AVAILABLE=false
@@ -264,12 +264,12 @@ printf 'first_thought=%s second_thought=%s' \
         "$(printf '%s' "${second_entry}" | jq -r '.thought')"
 SCRIPT
 
-[ "$status" -eq 0 ]
-[ "$output" = "first_thought=first second_thought=second (REPEATED)" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "first_thought=first second_thought=second (REPEATED)" ]
 }
 
 @test "react_loop retries duplicate selections with revised llama action" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=3
 USE_REACT_LLAMA=true
@@ -312,8 +312,8 @@ printf 'entries=%s skip_reason=%s hint=%s llama_calls=%s final_tool=%s' \
         "$(printf '%s\n' "${history_lines}" | tail -n1 | jq -r '.action.tool')"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == "entries=3 skip_reason= hint=Proposed action duplicated the last successful step (tool=alpha). Suggest a different tool or updated arguments. llama_calls=1 final_tool=beta" ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == "entries=3 skip_reason= hint=Proposed action duplicated the last successful step (tool=alpha). Suggest a different tool or updated arguments. llama_calls=1 final_tool=beta" ]]
 }
 
 @test "state_get_history_lines prefers summaries except for the latest raw observation" {
