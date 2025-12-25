@@ -596,27 +596,30 @@ build_execution_transcript() {
 }
 
 apply_replan_result() {
-	# Applies a planner response to the current ReAct state.
-	# Arguments:
-	#   $1 - state prefix
-	#   $2 - planner response JSON
-	#   $3 - current attempt index (int)
-	local state_prefix plan_response current_attempt plan_entries plan_outline allowed_tools plan_length retry_buffer current_max new_max document
-	state_prefix="$1"
-	plan_response="$2"
-	current_attempt="$3"
+        # Applies a planner response to the current ReAct state.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - planner response JSON
+        #   $3 - current attempt index (int)
+        local state_prefix plan_response current_attempt plan_entries plan_outline allowed_tools plan_length retry_buffer current_max new_max document
+        state_prefix="$1"
+        plan_response="$2"
+        current_attempt="$3"
 
-	if ! plan_entries="$(plan_json_to_entries "${plan_response}")"; then
-		return 1
-	fi
+        if ! plan_entries="$(plan_json_to_entries "${plan_response}")"; then
+                log "WARN" "Planner response missing entries" "$(jq -nc --argjson attempt "${current_attempt}" '{attempt:$attempt,reason:"plan_entries_unavailable"}')"
+                return 1
+        fi
 
-	if ! plan_outline="$(plan_json_to_outline "${plan_response}")"; then
-		return 1
-	fi
+        if ! plan_outline="$(plan_json_to_outline "${plan_response}")"; then
+                log "WARN" "Planner response missing outline" "$(jq -nc --argjson attempt "${current_attempt}" '{attempt:$attempt,reason:"plan_outline_unavailable"}')"
+                return 1
+        fi
 
-	if ! allowed_tools="$(derive_allowed_tools_from_plan "${plan_response}")"; then
-		return 1
-	fi
+        if ! allowed_tools="$(derive_allowed_tools_from_plan "${plan_response}")"; then
+                log "WARN" "Planner response missing allowed tools" "$(jq -nc --argjson attempt "${current_attempt}" '{attempt:$attempt,reason:"allowed_tools_unavailable"}')"
+                return 1
+        fi
 
 	plan_length=$(printf '%s\n' "${plan_entries}" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')
 	if ! [[ "${plan_length}" =~ ^[0-9]+$ ]]; then
@@ -640,13 +643,24 @@ apply_replan_result() {
 	new_max=${current_max}
 	local recomputed_max
 	recomputed_max=$((current_attempt + plan_length + retry_buffer))
-	if ((recomputed_max > new_max)); then
-		new_max=${recomputed_max}
-	fi
+        if ((recomputed_max > new_max)); then
+                new_max=${recomputed_max}
+        fi
 
-	if ! document="$(
-		state_get_json_document "${state_prefix}" |
-			jq -c \
+        local application_metadata
+        application_metadata="$(jq -nc \
+                --argjson attempt "${current_attempt}" \
+                --argjson plan_length "${plan_length}" \
+                --argjson retry_buffer "${retry_buffer}" \
+                --argjson current_max "${current_max}" \
+                --argjson new_max "${new_max}" \
+                --arg allowed_tools "${allowed_tools}" \
+                '{attempt:$attempt,plan_length:$plan_length,retry_buffer:$retry_buffer,current_max:$current_max,new_max:$new_max,allowed_tools:($allowed_tools|split("\n")|map(select(length>0)))}')"
+        log "INFO" "Applying replanned result" "${application_metadata}"
+
+        if ! document="$(
+                state_get_json_document "${state_prefix}" |
+                        jq -c \
 				--arg plan_entries "${plan_entries}" \
 				--arg plan_outline "${plan_outline}" \
 				--arg allowed_tools "${allowed_tools}" \
@@ -662,28 +676,30 @@ apply_replan_result() {
                                 | .plan_skip_reason = ""
                                 | .max_steps = $max_steps
                                 | .last_replan_attempt = $last_replan_attempt'
-	)"; then
-		return 1
-	fi
+        )"; then
+                return 1
+        fi
 
 	state_set_json_document "${state_prefix}" "${document}"
-	state_set "${state_prefix}" "plan_length" "${plan_length}"
-	state_set "${state_prefix}" "max_steps" "${new_max}"
-	state_set "${state_prefix}" "plan_entries" "${plan_entries}"
-	state_set "${state_prefix}" "plan_outline" "${plan_outline}"
-	state_set "${state_prefix}" "allowed_tools" "${allowed_tools}"
+        state_set "${state_prefix}" "plan_length" "${plan_length}"
+        state_set "${state_prefix}" "max_steps" "${new_max}"
+        state_set "${state_prefix}" "plan_entries" "${plan_entries}"
+        state_set "${state_prefix}" "plan_outline" "${plan_outline}"
+        state_set "${state_prefix}" "allowed_tools" "${allowed_tools}"
+
+        log "INFO" "Replan applied to state" "$(jq -nc --argjson attempt "${current_attempt}" --argjson plan_length "${plan_length}" --argjson max_steps "${new_max}" '{attempt:$attempt,plan_length:$plan_length,max_steps:$max_steps,action:"state_updated"}')"
 }
 
 maybe_trigger_replan() {
-	# Re-runs the planner when failure or plan divergence thresholds are met.
-	# Arguments:
-	#   $1 - state prefix
-	#   $2 - current attempt index (int)
-	#   $3 - whether the plan diverged from execution (string: true/false)
-	local state_prefix current_attempt plan_diverged failure_count threshold last_replan_attempt should_replan divergence_recorded
-	state_prefix="$1"
-	current_attempt="$2"
-	plan_diverged="$3"
+        # Re-runs the planner when failure or plan divergence thresholds are met.
+        # Arguments:
+        #   $1 - state prefix
+        #   $2 - current attempt index (int)
+        #   $3 - whether the plan diverged from execution (string: true/false)
+        local state_prefix current_attempt plan_diverged failure_count threshold last_replan_attempt should_replan divergence_recorded
+        state_prefix="$1"
+        current_attempt="$2"
+        plan_diverged="$3"
 
 	failure_count="$(state_get "${state_prefix}" "failure_count")"
 	if ! [[ "${failure_count}" =~ ^[0-9]+$ ]]; then
@@ -696,73 +712,96 @@ maybe_trigger_replan() {
 	fi
 
 	last_replan_attempt="$(state_get "${state_prefix}" "last_replan_attempt")"
-	if ! [[ "${last_replan_attempt}" =~ ^[0-9]+$ ]]; then
-		last_replan_attempt=0
-	fi
+        if ! [[ "${last_replan_attempt}" =~ ^[0-9]+$ ]]; then
+                last_replan_attempt=0
+        fi
 
-	should_replan=false
-	divergence_recorded=false
-	if ((failure_count > 0)) && ((failure_count % threshold == 0)); then
-		should_replan=true
-	fi
+        local evaluation_metadata
+        evaluation_metadata="$(jq -nc \
+                --argjson attempt "${current_attempt}" \
+                --argjson failure_count "${failure_count}" \
+                --argjson threshold "${threshold}" \
+                --arg plan_diverged "${plan_diverged}" \
+                --argjson last_replan_attempt "${last_replan_attempt}" \
+                '{attempt:$attempt,failure_count:$failure_count,threshold:$threshold,plan_diverged:($plan_diverged=="true"),last_replan_attempt:$last_replan_attempt}')"
+        log "DEBUG" "Evaluating replan conditions" "${evaluation_metadata}"
 
-	if [[ "${plan_diverged}" == true ]]; then
-		local last_divergence_step
-		last_divergence_step="$(state_get "${state_prefix}" "last_plan_divergence_step")"
-		if ! [[ "${last_divergence_step}" =~ ^[0-9]+$ ]]; then
-			last_divergence_step=0
-		fi
-		if ((current_attempt > last_divergence_step)); then
-			should_replan=true
-			divergence_recorded=true
-		fi
-	fi
+        should_replan=false
+        divergence_recorded=false
+        if ((failure_count > 0)) && ((failure_count % threshold == 0)); then
+                should_replan=true
+                log "INFO" "Failure threshold reached; considering replanning" "${evaluation_metadata}"
+        fi
 
-	if [[ "${should_replan}" != true ]]; then
-		return 0
-	fi
+        if [[ "${plan_diverged}" == true ]]; then
+                local last_divergence_step
+                last_divergence_step="$(state_get "${state_prefix}" "last_plan_divergence_step")"
+                if ! [[ "${last_divergence_step}" =~ ^[0-9]+$ ]]; then
+                        last_divergence_step=0
+                fi
+                if ((current_attempt > last_divergence_step)); then
+                        should_replan=true
+                        divergence_recorded=true
+                        log "INFO" "Plan divergence detected" "$(jq -nc \
+                                --argjson attempt "${current_attempt}" \
+                                --argjson last_divergence_step "${last_divergence_step}" \
+                                --argjson failure_count "${failure_count}" \
+                                '{attempt:$attempt,last_divergence_step:$last_divergence_step,failure_count:$failure_count,reason:"plan_divergence"}')"
+                fi
+        fi
 
-	if ((last_replan_attempt == current_attempt)); then
-		return 0
-	fi
+        if [[ "${should_replan}" != true ]]; then
+                log "DEBUG" "Replan skipped; conditions not met" "$(jq -nc --argjson attempt "${current_attempt}" --argjson failure_count "${failure_count}" --argjson threshold "${threshold}" --arg plan_diverged "${plan_diverged}" '{attempt:$attempt,failure_count:$failure_count,threshold:$threshold,plan_diverged:($plan_diverged=="true"),reason:"conditions_not_met"}')"
+                return 0
+        fi
 
-	if [[ "${divergence_recorded}" == true ]]; then
-		state_set "${state_prefix}" "last_plan_divergence_step" "${current_attempt}"
-	fi
+        if ((last_replan_attempt == current_attempt)); then
+                log "INFO" "Replan already attempted for current step" "$(jq -nc --argjson attempt "${current_attempt}" --argjson last_replan_attempt "${last_replan_attempt}" '{attempt:$attempt,last_replan_attempt:$last_replan_attempt,reason:"duplicate_attempt"}')"
+                return 0
+        fi
 
-	if ! declare -F generate_planner_response >/dev/null 2>&1; then
-		log "WARN" "Planner unavailable; skipping replanning" "generate_planner_response_missing"
-		return 1
-	fi
+        if [[ "${divergence_recorded}" == true ]]; then
+                state_set "${state_prefix}" "last_plan_divergence_step" "${current_attempt}"
+        fi
 
-	if ! declare -F plan_json_to_entries >/dev/null 2>&1 || ! declare -F plan_json_to_outline >/dev/null 2>&1 || ! declare -F derive_allowed_tools_from_plan >/dev/null 2>&1; then
-		log "WARN" "Planner helpers missing; skipping replanning" "planner_helpers_missing"
-		return 1
-	fi
+        if ! declare -F generate_planner_response >/dev/null 2>&1; then
+                log "WARN" "Planner unavailable; skipping replanning" "$(jq -nc --argjson attempt "${current_attempt}" --argjson failure_count "${failure_count}" '{attempt:$attempt,failure_count:$failure_count,planner_available:false,missing:"generate_planner_response"}')"
+                return 1
+        fi
+
+        if ! declare -F plan_json_to_entries >/dev/null 2>&1 || ! declare -F plan_json_to_outline >/dev/null 2>&1 || ! declare -F derive_allowed_tools_from_plan >/dev/null 2>&1; then
+                log "WARN" "Planner helpers missing; skipping replanning" "$(jq -nc --argjson attempt "${current_attempt}" --argjson failure_count "${failure_count}" '{attempt:$attempt,failure_count:$failure_count,planner_helpers_present:false}')"
+                return 1
+        fi
 
 	local transcript user_query plan_response
 	transcript="$(build_execution_transcript "${state_prefix}")"
 	if [[ -z "${transcript}" ]]; then
 		transcript="Execution transcript unavailable."
-	fi
+        fi
 
-	user_query="$(state_get "${state_prefix}" "user_query")"
-	if ! plan_response="$(generate_planner_response "${user_query}" "${transcript}")"; then
-		log "WARN" "Planner failed to generate replan" "planner_generation_failed"
-		return 1
-	fi
+        user_query="$(state_get "${state_prefix}" "user_query")"
+        if ! plan_response="$(generate_planner_response "${user_query}" "${transcript}")"; then
+                log "WARN" "Planner failed to generate replan" "$(jq -nc --argjson attempt "${current_attempt}" --argjson failure_count "${failure_count}" '{attempt:$attempt,failure_count:$failure_count,planner_response:"generation_failed"}')"
+                return 1
+        fi
 
-	if ! apply_replan_result "${state_prefix}" "${plan_response}" "${current_attempt}"; then
-		log "WARN" "Failed to apply replanned outline" "planner_application_failed"
-		return 1
-	fi
+        local response_summary
+        response_summary="$(jq -nc --argjson attempt "${current_attempt}" --argjson failure_count "${failure_count}" --argjson response_length "$(printf '%s' "${plan_response}" | jq 'length' 2>/dev/null || printf '0')" '{attempt:$attempt,failure_count:$failure_count,response_length:$response_length}')"
+        log "DEBUG" "Planner response received" "${response_summary}"
 
-	state_set "${state_prefix}" "last_replan_attempt" "${current_attempt}"
-	local replan_metadata
-	replan_metadata="$(jq -nc \
-		--argjson attempt "${current_attempt}" \
-		--argjson failure_count "${failure_count}" \
-		--arg plan_diverged "${plan_diverged}" \
+        if ! apply_replan_result "${state_prefix}" "${plan_response}" "${current_attempt}"; then
+                log "WARN" "Failed to apply replanned outline" "$(jq -nc --argjson attempt "${current_attempt}" --argjson failure_count "${failure_count}" --arg plan_response "${plan_response}" '{attempt:$attempt,failure_count:$failure_count,planner_response:$plan_response,reason:"apply_failed"}')"
+                return 1
+        fi
+
+        state_set "${state_prefix}" "last_replan_attempt" "${current_attempt}"
+        log "INFO" "Recorded last replan attempt" "$(jq -nc --argjson attempt "${current_attempt}" '{last_replan_attempt:$attempt}')"
+        local replan_metadata
+        replan_metadata="$(jq -nc \
+                --argjson attempt "${current_attempt}" \
+                --argjson failure_count "${failure_count}" \
+                --arg plan_diverged "${plan_diverged}" \
 		'{attempt:$attempt,failure_count:$failure_count,plan_diverged:($plan_diverged == "true")}')"
 	log "INFO" "Replanned after execution issue" "${replan_metadata}"
 }
