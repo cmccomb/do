@@ -53,17 +53,26 @@
       "examples": [
         [
           {
-            "thought": "Record the requested notes.",
+            "thought": "Capture the user's research notes.",
             "tool": "notes_create",
             "args": {
               "title": "Research notes",
-              "body": "The next delivery step for the research are..."
+              "body": "The next delivery step for the research is to..."
+            },
+            "args_control": {
+              "title": "locked",
+              "body": "context"
             }
           },
           {
-            "thought": "Share the notes back to the user.",
+            "thought": "Return the saved note details to the user.",
             "tool": "final_answer",
-            "args": {}
+            "args": {
+              "input": "Saved the Research notes and summarized the captured content."
+            },
+            "args_control": {
+              "input": "locked"
+            }
           }
         ],
         [
@@ -73,12 +82,21 @@
             "args": {
               "command": "ls",
               "args": ["-la"]
+            },
+            "args_control": {
+              "command": "locked",
+              "args": "locked"
             }
           },
           {
-            "thought": "Share the notes back to the user.",
+            "thought": "Summarize the directory listing for the user.",
             "tool": "final_answer",
-            "args": {}
+            "args": {
+              "input": "Provided the directory listing with permissions and sizes."
+            },
+            "args_control": {
+              "input": "locked"
+            }
           }
         ]
       ]
