@@ -118,8 +118,8 @@ validate_react_action() {
 	# Arguments:
 	#   $1 - raw action JSON string
 	#   $2 - schema path
-        local raw_action schema_path action_json schema_json allowed_tools tool tool_schema properties_json additional_properties
-        local err_log required_args thought_trimmed action_args_json
+	local raw_action schema_path action_json schema_json allowed_tools tool tool_schema properties_json additional_properties
+	local err_log required_args thought_trimmed action_args_json
 	raw_action="$1"
 	schema_path="$2"
 
@@ -164,28 +164,28 @@ validate_react_action() {
 	fi
 
 	tool=$(jq -r '.tool' <<<"${action_json}")
-        allowed_tools=$(jq -cr '.properties.tool.enum // []' <<<"${schema_json}" 2>/dev/null || printf '[]')
-        if ! jq -e --argjson allowed "${allowed_tools}" '$allowed | type == "array" and (length > 0)' <<<"null" >/dev/null; then
-                printf 'Schema has no allowed tools\n' >&2
-                return 1
-        fi
+	allowed_tools=$(jq -cr '.properties.tool.enum // []' <<<"${schema_json}" 2>/dev/null || printf '[]')
+	if ! jq -e --argjson allowed "${allowed_tools}" '$allowed | type == "array" and (length > 0)' <<<"null" >/dev/null; then
+		printf 'Schema has no allowed tools\n' >&2
+		return 1
+	fi
 
-        if ! jq -e --arg tool "${tool}" --argjson allowed "${allowed_tools}" '$allowed | index($tool)' <<<"null" >/dev/null; then
-                printf 'Unsupported tool: %s\n' "${tool}" >&2
-                return 1
-        fi
+	if ! jq -e --arg tool "${tool}" --argjson allowed "${allowed_tools}" '$allowed | index($tool)' <<<"null" >/dev/null; then
+		printf 'Unsupported tool: %s\n' "${tool}" >&2
+		return 1
+	fi
 
-        action_args_json=$(jq -c '.args // {}' <<<"${action_json}" 2>/dev/null || printf 'null')
-        if ! jq -e 'type == "object"' <<<"${action_args_json}" >/dev/null; then
-                printf 'args must be an object\n' >&2
-                return 1
-        fi
-        action_json=$(jq -c --argjson normalized_args "${action_args_json}" '.args = $normalized_args' <<<"${action_json}")
+	action_args_json=$(jq -c '.args // {}' <<<"${action_json}" 2>/dev/null || printf 'null')
+	if ! jq -e 'type == "object"' <<<"${action_args_json}" >/dev/null; then
+		printf 'args must be an object\n' >&2
+		return 1
+	fi
+	action_json=$(jq -c --argjson normalized_args "${action_args_json}" '.args = $normalized_args' <<<"${action_json}")
 
-        tool_schema=$(jq -c --arg tool "${tool}" '."$defs"?.args_by_tool[$tool] // empty' <<<"${schema_json}")
-        if [[ -z "${tool_schema}" || "${tool_schema}" == "null" ]]; then
-                printf 'No schema for tool: %s\n' "${tool}" >&2
-                return 1
+	tool_schema=$(jq -c --arg tool "${tool}" '."$defs"?.args_by_tool[$tool] // empty' <<<"${schema_json}")
+	if [[ -z "${tool_schema}" || "${tool_schema}" == "null" ]]; then
+		printf 'No schema for tool: %s\n' "${tool}" >&2
+		return 1
 	fi
 
 	properties_json=$(jq -c 'if (.properties | type == "object") then .properties else {} end' <<<"${tool_schema}")

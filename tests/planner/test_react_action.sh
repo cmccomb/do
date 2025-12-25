@@ -164,8 +164,8 @@ INNERSCRIPT
 }
 
 @test "validate_react_action rejects unsupported tools" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -203,15 +203,15 @@ fi
 grep -F "Unsupported tool: beta" err.log
 rm -f "${schema_path}" err.log
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
 
 @test "validate_react_action rejects schemas without allowed tool enums" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -248,15 +248,15 @@ fi
 grep -F "Schema has no allowed tools" err.log
 rm -f "${schema_path}" err.log
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
 
 @test "validate_react_action normalizes null args" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -286,10 +286,10 @@ rm -f "${schema_path}"
 
 jq -e '.args == {}' <<<"${validated}"
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
 
 @test "validate_react_action enforces argument type schemas" {
