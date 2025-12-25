@@ -19,7 +19,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["tool", "args", "thought"],
+        "required": ["tool", "thought"],
         "additionalProperties": false,
         "properties": {
           "thought": {
@@ -32,36 +32,57 @@
             "minLength": 1,
             "description": "Name of the tool to invoke for this step."
           },
+          "required_args": {
+            "type": "object",
+            "description": "Arguments that MUST be used exactly during execution.",
+            "default": {},
+            "additionalProperties": true
+          },
+          "optional_args": {
+            "type": "object",
+            "description": "Arguments that can be refined or filled by the executor.",
+            "default": {},
+            "additionalProperties": true
+          },
           "args": {
             "type": "object",
-            "description": "Structured arguments for the tool. Provide the exact fields that the tool expects; use an empty object only when the tool accepts no arguments.",
+            "description": "Backward-compatible argument block. If present, it is treated the same as required_args.",
             "default": {},
             "additionalProperties": true
           }
-        }
+        },
+        "anyOf": [
+          { "required": ["required_args"] },
+          { "required": ["optional_args"] },
+          { "required": ["args"] }
+        ]
       },
-      "description": "Ordered list of high-level plan steps represented as objects with tool, args, and thought fields.",
+      "description": "Ordered list of high-level plan steps represented as objects with tool, thought, and structured argument fields (required_args and optional_args).",
       "examples": [
         [
           {
             "thought": "Record the requested notes.",
             "tool": "notes_create",
-            "args": {
+            "required_args": {
               "title": "Research notes",
               "body": "The next delivery step for the research are..."
+            },
+            "optional_args": {
+              "format": "markdown"
             }
           },
           {
             "thought": "Share the notes back to the user.",
             "tool": "final_answer",
-            "args": {}
+            "required_args": {},
+            "optional_args": {}
           }
         ],
         [
           {
             "thought": "Inspect the current directory tree.",
             "tool": "terminal",
-            "args": {
+            "required_args": {
               "command": "ls",
               "args": ["-la"]
             }
@@ -69,7 +90,8 @@
           {
             "thought": "Share the notes back to the user.",
             "tool": "final_answer",
-            "args": {}
+            "required_args": {},
+            "optional_args": {}
           }
         ]
       ]

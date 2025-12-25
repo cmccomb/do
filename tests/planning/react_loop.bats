@@ -97,7 +97,7 @@ SCRIPT
 }
 
 @test "react_loop keeps plan index when llama returns invalid JSON" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
@@ -118,12 +118,72 @@ printf 'plan_index=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "$output" = "plan_index=0 skip_reason=action_selection_failed" ]
+        [ "$status" -eq 0 ]
+        [ "$output" = "plan_index=0 skip_reason=action_selection_failed" ]
+}
+
+@test "_select_action_from_llama injects required args and allows optional overrides" {
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=true
+USE_REACT_LLAMA=true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf '%s' "$1"; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+build_react_action_schema() { local tmp; tmp=$(mktemp); printf '{"type":"object"}' >"${tmp}"; printf '%s' "${tmp}"; }
+validate_react_action() { printf '%s' "$1"; }
+llama_infer() { printf '{"thought":"model","tool":"terminal","args":{"command":"pwd","args":["-a"]}}'; }
+state_prefix=react_state
+plan_step=$(jq -nc '{tool:"terminal",thought:"planned",required_args:{command:"ls"},optional_args:{args:["-l"]}}')
+initialize_react_state "${state_prefix}" "demo" "terminal" "${plan_step}" "outline"
+_select_action_from_llama "${state_prefix}" action_json
+printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "ls" ]
+        [ "${lines[1]}" = "-a" ]
+}
+
+@test "_select_action_from_llama fills optional args when model omits them" {
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=true
+USE_REACT_LLAMA=true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf '%s' "$1"; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+build_react_action_schema() { local tmp; tmp=$(mktemp); printf '{"type":"object"}' >"${tmp}"; printf '%s' "${tmp}"; }
+validate_react_action() { printf '%s' "$1"; }
+llama_infer() { printf '{"thought":"model","tool":"terminal","args":{}}'; }
+state_prefix=react_state
+plan_step=$(jq -nc '{tool:"terminal",thought:"planned",required_args:{command:"ls"},optional_args:{args:["-l"]}}')
+initialize_react_state "${state_prefix}" "demo" "terminal" "${plan_step}" "outline"
+_select_action_from_llama "${state_prefix}" action_json
+printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
+SCRIPT
+
+        [ "$status" -eq 0 ]
+        [ "${lines[0]}" = "ls" ]
+        [ "${lines[1]}" = "-l" ]
 }
 
 @test "react_loop records plan skip reason without advancing index when execution is bypassed" {
-	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
