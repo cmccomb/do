@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 setup() {
-        unset -f chpwd _mise_hook 2>/dev/null || true
+	unset -f chpwd _mise_hook 2>/dev/null || true
 }
 
 @test "format_tool_args builds executor payloads" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 
@@ -16,11 +16,11 @@ jq -e '(.command == "echo") and (.args == ["hi","--flag"])' <<<"${terminal_args}
 jq -e '.message == "all good"' <<<"${final_args}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "apply_plan_arg_controls imputes missing executor args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 
@@ -37,13 +37,13 @@ resolved=$(apply_plan_arg_controls "notes_create" "${executor_args}" "${plan_ent
 jq -r '.title,.body' <<<"${resolved}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "Planner Title" ]
-        [ "${lines[1]}" = "Provide meeting summary" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "Planner Title" ]
+	[ "${lines[1]}" = "Provide meeting summary" ]
 }
 
 @test "execute_tool_with_query surfaces handler failures without aborting" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/exec/dispatch.sh
 
@@ -64,8 +64,8 @@ error_body=$(jq -r '.error' <<<"${payload}")
 printf 'status=%s exit=%s error=%s' "${status}" "${exit_code}" "${error_body}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == *"status=0"* ]]
-        [[ "$output" == *"exit=23"* ]]
-        [[ "$output" == *"simulated stderr"* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"status=0"* ]]
+	[[ "$output" == *"exit=23"* ]]
+	[[ "$output" == *"simulated stderr"* ]]
 }

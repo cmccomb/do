@@ -198,8 +198,8 @@ INNERSCRIPT
 }
 
 @test "build_react_prompt reflects executor contract" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -224,8 +224,8 @@ for term in "${forbidden_terms[@]}"; do
         fi
 done
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
