@@ -430,7 +430,7 @@ SCRIPT
 }
 
 @test "react_loop replans after failed tool run and forwards transcript" {
-        run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 MAX_STEPS=4 LLAMA_AVAILABLE=true bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 MAX_STEPS=4 LLAMA_AVAILABLE=true bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 log() { :; }
@@ -483,12 +483,12 @@ fi
 printf 'final=%s outline=%s transcript_count=%s' "${final_answer}" "${outline_flat}" "${transcript_count}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == "final=done outline=1. retry\\n2. wrap transcript_count="* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == "final=done outline=1. retry\\n2. wrap transcript_count="* ]]
 }
 
 @test "maybe_trigger_replan logs skip metadata when below threshold" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 
@@ -507,13 +507,13 @@ joined=$(printf '%s\n' "${log_messages[@]}" | tr '\n' '|')
 printf 'logs=%s' "${joined}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == *'"reason":"conditions_not_met"'* ]]
-        [[ "$output" == *'"plan_diverged":false'* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"reason":"conditions_not_met"'* ]]
+	[[ "$output" == *'"plan_diverged":false'* ]]
 }
 
 @test "maybe_trigger_replan logs applied plan metadata" {
-        run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 
@@ -539,14 +539,14 @@ joined=$(printf '%s\n' "${log_messages[@]}" | tr '\n' '|')
 printf 'logs=%s' "${joined}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == *'"plan_length":1'* ]]
-        [[ "$output" == *'"action":"state_updated"'* ]]
-        [[ "$output" == *'"last_replan_attempt":2'* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"plan_length":1'* ]]
+	[[ "$output" == *'"action":"state_updated"'* ]]
+	[[ "$output" == *'"last_replan_attempt":2'* ]]
 }
 
 @test "maybe_trigger_replan logs apply failure metadata" {
-        run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" REACT_REPLAN_FAILURE_THRESHOLD=1 bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 
@@ -572,9 +572,9 @@ joined=$(printf '%s\n' "${log_messages[@]}" | tr '\n' '|')
 printf 'logs=%s' "${joined}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == *'"reason":"apply_failed"'* ]]
-        [[ "$output" == *'"attempt":3'* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"reason":"apply_failed"'* ]]
+	[[ "$output" == *'"attempt":3'* ]]
 }
 
 @test "react_loop stops after final_answer" {
