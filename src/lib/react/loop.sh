@@ -19,6 +19,7 @@
 #   Functions return non-zero on invalid actions or tool execution failures.
 
 REACT_LIB_DIR=${REACT_LIB_DIR:-$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
+REACT_REPLAN_TOOL="${REACT_REPLAN_TOOL:-react_replan}"
 
 # shellcheck source=../formatting.sh disable=SC1091
 source "${REACT_LIB_DIR}/../formatting.sh"
@@ -257,8 +258,9 @@ _select_action_from_llama() {
 	fi
 
 	allowed_tools="$(state_get "${state_name}" "allowed_tools")"
+
 	if [[ -z "${allowed_tools}" ]]; then
-		allowed_tools="$(tool_names)"
+		allowed_tools="$(printf '%s\n%s\n%s' "${tool}" "${REACT_REPLAN_TOOL}" "final_answer")"
 	fi
 
 	if [[ "${tool}" == "react_fallback" ]]; then
@@ -267,6 +269,10 @@ _select_action_from_llama() {
 
 	if [[ -n "${allowed_tools}" ]] && ! grep -Fxq "final_answer" <<<"${allowed_tools}"; then
 		allowed_tools+=$'\nfinal_answer'
+	fi
+
+	if [[ -n "${allowed_tools}" ]] && ! grep -Fxq "${REACT_REPLAN_TOOL}" <<<"${allowed_tools}"; then
+		allowed_tools+=$'\n'"${REACT_REPLAN_TOOL}"
 	fi
 
 	allowed_tools="$(printf '%s\n' "${allowed_tools}" | sed '/^react_fallback$/d' | awk '!seen[$0]++')"
@@ -280,6 +286,9 @@ _select_action_from_llama() {
 	fi
 
 	allowed_tool_lines="$(format_tool_descriptions "${allowed_tools}" format_tool_example_line)"
+	if grep -Fxq "${REACT_REPLAN_TOOL}" <<<"${allowed_tools}"; then
+		allowed_tool_lines+=$'\n- '"${REACT_REPLAN_TOOL}"$': Request replanning or a revised approach when the current plan no longer fits.'
+	fi
 	allowed_tool_descriptions="Available tools:"
 	if [[ -n "${allowed_tool_lines}" ]]; then
 		allowed_tool_descriptions+=$'\n'"${allowed_tool_lines}"
@@ -398,6 +407,10 @@ record_plan_skip_reason() {
 	state_name="$1"
 	reason="$2"
 	pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+
+	if [[ -z "${pending_plan_step}" ]]; then
+		pending_plan_step="$(state_get "${state_name}" "plan_index")"
+	fi
 
 	if [[ -z "${pending_plan_step}" ]]; then
 		return 0
@@ -999,6 +1012,7 @@ react_loop() {
 				log_action_gate "${state_prefix}" false "tool_not_permitted" "$(jq -nc '{selection_valid:true,tool_permitted:false}')"
 				record_plan_skip_without_progress "${state_prefix}" "tool_not_permitted"
 				increment_retry_count "${state_prefix}"
+				maybe_trigger_replan "${state_prefix}" "${current_step}" true || true
 				action_json=""
 				break
 			fi
@@ -1058,13 +1072,27 @@ react_loop() {
 		if [[ -n "${pending_plan_step}" ]]; then
 			planned_entry=$(printf '%s\n' "$(state_get "${state_prefix}" "plan_entries")" | sed -n "$((pending_plan_step + 1))p")
 			planned_tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
-			if [[ -n "${planned_tool}" && "${planned_tool}" != "${tool}" ]]; then
+			if [[ -n "${planned_tool}" && "${planned_tool}" != "${tool}" && "${tool}" != "${REACT_REPLAN_TOOL}" ]]; then
 				plan_step_matches_action=false
 				plan_diverged=true
 				gate_reason="plan_tool_mismatch"
 				record_plan_skip_without_progress "${state_prefix}" "plan_tool_mismatch"
 				increment_retry_count "${state_prefix}"
+				maybe_trigger_replan "${state_prefix}" "${current_step}" true || true
+				action_selected=false
 			fi
+		fi
+
+		if [[ "${tool}" == "${REACT_REPLAN_TOOL}" ]]; then
+			plan_diverged=true
+			record_plan_skip_without_progress "${state_prefix}" "plan_replan_requested"
+			maybe_trigger_replan "${state_prefix}" "${current_step}" true || true
+			increment_retry_count "${state_prefix}"
+			action_selected=false
+		fi
+
+		if [[ "${action_selected}" == false ]]; then
+			continue
 		fi
 
 		if [[ -z "${final_answer_payload}" ]]; then
@@ -1159,6 +1187,9 @@ react_loop() {
 		fi
 
 		if ((exit_code == 0)) && [[ "${plan_step_matches_action}" == true ]]; then
+			if [[ -z "$(state_get "${state_prefix}" "pending_plan_step")" ]]; then
+				state_set "${state_prefix}" "pending_plan_step" "$(state_get "${state_prefix}" "plan_index")"
+			fi
 			complete_pending_plan_step "${state_prefix}"
 			local plan_length_value plan_index_value
 			plan_length_value=$(state_get "${state_prefix}" "plan_length")
