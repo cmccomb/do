@@ -132,8 +132,8 @@ normalize_planner_plan() {
                                 map(normalized_step(.))
                         end
                         ' <<<"${plan_candidate}" 2>/dev/null || true)
-                if [[ -n "${normalized}" && "${normalized}" != "[]" ]]; then
-                        printf '%s' "${normalized}"
+		if [[ -n "${normalized}" && "${normalized}" != "[]" ]]; then
+			printf '%s' "${normalized}"
 			return 0
 		fi
 	fi
@@ -232,8 +232,8 @@ append_final_answer_step() {
 		return 0
 	fi
 
-        updated_plan="$(jq -c '. + [{tool:"final_answer",thought:"Summarize the result for the user.",required_args:{},optional_args:{},args:{}}]' <<<"${plan_clean}" 2>/dev/null || printf '%s' "${plan_json}")"
-        printf '%s' "${updated_plan}"
+	updated_plan="$(jq -c '. + [{tool:"final_answer",thought:"Summarize the result for the user.",required_args:{},optional_args:{},args:{}}]' <<<"${plan_clean}" 2>/dev/null || printf '%s' "${plan_json}")"
+	printf '%s' "${updated_plan}"
 }
 
 export -f normalize_planner_plan

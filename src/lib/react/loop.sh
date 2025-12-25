@@ -178,10 +178,10 @@ format_action_context() {
 }
 
 normalize_args_json() {
-        # Normalizes argument JSON into canonical form.
-        # Arguments:
-        #   $1 - args JSON string
-        # Returns:
+	# Normalizes argument JSON into canonical form.
+	# Arguments:
+	#   $1 - args JSON string
+	# Returns:
 	#   Canonical JSON string with sorted keys.
 	local args_json normalized
 	args_json="$1"
@@ -190,44 +190,44 @@ normalize_args_json() {
 	fi
 	if ! normalized="$(jq -cS '.' <<<"${args_json}" 2>/dev/null)"; then
 		normalized="{}"
-        fi
-        printf '%s' "${normalized}"
+	fi
+	printf '%s' "${normalized}"
 }
 
 planned_step_required_args() {
-        # Extracts required_args from a planned step, falling back to args.
-        # Arguments:
-        #   $1 - plan entry JSON (string)
-        local plan_entry
-        plan_entry="$1"
-        jq -c '(.required_args // .args // {}) // {}' <<<"${plan_entry}" 2>/dev/null || printf '{}'
+	# Extracts required_args from a planned step, falling back to args.
+	# Arguments:
+	#   $1 - plan entry JSON (string)
+	local plan_entry
+	plan_entry="$1"
+	jq -c '(.required_args // .args // {}) // {}' <<<"${plan_entry}" 2>/dev/null || printf '{}'
 }
 
 planned_step_optional_args() {
-        # Extracts optional_args from a planned step.
-        # Arguments:
-        #   $1 - plan entry JSON (string)
-        local plan_entry
-        plan_entry="$1"
-        jq -c '(.optional_args // {}) // {}' <<<"${plan_entry}" 2>/dev/null || printf '{}'
+	# Extracts optional_args from a planned step.
+	# Arguments:
+	#   $1 - plan entry JSON (string)
+	local plan_entry
+	plan_entry="$1"
+	jq -c '(.optional_args // {}) // {}' <<<"${plan_entry}" 2>/dev/null || printf '{}'
 }
 
 planned_step_effective_args() {
-        # Merges required and optional args for a planned step.
-        # Arguments:
-        #   $1 - plan entry JSON (string)
-        local plan_entry required optional
-        plan_entry="$1"
-        required="$(planned_step_required_args "${plan_entry}")"
-        optional="$(planned_step_optional_args "${plan_entry}")"
-        jq -nc --argjson required "${required}" --argjson optional "${optional}" '($optional // {}) + ($required // {})'
+	# Merges required and optional args for a planned step.
+	# Arguments:
+	#   $1 - plan entry JSON (string)
+	local plan_entry required optional
+	plan_entry="$1"
+	required="$(planned_step_required_args "${plan_entry}")"
+	optional="$(planned_step_optional_args "${plan_entry}")"
+	jq -nc --argjson required "${required}" --argjson optional "${optional}" '($optional // {}) + ($required // {})'
 }
 
 normalize_action() {
-        # Builds a normalized action object for comparison and storage.
-        # Arguments:
-        #   $1 - tool name
-        #   $2 - args JSON
+	# Builds a normalized action object for comparison and storage.
+	# Arguments:
+	#   $1 - tool name
+	#   $2 - args JSON
 	# Returns:
 	#   Canonical action JSON string.
 	local tool args_json normalized_args
@@ -243,7 +243,7 @@ _select_action_from_llama() {
 	#   $1 - state prefix
 	#   $2 - output variable name for validated JSON
 	local state_name output_name allowed_tools react_schema_path react_schema_text react_prompt raw_action validated_action validation_error_file validation_error
-        local history plan_step_guidance plan_index planned_entry tool planned_thought planned_args_json planned_required_args planned_optional_args invoke_llama allowed_tool_lines allowed_tool_descriptions summarized_history
+	local history plan_step_guidance plan_index planned_entry tool planned_thought planned_args_json planned_required_args planned_optional_args invoke_llama allowed_tool_lines allowed_tool_descriptions summarized_history
 	state_name="$1"
 	output_name="$2"
 
@@ -252,26 +252,26 @@ _select_action_from_llama() {
 	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 	tool=""
 	planned_thought="Following planned step"
-        planned_args_json="{}"
-        planned_required_args="{}"
-        planned_optional_args="{}"
-        plan_step_guidance="Planner provided no additional steps; choose the best next action."
-        if [[ -n "${planned_entry}" ]]; then
-                tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
-                planned_thought="$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')"
-                planned_required_args="$(planned_step_required_args "${planned_entry}")"
-                planned_optional_args="$(planned_step_optional_args "${planned_entry}")"
-                planned_args_json="$(planned_step_effective_args "${planned_entry}")"
-                plan_step_guidance="$(
-                        jq -rn \
-                                --arg step "$((plan_index + 1))" \
-                                --arg tool "${tool:-}" \
-                                --arg thought "${planned_thought}" \
-                                --argjson required "${planned_required_args}" \
-                                --argjson optional "${planned_optional_args}" \
-                                '"Step \($step) suggested by the planner:\n- tool: \($tool // "(unspecified)")\n- thought: \($thought // "")\n- required_args (do not change): \($required|@json)\n- optional_args (you may refine or fill): \($optional|@json)"'
-                )"
-        fi
+	planned_args_json="{}"
+	planned_required_args="{}"
+	planned_optional_args="{}"
+	plan_step_guidance="Planner provided no additional steps; choose the best next action."
+	if [[ -n "${planned_entry}" ]]; then
+		tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
+		planned_thought="$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')"
+		planned_required_args="$(planned_step_required_args "${planned_entry}")"
+		planned_optional_args="$(planned_step_optional_args "${planned_entry}")"
+		planned_args_json="$(planned_step_effective_args "${planned_entry}")"
+		plan_step_guidance="$(
+			jq -rn \
+				--arg step "$((plan_index + 1))" \
+				--arg tool "${tool:-}" \
+				--arg thought "${planned_thought}" \
+				--argjson required "${planned_required_args}" \
+				--argjson optional "${planned_optional_args}" \
+				'"Step \($step) suggested by the planner:\n- tool: \($tool // "(unspecified)")\n- thought: \($thought // "")\n- required_args (do not change): \($required|@json)\n- optional_args (you may refine or fill): \($optional|@json)"'
+		)"
+	fi
 
 	local rejection_hint
 	rejection_hint="$(state_get "${state_name}" "action_rejection_hint")"
@@ -355,12 +355,12 @@ _select_action_from_llama() {
 		)"
 		react_prompt="${react_prompt_prefix}${react_prompt_suffix}"
 	fi
-        validation_error_file="$(mktemp)"
+	validation_error_file="$(mktemp)"
 
-        raw_action="$(llama_infer "${react_prompt}" "" 256 "${react_schema_text}" "${REACT_MODEL_REPO:-}" "${REACT_MODEL_FILE:-}" "${REACT_CACHE_FILE:-}" "${react_prompt_prefix}")"
-        log_pretty "INFO" "Action received" "${raw_action}"
+	raw_action="$(llama_infer "${react_prompt}" "" 256 "${react_schema_text}" "${REACT_MODEL_REPO:-}" "${REACT_MODEL_FILE:-}" "${REACT_CACHE_FILE:-}" "${react_prompt_prefix}")"
+	log_pretty "INFO" "Action received" "${raw_action}"
 
-        if ! validated_action=$(validate_react_action "${raw_action}" "${react_schema_path}" 2>"${validation_error_file}"); then
+	if ! validated_action=$(validate_react_action "${raw_action}" "${react_schema_path}" 2>"${validation_error_file}"); then
 		validation_error="$(cat "${validation_error_file}")"
 		record_history "${state_name}" "$(printf 'Invalid action from model: %s' "${validation_error}")"
 		log "WARN" "Invalid action output from llama" "${validation_error}"
@@ -369,19 +369,19 @@ _select_action_from_llama() {
 		return 1
 	fi
 
-        rm -f "${validation_error_file}"
-        rm -f "${react_schema_path}"
+	rm -f "${validation_error_file}"
+	rm -f "${react_schema_path}"
 
-        if [[ -n "${planned_entry}" ]]; then
-                local required_args optional_args merged_args
-                required_args="$(planned_step_required_args "${planned_entry}")"
-                optional_args="$(planned_step_optional_args "${planned_entry}")"
-                merged_args=$(jq -nc --argjson required "${required_args}" --argjson optional "${optional_args}" --argjson model_args "$(printf '%s' "${validated_action}" | jq -c '.args // {}' 2>/dev/null || printf '{}')" '($optional // {}) + ($model_args // {}) + ($required // {})')
-                validated_action="$(jq -c --argjson args "${merged_args}" '.args = $args' <<<"${validated_action}" 2>/dev/null || printf '%s' "${validated_action}")"
-        fi
+	if [[ -n "${planned_entry}" ]]; then
+		local required_args optional_args merged_args
+		required_args="$(planned_step_required_args "${planned_entry}")"
+		optional_args="$(planned_step_optional_args "${planned_entry}")"
+		merged_args=$(jq -nc --argjson required "${required_args}" --argjson optional "${optional_args}" --argjson model_args "$(printf '%s' "${validated_action}" | jq -c '.args // {}' 2>/dev/null || printf '{}')" '($optional // {}) + ($model_args // {}) + ($required // {})')
+		validated_action="$(jq -c --argjson args "${merged_args}" '.args = $args' <<<"${validated_action}" 2>/dev/null || printf '%s' "${validated_action}")"
+	fi
 
-        printf -v "${output_name}" '%s' "${validated_action}"
-        return 0
+	printf -v "${output_name}" '%s' "${validated_action}"
+	return 0
 }
 
 select_next_action() {
@@ -397,12 +397,12 @@ select_next_action() {
 
 	plan_index="$(state_get "${state_name}" "plan_index")"
 	plan_index=${plan_index:-0}
-        planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
+	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
-        if [[ -n "${planned_entry}" ]]; then
-                planned_args_json="$(planned_step_effective_args "${planned_entry}")"
-                local pending_index_json pending_index_current preserved_reason
-                pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
+	if [[ -n "${planned_entry}" ]]; then
+		planned_args_json="$(planned_step_effective_args "${planned_entry}")"
+		local pending_index_json pending_index_current preserved_reason
+		pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
 		pending_index_current="$(state_get "${state_name}" "pending_plan_step")"
 		preserved_reason=""
 		if [[ -n "${pending_index_current}" && "${pending_index_current}" -eq "${plan_index}" ]]; then
@@ -1103,11 +1103,11 @@ react_loop() {
 		local planned_entry planned_tool plan_step_matches_action
 		plan_step_matches_action=true
 		plan_diverged=false
-        planned_entry=""
-        planned_tool=""
+		planned_entry=""
+		planned_tool=""
 
-        pending_plan_step="$(state_get "${state_prefix}" "pending_plan_step")"
-        if [[ -n "${pending_plan_step}" ]]; then
+		pending_plan_step="$(state_get "${state_prefix}" "pending_plan_step")"
+		if [[ -n "${pending_plan_step}" ]]; then
 			planned_entry=$(printf '%s\n' "$(state_get "${state_prefix}" "plan_entries")" | sed -n "$((pending_plan_step + 1))p")
 			planned_tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
 			if [[ -n "${planned_tool}" && "${planned_tool}" != "${tool}" && "${tool}" != "${REACT_REPLAN_TOOL}" ]]; then

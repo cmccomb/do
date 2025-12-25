@@ -97,7 +97,7 @@ SCRIPT
 }
 
 @test "react_loop keeps plan index when llama returns invalid JSON" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
@@ -118,12 +118,12 @@ printf 'plan_index=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_index=0 skip_reason=action_selection_failed" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=0 skip_reason=action_selection_failed" ]
 }
 
 @test "_select_action_from_llama injects required args and allows optional overrides" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 LLAMA_AVAILABLE=true
 USE_REACT_LLAMA=true
@@ -147,13 +147,13 @@ _select_action_from_llama "${state_prefix}" action_json
 printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "ls" ]
-        [ "${lines[1]}" = "-a" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-a" ]
 }
 
 @test "_select_action_from_llama fills optional args when model omits them" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 LLAMA_AVAILABLE=true
 USE_REACT_LLAMA=true
@@ -177,13 +177,13 @@ _select_action_from_llama "${state_prefix}" action_json
 printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "ls" ]
-        [ "${lines[1]}" = "-l" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-l" ]
 }
 
 @test "react_loop records plan skip reason without advancing index when execution is bypassed" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
