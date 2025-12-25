@@ -7,7 +7,7 @@ setup() {
 }
 
 @test "score_planner_candidate rewards registered tools with satisfiable args" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/scoring.sh
@@ -29,7 +29,50 @@ SCRIPT
 	score=$(printf '%s' "${scorecard}" | jq -r '.score')
 	rationale=$(printf '%s' "${scorecard}" | jq -r '.rationale | join(" ")')
 	[[ "${score}" -gt 0 ]]
-	[[ "${rationale}" == *"final_answer"* ]]
+        [[ "${rationale}" == *"final_answer"* ]]
+}
+
+@test "score_planner_candidate accepts structured web_search args" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=0
+source ./src/tools/registry.sh
+source ./src/tools/web/web_search.sh
+source ./src/tools/final_answer/index.sh
+source ./src/lib/planning/normalization.sh
+source ./src/lib/planning/scoring.sh
+init_tool_registry
+register_web_search
+register_final_answer
+plan=$(jq -nc '{"mode":"plan","plan":[{"tool":"web_search","args":{"query":"mars weather","num":2},"thought":"check"},{"tool":"final_answer","args":{"input":"done"},"thought":"respond"}]}')
+normalized=$(normalize_planner_response <<<"${plan}")
+scorecard=$(score_planner_candidate "${normalized}" | tail -n 1)
+jq -e '.score | type == "number"' <<<"${scorecard}"
+jq -e '.rationale | map(select(contains("Planner args satisfy registered tool schemas."))) | length == 1' <<<"${scorecard}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
+}
+
+@test "score_planner_candidate honors web_search input alias" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=0
+source ./src/tools/registry.sh
+source ./src/tools/web/web_search.sh
+source ./src/tools/final_answer/index.sh
+source ./src/lib/planning/normalization.sh
+source ./src/lib/planning/scoring.sh
+init_tool_registry
+register_web_search
+register_final_answer
+plan=$(jq -nc '{"mode":"plan","plan":[{"tool":"web_search","args":{"input":"mars weather"},"thought":"check"},{"tool":"final_answer","args":{"input":"done"},"thought":"respond"}]}')
+normalized=$(normalize_planner_response <<<"${plan}")
+scorecard=$(score_planner_candidate "${normalized}" | tail -n 1)
+jq -e '.rationale | map(select(contains("Planner args satisfy registered tool schemas."))) | length == 1' <<<"${scorecard}"
+SCRIPT
+
+        [ "$status" -eq 0 ]
 }
 
 @test "score_planner_candidate penalizes unavailable tools and bad args" {
@@ -53,10 +96,10 @@ printf "good=%s\n" "${good}"
 printf "bad=%s\n" "${bad}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	good=$(printf '%s' "${lines[0]}" | cut -d= -f2)
-	bad=$(printf '%s' "${lines[1]}" | cut -d= -f2)
-	[[ "${good}" -gt "${bad}" ]]
+[ "$status" -eq 0 ]
+good=$(printf '%s\n' "${output}" | grep '^good=' | tail -n 1 | cut -d= -f2)
+bad=$(printf '%s\n' "${output}" | grep '^bad=' | tail -n 1 | cut -d= -f2)
+[[ "${good}" -gt "${bad}" ]]
 }
 
 @test "score_planner_candidate prefers plans that defer side effects" {
