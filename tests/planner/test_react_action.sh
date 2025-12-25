@@ -197,7 +197,7 @@ INNERSCRIPT
 	[ "$status" -eq 0 ]
 }
 
-@test "build_react_prompt includes allowed tool schemas" {
+@test "build_react_prompt reflects executor contract" {
 	script=$(
 		cat <<'INNERSCRIPT'
 set -euo pipefail
@@ -216,10 +216,13 @@ rm -f "${react_schema_path}"
 
 grep -qi "executor" <<<"${prompt}"
 grep -F "demo request" <<<"${prompt}"
-if grep -F "history" <<<"${prompt}"; then
-        echo "prompt unexpectedly referenced history"
-        exit 1
-fi
+forbidden_terms=(history "Thought:" "Observation:" "Action:")
+for term in "${forbidden_terms[@]}"; do
+        if grep -F "${term}" <<<"${prompt}"; then
+                printf 'prompt unexpectedly referenced %s\n' "${term}"
+                exit 1
+        fi
+done
 INNERSCRIPT
 	)
 
