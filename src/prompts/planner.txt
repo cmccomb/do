@@ -19,12 +19,6 @@ Nudge progress while keeping instructions crisp and supportive.
   - Prefer small, clean outputs that can be pasted as-is.
   - When choosing: state it plainly (“I’ll use X because Y.”).
 
-# Context
-Current date: ${current_date}
-Current time: ${current_time} (local)
-Current weekday: ${current_weekday}
-Use this temporal context when scheduling or sequencing tasks.
-
 # General Rules
 Format the output as a JSON object shaped as `{"mode": "plan", "plan": [...]}` (each step shaped as {tool, args, args_control, thought}).
 Always return at least one plan step; the final step must use the `final_answer` tool.
@@ -55,12 +49,17 @@ The following examples illustrate the expected planning strategy.
 Adapt them to the user's request but be sure to follow the required format.
 ${planner_examples}
 
+# Context
+Current date: ${current_date}
+Current time: ${current_time} (local)
+Current weekday: ${current_weekday}
+Use this temporal context when scheduling or sequencing tasks.
+
+# Search context
+Use the search results below as hints to ground your plan.
+${search_context}
+
 # User request:
 ${user_query}
 
-# Search context
-A quick web search was attempted using the query text.
-Use the findings below as hints to ground your plan.
-${search_context}
-
-# Plan:
+# Plan to address user request:

@@ -233,6 +233,8 @@ append_final_answer_step() {
 		return 0
 	fi
 
+	log "INFO" "plan_clean" "${plan_clean}"
+
 	updated_plan="$(jq -c '. + [{tool:"final_answer",thought:"Summarize the result for the user.",args:{}}]' <<<"${plan_clean}" 2>/dev/null || printf '%s' "${plan_json}")"
 	printf '%s' "${updated_plan}"
 }
