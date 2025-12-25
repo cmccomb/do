@@ -315,8 +315,8 @@ INNERSCRIPT
 }
 
 @test "select_next_action emits simplified payload when llama is unavailable" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -332,15 +332,15 @@ next_action="$(select_next_action "${state_prefix}")"
 
 jq -e 'has("thought") and has("tool") and has("args") and (has("type")|not)' <<<"${next_action}"
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
 
 @test "select_next_action initializes planned args before fallback" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -359,10 +359,10 @@ next_action="$(select_next_action "${state_prefix}")"
 
 jq -e '.tool == "terminal" and (.args == {} or .args == null)' <<<"${next_action}"
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
 
 @test "select_next_action invokes llama even when plan step is fully specified" {
