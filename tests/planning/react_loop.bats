@@ -122,6 +122,66 @@ SCRIPT
 	[ "$output" = "plan_index=0 skip_reason=action_selection_failed" ]
 }
 
+@test "_select_action_from_llama injects required args and allows optional overrides" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=true
+USE_REACT_LLAMA=true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf '%s' "$1"; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+build_react_action_schema() { local tmp; tmp=$(mktemp); printf '{"type":"object"}' >"${tmp}"; printf '%s' "${tmp}"; }
+validate_react_action() { printf '%s' "$1"; }
+llama_infer() { printf '{"thought":"model","tool":"terminal","args":{"command":"pwd","args":["-a"]}}'; }
+state_prefix=react_state
+plan_step=$(jq -nc '{tool:"terminal",thought:"planned",required_args:{command:"ls"},optional_args:{args:["-l"]}}')
+initialize_react_state "${state_prefix}" "demo" "terminal" "${plan_step}" "outline"
+_select_action_from_llama "${state_prefix}" action_json
+printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-a" ]
+}
+
+@test "_select_action_from_llama fills optional args when model omits them" {
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+LLAMA_AVAILABLE=true
+USE_REACT_LLAMA=true
+source ./src/lib/react/react.sh
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf '%s' "$1"; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+build_react_action_schema() { local tmp; tmp=$(mktemp); printf '{"type":"object"}' >"${tmp}"; printf '%s' "${tmp}"; }
+validate_react_action() { printf '%s' "$1"; }
+llama_infer() { printf '{"thought":"model","tool":"terminal","args":{}}'; }
+state_prefix=react_state
+plan_step=$(jq -nc '{tool:"terminal",thought:"planned",required_args:{command:"ls"},optional_args:{args:["-l"]}}')
+initialize_react_state "${state_prefix}" "demo" "terminal" "${plan_step}" "outline"
+_select_action_from_llama "${state_prefix}" action_json
+printf '%s' "${action_json}" | jq -r '.args.command,.args.args[0]'
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "ls" ]
+	[ "${lines[1]}" = "-l" ]
+}
+
 @test "react_loop records plan skip reason without advancing index when execution is bypassed" {
 	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
@@ -582,7 +642,8 @@ plan_entry=$(jq -nc '{tool:"alpha",thought:"start",args:{input:"start"}}')
 react_loop "question" $'alpha\nfinal_answer' "${plan_entry}" "initial outline"
 
 final_answer=$(state_get react_state final_answer)
-outline_flat=$(printf '%s' "$(state_get react_state plan_outline)" | tr '\n' '\\n')
+outline_raw=$(state_get react_state plan_outline)
+outline_flat=${outline_raw//$'\n'/\\n}
 transcript=$(cat "${transcript_sink}")
 rm -f "${transcript_sink}"
 
@@ -597,6 +658,124 @@ SCRIPT
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == "final=done outline=1. retry\\n2. wrap transcript_count="* ]]
+}
+
+@test "_select_action_from_llama uses executor mode for planned steps" {
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log() { :; }
+log_pretty() { :; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+format_tool_history() { printf '%s' "$1"; }
+
+state_prefix="react_state"
+plan_entry=$(jq -nc '{tool:"alpha",thought:"plan",required_args:{input:"do"},optional_args:{mode:"fast"}}')
+initialize_react_state "${state_prefix}" "question" "" "${plan_entry}" ""
+
+llama_infer() {
+printf '%s' "$4" >schema_capture.json
+printf '{"thought":"brief","args":{"mode":"refined","input":"do"}}'
+}
+
+build_react_action_schema() {
+echo "should not be called" 1>&2
+exit 99
+}
+
+_select_action_from_llama "${state_prefix}" action_out
+
+schema_title=$(jq -r '.title' schema_capture.json)
+args_required=$(jq -c '.properties.args.required' schema_capture.json)
+
+printf 'action=%s\nschema_title=%s\nrequired=%s' "${action_out}" "${schema_title}" "${args_required}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"tool":"alpha"'* ]]
+	[[ "$output" == *'"input":"do"'* ]]
+	[[ "$output" == *'"mode":"refined"'* ]]
+	[[ "$output" == *'schema_title=ReactExecutorArgs'* ]]
+}
+
+@test "_select_action_from_llama builds default tool set without plan" {
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log() { :; }
+log_pretty() { :; }
+apply_prompt_context_budget() { printf '%s' "$2"; }
+build_react_prompt_static_prefix() { printf 'PREFIX'; }
+build_react_prompt_dynamic_suffix() { printf 'SUFFIX'; }
+format_tool_descriptions() { printf '%s' "$1"; }
+format_tool_example_line() { printf -- '- %s' "$1"; }
+format_tool_history() { printf '%s' "$1"; }
+
+state_prefix="react_state"
+initialize_react_state "${state_prefix}" "question" $'alpha\nbeta' "" ""
+
+llama_infer() {
+printf '%s' "$4" >schema_capture.json
+printf '{"thought":"ok","tool":"alpha","args":{}}'
+}
+
+build_react_action_schema() {
+printf '%s' "$1" >allowed_capture.txt
+jq -nc --arg tools "$1" '{oneOf: ($tools|split("\n")|map(select(length>0))|map({properties:{tool:{const:.},args:{}}}))}' >/tmp/schema.json
+printf '/tmp/schema.json'
+}
+
+validate_react_action() { printf '%s' "$1"; }
+
+_select_action_from_llama "${state_prefix}" action_out
+
+allowed_list=$(cat allowed_capture.txt | paste -sd',' -)
+schema_tools=$(jq -rc '.oneOf[].properties.tool.const' schema_capture.json | paste -sd',' -)
+
+printf 'allowed=%s\nschema=%s' "${allowed_list}" "${schema_tools}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == $'allowed=alpha,beta,final_answer,replan_token\n'* ]]
+	[[ "$output" == *"schema=alpha,beta,final_answer,replan_token" ]]
+}
+
+@test "react_loop blocks off-plan tool selection and triggers replan" {
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true MAX_STEPS=1 bash --noprofile --norc <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/react.sh
+
+log() { :; }
+log_pretty() { :; }
+emit_boxed_summary() { :; }
+format_tool_history() { printf '%s' "$1"; }
+respond_text() { printf 'fallback'; }
+select_observation_summary() { printf '%s' "$2"; }
+
+replan_flag=$(mktemp)
+maybe_trigger_replan() { echo "replan" >"${replan_flag}"; }
+
+validate_tool_permission() { return 1; }
+execute_tool_action() { echo "should not execute" 1>&2; return 99; }
+record_tool_execution() { :; }
+
+_select_action_from_llama() {
+printf -v "$2" '{"thought":"off-plan","tool":"beta","args":{}}'
+return 0
+}
+
+plan_entry=$(jq -nc '{tool:"alpha",thought:"start",args:{input:"start"}}')
+react_loop "question" $'alpha\nfinal_answer' "${plan_entry}" "outline"
+
+if [[ -f "${replan_flag}" ]]; then
+printf 'replan_called=true'
+fi
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"replan_called=true"* ]]
 }
 
 @test "maybe_trigger_replan logs skip metadata when below threshold" {
@@ -712,7 +891,7 @@ SCRIPT
 	[ "$output" = "final=complete step=1" ]
 }
 
-@test "react_loop derives attempt budget from plan length" {
+@test "react_loop derives attempt budget after initial retry" {
 	run env -i HOME="$HOME" PATH="$PATH" REACT_RETRY_BUFFER=1 bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 LLAMA_AVAILABLE=false
@@ -746,7 +925,7 @@ SCRIPT
 	[ "$output" = "max_steps=2 attempts=2 step=1 retry_count=1 final=done" ]
 }
 
-@test "react_loop retries planned step without consuming step counter" {
+@test "react_loop retries planned step without consuming step counter after failure" {
 	run env -i HOME="$HOME" PATH="$PATH" REACT_RETRY_BUFFER=2 bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 LLAMA_AVAILABLE=false

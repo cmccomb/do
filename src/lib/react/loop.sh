@@ -19,6 +19,7 @@
 #   Functions return non-zero on invalid actions or tool execution failures.
 
 REACT_LIB_DIR=${REACT_LIB_DIR:-$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
+REACT_REPLAN_TOOL="${REACT_REPLAN_TOOL:-react_replan}"
 
 # shellcheck source=../formatting.sh disable=SC1091
 source "${REACT_LIB_DIR}/../formatting.sh"
@@ -40,79 +41,6 @@ source "${REACT_LIB_DIR}/schema.sh"
 source "${REACT_LIB_DIR}/history.sh"
 # shellcheck source=../llm/context_budget.sh disable=SC1091
 source "${REACT_LIB_DIR}/../llm/context_budget.sh"
-
-format_tool_args() {
-	# Formats tool arguments into a JSON object.
-	# Arguments:
-	#   $1 - tool name (string)
-	#   $2 - primary payload string (string)
-	# Returns:
-	#   A JSON string representing the tool arguments.
-	local tool payload text_key
-	tool="$1"
-	payload="$2"
-	text_key="${CANONICAL_TEXT_ARG_KEY:-input}"
-	case "${tool}" in
-	terminal)
-		read -r -a terminal_tokens <<<"${payload}"
-		if ((${#terminal_tokens[@]} == 0)); then
-			terminal_tokens=("status")
-		fi
-		jq -nc --arg command "${terminal_tokens[0]}" --argjson args "$(printf '%s\n' "${terminal_tokens[@]:1}" | jq -Rcs 'split("\n") | map(select(length > 0))')" '{command:$command,args:$args}'
-		;;
-	python_repl)
-		jq -nc --arg code "${payload}" '{code:$code}'
-		;;
-	notes_search | calendar_search | mail_search)
-		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
-		;;
-	web_search)
-		jq -nc --arg query "${payload}" '{query:$query}'
-		;;
-	notes_list | reminders_list | calendar_list | mail_list_inbox | mail_list_unread)
-		jq -nc '{}'
-		;;
-	notes_create | notes_append)
-		local title body
-		title=${payload%%$'\n'*}
-		body=${payload#"${title}"}
-		body=${body#$'\n'}
-		jq -nc --arg title "${title}" --arg body "${body}" '{title:$title,body:$body}'
-		;;
-	notes_read)
-		jq -nc --arg title "${payload}" '{title:$title}'
-		;;
-	reminders_create)
-		local title notes time
-		title=${payload%%$'\n'*}
-		notes=${payload#"${title}"}
-		notes=${notes#$'\n'}
-		time=""
-		jq -nc --arg title "${title}" --arg time "${time}" --arg notes "${notes}" '{title:$title,time:$time,notes:$notes}'
-		;;
-	reminders_complete)
-		jq -nc --arg title "${payload}" '{title:$title}'
-		;;
-	calendar_create)
-		local title start_time location
-		title=${payload%%$'\n'*}
-		start_time=${payload#"${title}"}
-		start_time=${start_time#$'\n'}
-		location=${start_time#*$'\n'}
-		start_time=${start_time%%$'\n'*}
-		jq -nc --arg title "${title}" --arg start_time "${start_time}" --arg location "${location}" '{title:$title,start_time:$start_time,location:$location}'
-		;;
-	mail_draft | mail_send)
-		jq -nc --arg envelope "${payload}" '{envelope:$envelope}'
-		;;
-	final_answer)
-		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
-		;;
-	*)
-		jq -nc --arg key "${text_key}" --arg value "${payload}" '{($key):$value}'
-		;;
-	esac
-}
 
 extract_tool_query() {
 	# Arguments:
@@ -193,6 +121,118 @@ normalize_args_json() {
 	printf '%s' "${normalized}"
 }
 
+planned_step_required_args() {
+	# Arguments:
+	#   $1 - plan entry JSON (string)
+	printf '{}'
+}
+
+planned_step_optional_args() {
+	# Arguments:
+	#   $1 - plan entry JSON (string)
+	printf '{}'
+}
+
+planned_step_effective_args() {
+	# Extracts args from a planned step.
+	# Arguments:
+	#   $1 - plan entry JSON (string)
+	local plan_entry
+	plan_entry="$1"
+	jq -c '(.args // {})' <<<"${plan_entry}" 2>/dev/null || printf '{}'
+}
+
+build_executor_action_schema() {
+	# Builds a JSON schema for executor mode, constraining args to planner guidance.
+	# Arguments:
+	#   $1 - planner args JSON (string)
+	local planner_args_json
+	planner_args_json="$1"
+
+	if ! require_python3_available "Executor schema generation"; then
+		log "ERROR" "Unable to build executor action schema; python3 missing" "${planner_args_json}" >&2
+		return 1
+	fi
+
+	python3 - "${planner_args_json}" <<'PY'
+import json
+import sys
+import tempfile
+
+planner_args = json.loads(sys.argv[1] or "{}")
+
+def build_properties(source):
+    properties = {}
+    for key, value in source.items():
+        properties[key] = {"const": value, "description": "Required by the planner"}
+    return properties
+
+required_properties = build_properties(planner_args)
+
+schema = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ReactExecutorArgs",
+    "description": "Args-only response for executing a planned tool call.",
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["args"],
+    "properties": {
+        "thought": {
+            "type": "string",
+            "description": "Brief execution reasoning (one sentence).",
+        },
+        "args": {
+            "type": "object",
+            "additionalProperties": True,
+            "required": list(planner_args.keys()),
+            "properties": required_properties,
+        },
+    },
+}
+
+tmp = tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".executor.schema.json", encoding="utf-8")
+json.dump(schema, tmp)
+tmp.close()
+print(tmp.name)
+PY
+}
+
+validate_executor_action() {
+	# Validates llama executor output against planner-required args.
+	# Arguments:
+	#   $1 - raw action JSON
+	#   $2 - planner args JSON (string)
+	local raw_action planner_args_json action_json args_json required_key expected_value
+	raw_action="$1"
+	planner_args_json="$2"
+
+	if ! action_json=$(jq -ce '.' <<<"${raw_action}" 2>/dev/null); then
+		printf 'Invalid executor JSON' >&2
+		return 1
+	fi
+
+	if ! jq -e '.args | type == "object"' <<<"${action_json}" >/dev/null 2>&1; then
+		printf 'args must be an object' >&2
+		return 1
+	fi
+
+	args_json="$(jq -c '.args' <<<"${action_json}")"
+
+	while IFS= read -r required_key; do
+		expected_value=$(jq -c --arg key "${required_key}" '.[$key]' <<<"${planner_args_json}")
+		if ! jq -e --arg key "${required_key}" 'has($key)' <<<"${args_json}" >/dev/null; then
+			printf 'Missing required arg: %s' "${required_key}" >&2
+			return 1
+		fi
+		if ! jq -e --arg key "${required_key}" --argjson expected "${expected_value}" '.[$key] == $expected' <<<"${args_json}" >/dev/null 2>&1; then
+			printf 'Required arg mismatch: %s' "${required_key}" >&2
+			return 1
+		fi
+	done < <(jq -r 'keys[]?' <<<"${planner_args_json}")
+
+	printf '%s' "${action_json}"
+}
+
 normalize_action() {
 	# Builds a normalized action object for comparison and storage.
 	# Arguments:
@@ -213,7 +253,7 @@ _select_action_from_llama() {
 	#   $1 - state prefix
 	#   $2 - output variable name for validated JSON
 	local state_name output_name allowed_tools react_schema_path react_schema_text react_prompt raw_action validated_action validation_error_file validation_error
-	local history plan_step_guidance plan_index planned_entry tool planned_thought planned_args_json invoke_llama allowed_tool_lines allowed_tool_descriptions summarized_history
+	local history plan_step_guidance plan_index planned_entry tool planned_thought planned_args_json planned_required_args planned_optional_args invoke_llama allowed_tool_lines allowed_tool_descriptions summarized_history
 	state_name="$1"
 	output_name="$2"
 
@@ -223,20 +263,23 @@ _select_action_from_llama() {
 	tool=""
 	planned_thought="Following planned step"
 	planned_args_json="{}"
+	planned_required_args="{}"
+	planned_optional_args="{}"
 	plan_step_guidance="Planner provided no additional steps; choose the best next action."
 	if [[ -n "${planned_entry}" ]]; then
 		tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
 		planned_thought="$(printf '%s' "${planned_entry}" | jq -r '.thought // "Following planned step"' 2>/dev/null || printf '')"
-		if ! planned_args_json="$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null)"; then
-			planned_args_json="{}"
-		fi
+		planned_required_args="$(planned_step_required_args "${planned_entry}")"
+		planned_optional_args="$(planned_step_optional_args "${planned_entry}")"
+		planned_args_json="$(planned_step_effective_args "${planned_entry}")"
 		plan_step_guidance="$(
 			jq -rn \
 				--arg step "$((plan_index + 1))" \
 				--arg tool "${tool:-}" \
 				--arg thought "${planned_thought}" \
-				--argjson args "${planned_args_json}" \
-				'"Step \($step) suggested by the planner:\n- tool: \($tool // "(unspecified)")\n- thought: \($thought // "")\n- args: \($args|@json)"'
+				--argjson required "${planned_required_args}" \
+				--argjson optional "${planned_optional_args}" \
+				'"Step \($step) suggested by the planner:\n- tool: \($tool // "(unspecified)")\n- thought: \($thought // "")\n- required_args (do not change): \($required|@json)\n- optional_args (you may refine or fill): \($optional|@json)"'
 		)"
 	fi
 
@@ -257,8 +300,9 @@ _select_action_from_llama() {
 	fi
 
 	allowed_tools="$(state_get "${state_name}" "allowed_tools")"
+
 	if [[ -z "${allowed_tools}" ]]; then
-		allowed_tools="$(tool_names)"
+		allowed_tools="$(printf '%s\n%s\n%s' "${tool}" "${REACT_REPLAN_TOOL}" "final_answer")"
 	fi
 
 	if [[ "${tool}" == "react_fallback" ]]; then
@@ -269,10 +313,58 @@ _select_action_from_llama() {
 		allowed_tools+=$'\nfinal_answer'
 	fi
 
+	if [[ -n "${allowed_tools}" ]] && ! grep -Fxq "${REACT_REPLAN_TOOL}" <<<"${allowed_tools}"; then
+		allowed_tools+=$'\n'"${REACT_REPLAN_TOOL}"
+	fi
+
 	allowed_tools="$(printf '%s\n' "${allowed_tools}" | sed '/^react_fallback$/d' | awk '!seen[$0]++')"
 
 	if [[ -z "${plan_step_guidance}" ]]; then
 		plan_step_guidance="Planner provided no additional steps; choose the best next action."
+	fi
+
+	if [[ "${invoke_llama}" == true && -n "${planned_entry}" ]]; then
+		local executor_schema_path executor_schema_text executor_prompt raw_executor_action executor_validation_file merged_args executor_action_json executor_thought
+		executor_schema_path="$(build_executor_action_schema "${planned_args_json}")" || return 1
+		executor_schema_text="$(cat "${executor_schema_path}")" || return 1
+		history="$(format_tool_history "$(state_get_history_lines "${state_name}")")"
+
+		executor_prompt="$(
+			cat <<'EOF'
+You are executing the next step of a plan. Do not choose a tool; the planner already selected it.
+Provide only the arguments needed for this tool and a minimal thought (one sentence).
+Use JSON only in the response.
+EOF
+		)"
+		executor_prompt+=$'\nUser request:\n'
+		executor_prompt+="$(state_get "${state_name}" "user_query")"
+		executor_prompt+=$'\n\nPlan guidance:\n'
+		executor_prompt+="${plan_step_guidance}"
+		executor_prompt+=$'\n\nRecent history:\n'
+		executor_prompt+="${history}"$'\n'
+		executor_prompt+=$'\nRespond strictly with JSON of the form:\n'
+		executor_prompt+=$'{"thought":"short reasoning","args":{"<arguments>"}}\n'
+
+		executor_validation_file="$(mktemp)"
+		raw_executor_action="$(LLAMA_TEMPERATURE=0 llama_infer "${executor_prompt}" "" 128 "${executor_schema_text}" "${REACT_MODEL_REPO:-}" "${REACT_MODEL_FILE:-}" "${REACT_CACHE_FILE:-}" "${executor_prompt}")"
+		log_pretty "INFO" "Executor action received" "${raw_executor_action}"
+
+		if ! executor_action_json=$(validate_executor_action "${raw_executor_action}" "${planned_args_json}" 2>"${executor_validation_file}"); then
+			validation_error="$(cat "${executor_validation_file}")"
+			record_history "${state_name}" "$(printf 'Invalid executor action from model: %s' "${validation_error}")"
+			log "WARN" "Invalid executor output from llama" "${validation_error}"
+			rm -f "${executor_validation_file}" "${executor_schema_path}"
+		else
+			executor_thought="$(jq -r '.thought // empty' <<<"${executor_action_json}" 2>/dev/null || printf '')"
+			if [[ -z "${executor_thought}" ]]; then
+				executor_thought="${planned_thought}"
+			fi
+			merged_args=$(jq -nc --argjson planner_args "${planned_args_json}" --argjson model_args "$(jq -c '.args // {}' <<<"${executor_action_json}" 2>/dev/null || printf '{}')" '($planner_args // {}) + ($model_args // {})')
+			validated_action="$(jq -nc --arg thought "${executor_thought}" --arg tool "${tool}" --argjson args "${merged_args}" '{thought:$thought,tool:$tool,args:$args}')"
+			rm -f "${executor_validation_file}" "${executor_schema_path}"
+			printf -v "${output_name}" '%s' "${validated_action}" || return 1
+			return 0
+		fi
 	fi
 
 	if [[ "${invoke_llama}" != true ]]; then
@@ -280,6 +372,9 @@ _select_action_from_llama() {
 	fi
 
 	allowed_tool_lines="$(format_tool_descriptions "${allowed_tools}" format_tool_example_line)"
+	if grep -Fxq "${REACT_REPLAN_TOOL}" <<<"${allowed_tools}"; then
+		allowed_tool_lines+=$'\n- '"${REACT_REPLAN_TOOL}"$': Request replanning or a revised approach when the current plan no longer fits.'
+	fi
 	allowed_tool_descriptions="Available tools:"
 	if [[ -n "${allowed_tool_lines}" ]]; then
 		allowed_tool_descriptions+=$'\n'"${allowed_tool_lines}"
@@ -331,6 +426,13 @@ _select_action_from_llama() {
 	rm -f "${validation_error_file}"
 	rm -f "${react_schema_path}"
 
+	if [[ -n "${planned_entry}" ]]; then
+		local planner_args merged_args
+		planner_args="$(planned_step_effective_args "${planned_entry}")"
+		merged_args=$(jq -nc --argjson planner_args "${planner_args}" --argjson model_args "$(printf '%s' "${validated_action}" | jq -c '.args // {}' 2>/dev/null || printf '{}')" '($planner_args // {}) + ($model_args // {})')
+		validated_action="$(jq -c --argjson args "${merged_args}" '.args = $args' <<<"${validated_action}" 2>/dev/null || printf '%s' "${validated_action}")"
+	fi
+
 	printf -v "${output_name}" '%s' "${validated_action}"
 	return 0
 }
@@ -351,9 +453,7 @@ select_next_action() {
 	planned_entry=$(printf '%s\n' "$(state_get "${state_name}" "plan_entries")" | sed -n "$((plan_index + 1))p")
 
 	if [[ -n "${planned_entry}" ]]; then
-		if ! planned_args_json="$(printf '%s' "${planned_entry}" | jq -c '.args // {}' 2>/dev/null)"; then
-			planned_args_json="{}"
-		fi
+		planned_args_json="$(planned_step_effective_args "${planned_entry}")"
 		local pending_index_json pending_index_current preserved_reason
 		pending_index_json=$(jq -nc --arg plan_index "${plan_index}" '($plan_index | select(length>0) | tonumber?) // null')
 		pending_index_current="$(state_get "${state_name}" "pending_plan_step")"
@@ -398,6 +498,10 @@ record_plan_skip_reason() {
 	state_name="$1"
 	reason="$2"
 	pending_plan_step="$(state_get "${state_name}" "pending_plan_step")"
+
+	if [[ -z "${pending_plan_step}" ]]; then
+		pending_plan_step="$(state_get "${state_name}" "plan_index")"
+	fi
 
 	if [[ -z "${pending_plan_step}" ]]; then
 		return 0
@@ -686,7 +790,7 @@ build_execution_transcript() {
                 | to_entries
                 | map(
                         . as $wrapper
-                        | ($wrapper.value | (try (fromjson // .) catch .)) as $entry
+                        | ($wrapper.value | (try (fromjson // .) catch $wrapper.value)) as $entry
                         | if ($entry | type == "object") then
                                 ($entry.observation_raw // $entry.observation // $entry.observation_summary // "") as $raw_obs
                                 | ($entry.action.args // {}) as $args
@@ -999,6 +1103,7 @@ react_loop() {
 				log_action_gate "${state_prefix}" false "tool_not_permitted" "$(jq -nc '{selection_valid:true,tool_permitted:false}')"
 				record_plan_skip_without_progress "${state_prefix}" "tool_not_permitted"
 				increment_retry_count "${state_prefix}"
+				maybe_trigger_replan "${state_prefix}" "${current_step}" true || true
 				action_json=""
 				break
 			fi
@@ -1058,13 +1163,27 @@ react_loop() {
 		if [[ -n "${pending_plan_step}" ]]; then
 			planned_entry=$(printf '%s\n' "$(state_get "${state_prefix}" "plan_entries")" | sed -n "$((pending_plan_step + 1))p")
 			planned_tool="$(printf '%s' "${planned_entry}" | jq -r '.tool // empty' 2>/dev/null || printf '')"
-			if [[ -n "${planned_tool}" && "${planned_tool}" != "${tool}" ]]; then
+			if [[ -n "${planned_tool}" && "${planned_tool}" != "${tool}" && "${tool}" != "${REACT_REPLAN_TOOL}" ]]; then
 				plan_step_matches_action=false
 				plan_diverged=true
 				gate_reason="plan_tool_mismatch"
 				record_plan_skip_without_progress "${state_prefix}" "plan_tool_mismatch"
 				increment_retry_count "${state_prefix}"
+				maybe_trigger_replan "${state_prefix}" "${current_step}" true || true
+				action_selected=false
 			fi
+		fi
+
+		if [[ "${tool}" == "${REACT_REPLAN_TOOL}" ]]; then
+			plan_diverged=true
+			record_plan_skip_without_progress "${state_prefix}" "plan_replan_requested"
+			maybe_trigger_replan "${state_prefix}" "${current_step}" true || true
+			increment_retry_count "${state_prefix}"
+			action_selected=false
+		fi
+
+		if [[ "${action_selected}" == false ]]; then
+			continue
 		fi
 
 		if [[ -z "${final_answer_payload}" ]]; then
@@ -1159,6 +1278,9 @@ react_loop() {
 		fi
 
 		if ((exit_code == 0)) && [[ "${plan_step_matches_action}" == true ]]; then
+			if [[ -z "$(state_get "${state_prefix}" "pending_plan_step")" ]]; then
+				state_set "${state_prefix}" "pending_plan_step" "$(state_get "${state_prefix}" "plan_index")"
+			fi
 			complete_pending_plan_step "${state_prefix}"
 			local plan_length_value plan_index_value
 			plan_length_value=$(state_get "${state_prefix}" "plan_length")
