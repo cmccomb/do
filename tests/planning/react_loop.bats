@@ -661,7 +661,7 @@ SCRIPT
 }
 
 @test "_select_action_from_llama uses executor mode for planned steps" {
-        run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 
@@ -692,15 +692,15 @@ args_required=$(jq -c '.properties.args.required' schema_capture.json)
 printf 'action=%s\nschema_title=%s\nrequired=%s' "${action_out}" "${schema_title}" "${args_required}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == *'"tool":"alpha"'* ]]
-        [[ "$output" == *'"input":"do"'* ]]
-        [[ "$output" == *'"mode":"refined"'* ]]
-        [[ "$output" == *'schema_title=ReactExecutorArgs'* ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"tool":"alpha"'* ]]
+	[[ "$output" == *'"input":"do"'* ]]
+	[[ "$output" == *'"mode":"refined"'* ]]
+	[[ "$output" == *'schema_title=ReactExecutorArgs'* ]]
 }
 
 @test "_select_action_from_llama builds default tool set without plan" {
-        run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" LLAMA_AVAILABLE=true USE_REACT_LLAMA=true REACT_REPLAN_TOOL=replan_token bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/react.sh
 
@@ -737,9 +737,9 @@ schema_tools=$(jq -rc '.oneOf[].properties.tool.const' schema_capture.json | pas
 printf 'allowed=%s\nschema=%s' "${allowed_list}" "${schema_tools}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "$output" == $'allowed=alpha,beta,final_answer,replan_token\n'* ]]
-        [[ "$output" == *"schema=alpha,beta,final_answer,replan_token" ]]
+	[ "$status" -eq 0 ]
+	[[ "$output" == $'allowed=alpha,beta,final_answer,replan_token\n'* ]]
+	[[ "$output" == *"schema=alpha,beta,final_answer,replan_token" ]]
 }
 
 @test "react_loop blocks off-plan tool selection and triggers replan" {
