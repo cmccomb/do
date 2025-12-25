@@ -123,7 +123,7 @@ SCRIPT
 }
 
 @test "react_loop records plan skip reason without advancing index when execution is bypassed" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -143,12 +143,12 @@ printf 'plan_index=%s pending=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_index=0 pending=0 skip_reason=tool_not_permitted" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=0 pending=0 skip_reason=tool_not_permitted" ]
 }
 
 @test "react_loop logs gating metadata when actions are blocked" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -170,16 +170,16 @@ react_loop "question" "alpha" '{"tool":"alpha"}' ""
 printf '%s\n' "${gate_logs[@]}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        gate_log=$(printf '%s' "$output" | head -n1)
-        [[ "$(jq -r '.reason' <<<"${gate_log}")" == "tool_not_permitted" ]]
-        [[ "$(jq -r '.allowed' <<<"${gate_log}")" == "false" ]]
-        [[ "$(jq -r '.flags.tool_permitted' <<<"${gate_log}")" == "false" ]]
-        [[ "$(jq -r '.plan_index' <<<"${gate_log}")" == "0" ]]
+	[ "$status" -eq 0 ]
+	gate_log=$(printf '%s' "$output" | head -n1)
+	[[ "$(jq -r '.reason' <<<"${gate_log}")" == "tool_not_permitted" ]]
+	[[ "$(jq -r '.allowed' <<<"${gate_log}")" == "false" ]]
+	[[ "$(jq -r '.flags.tool_permitted' <<<"${gate_log}")" == "false" ]]
+	[[ "$(jq -r '.plan_index' <<<"${gate_log}")" == "0" ]]
 }
 
 @test "react_loop keeps plan index when a planned tool fails" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -201,11 +201,11 @@ printf 'plan_index=%s pending=%s skip_reason=%s' \
 SCRIPT
 
 	[ "$status" -eq 0 ]
-        [ "$output" = "plan_index=0 pending=0 skip_reason=" ]
+	[ "$output" = "plan_index=0 pending=0 skip_reason=" ]
 }
 
 @test "react_loop logs skip reasons without plan progress" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -299,7 +299,7 @@ SCRIPT
 }
 
 @test "react_loop does not advance plan index when llama selects a different tool" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=true
@@ -320,12 +320,12 @@ printf 'plan_index=%s skip_reason=%s' \
         "$(state_get react_state plan_skip_reason)"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "$output" = "plan_index=0 skip_reason=plan_tool_mismatch" ]
+	[ "$status" -eq 0 ]
+	[ "$output" = "plan_index=0 skip_reason=plan_tool_mismatch" ]
 }
 
 @test "react_loop logs gating metadata when planned actions proceed" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=1
 LLAMA_AVAILABLE=false
@@ -348,17 +348,17 @@ react_loop "question" "alpha" "${plan_entry}" ""
 printf '%s\n' "${gate_logs[@]}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        gate_log=$(printf '%s' "$output" | head -n1)
-        [[ "$(jq -r '.reason' <<<"${gate_log}")" == "validated" ]]
-        [[ "$(jq -r '.allowed' <<<"${gate_log}")" == "true" ]]
-        [[ "$(jq -r '.plan_index' <<<"${gate_log}")" == "0" ]]
-        [[ "$(jq -r '.flags.plan_step_matches_action' <<<"${gate_log}")" == "true" ]]
-        [[ "$(jq -r '.flags.duplicate_detected' <<<"${gate_log}")" == "false" ]]
+	[ "$status" -eq 0 ]
+	gate_log=$(printf '%s' "$output" | head -n1)
+	[[ "$(jq -r '.reason' <<<"${gate_log}")" == "validated" ]]
+	[[ "$(jq -r '.allowed' <<<"${gate_log}")" == "true" ]]
+	[[ "$(jq -r '.plan_index' <<<"${gate_log}")" == "0" ]]
+	[[ "$(jq -r '.flags.plan_step_matches_action' <<<"${gate_log}")" == "true" ]]
+	[[ "$(jq -r '.flags.duplicate_detected' <<<"${gate_log}")" == "false" ]]
 }
 
 @test "react_loop identifies duplicates with reordered args" {
-        run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
+	run env -i HOME="$HOME" PATH="$PATH" bash --noprofile --norc <<'SCRIPT'
 set -euo pipefail
 MAX_STEPS=2
 LLAMA_AVAILABLE=false
