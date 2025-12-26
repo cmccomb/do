@@ -112,19 +112,19 @@ user_query USER_QUERY
 EOF
 }
 
-react_run_cache_dir() {
+executor_run_cache_dir() {
 	# Derives the directory that scopes the executor prompt cache for the current run.
 	# Returns:
 	#   The directory path (string) or empty string when unset.
-	if [[ -z "${REACT_CACHE_FILE:-}" ]]; then
+	if [[ -z "${EXECUTOR_CACHE_FILE:-}" ]]; then
 		printf ''
 		return
 	fi
 
-	printf '%s' "$(dirname "${REACT_CACHE_FILE}")"
+	printf '%s' "$(dirname "${EXECUTOR_CACHE_FILE}")"
 }
 
-coerce_react_run_cache_path() {
+coerce_executor_run_cache_path() {
 	# Ensures the executor prompt cache is scoped to the current run directory.
 	# Arguments:
 	#   $1 - settings namespace prefix
@@ -133,7 +133,7 @@ coerce_react_run_cache_path() {
 
 	cache_dir="${CACHE_DIR:-$(settings_get "${settings_prefix}" "cache_dir")}" || cache_dir=""
 	run_id="${RUN_ID:-$(settings_get "${settings_prefix}" "run_id")}" || run_id=""
-	cache_basename="$(basename "${REACT_CACHE_FILE:-react.prompt-cache}")"
+	cache_basename="$(basename "${EXECUTOR_CACHE_FILE:-executor.prompt-cache}")"
 
 	if [[ -z "${cache_dir}" || -z "${run_id}" ]]; then
 		return
@@ -141,31 +141,31 @@ coerce_react_run_cache_path() {
 
 	run_cache_dir="${cache_dir}/runs/${run_id}"
 	coerced_path="${run_cache_dir}/${cache_basename}"
-	settings_set "${settings_prefix}" "react_cache_file" "${coerced_path}"
-	REACT_CACHE_FILE="${coerced_path}"
+	settings_set "${settings_prefix}" "executor_cache_file" "${coerced_path}"
+	EXECUTOR_CACHE_FILE="${coerced_path}"
 }
 
-ensure_react_run_cache_dir() {
+ensure_executor_run_cache_dir() {
 	# Ensures the run-scoped executor cache directory exists for llama.cpp caching.
 	local cache_dir
-	cache_dir="$(react_run_cache_dir)"
+	cache_dir="$(executor_run_cache_dir)"
 
 	if [[ -z "${cache_dir}" ]]; then
 		return
 	fi
 
 	mkdir -p "${cache_dir}"
-	REACT_RUN_CACHE_DIR="${cache_dir}"
+	EXECUTOR_RUN_CACHE_DIR="${cache_dir}"
 	log "INFO" "Prepared executor run cache" "path=${cache_dir}"
 }
 
-cleanup_react_run_cache_dir() {
+cleanup_executor_run_cache_dir() {
 	# Cleans up the run-scoped executor cache directory on success and retains it on failure.
 	# Arguments:
 	#   $1 - exit status to evaluate
 	local status cache_dir
 	status="${1:-0}"
-	cache_dir="${REACT_RUN_CACHE_DIR:-$(react_run_cache_dir)}"
+	cache_dir="${EXECUTOR_RUN_CACHE_DIR:-$(executor_run_cache_dir)}"
 
 	if [[ -z "${cache_dir}" || ! -d "${cache_dir}" ]]; then
 		return

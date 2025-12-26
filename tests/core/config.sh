@@ -149,8 +149,8 @@ set -euo pipefail
 config_file="$(mktemp)"
 PLANNER_MODEL_SPEC="planner/model:planner.gguf"
 PLANNER_MODEL_BRANCH="planner-branch"
-REACT_MODEL_SPEC="react/model:react.gguf"
-REACT_MODEL_BRANCH="react-branch"
+EXECUTOR_MODEL_SPEC="executor/model:executor.gguf"
+EXECUTOR_MODEL_BRANCH="executor-branch"
 VERBOSITY=2
 APPROVE_ALL=true
 FORCE_CONFIRM=false
@@ -161,15 +161,15 @@ write_config_file >/dev/null
 bash -n "${config_file}"
 PLANNER_MODEL_SPEC="placeholder"
 PLANNER_MODEL_BRANCH="placeholder"
-REACT_MODEL_SPEC="placeholder"
-REACT_MODEL_BRANCH="placeholder"
+EXECUTOR_MODEL_SPEC="placeholder"
+EXECUTOR_MODEL_BRANCH="placeholder"
 VERBOSITY=0
 APPROVE_ALL=false
 FORCE_CONFIRM=true
 source "${config_file}"
 printf '%s\n' \
         "${PLANNER_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" \
-        "${REACT_MODEL_SPEC}" "${REACT_MODEL_BRANCH}" \
+        "${EXECUTOR_MODEL_SPEC}" "${EXECUTOR_MODEL_BRANCH}" \
         "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}" \
         "$(wc -l < "${config_file}" | tr -d ' ')"
 rm -f "${config_file}"
@@ -178,12 +178,12 @@ SCRIPT
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "planner/model:planner.gguf" ]
 	[ "${lines[1]}" = "planner-branch" ]
-	[ "${lines[2]}" = "react/model:react.gguf" ]
-	[ "${lines[3]}" = "react-branch" ]
+	[ "${lines[2]}" = "executor/model:executor.gguf" ]
+	[ "${lines[3]}" = "executor-branch" ]
 	[ "${lines[4]}" = "2" ]
 	[ "${lines[5]}" = "true" ]
 	[ "${lines[6]}" = "false" ]
-	[ "${lines[7]}" = "11" ]
+	[ "${lines[7]}" = "12" ]
 }
 
 @test "okso init writes clean config without stray characters" {
