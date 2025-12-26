@@ -2,7 +2,6 @@
 User request: "Turn my note titled 'LC-Guard action items' into reminders, and leave the note intact."
 Plan (JSON):
 {
-  "mode": "plan",
   "plan": [
     {
       "thought": "Read the source note to extract tasks.",
@@ -29,7 +28,6 @@ Plan (JSON):
 User request: "Summarize my inbox from the last 24 hours into 5 bullets."
 Plan (JSON):
 {
-  "mode": "plan",
   "plan": [
     {
       "thought": "List recent inbox messages to find the 24-hour window.",
@@ -56,7 +54,6 @@ Plan (JSON):
 User request: "Find authoritative guidance on how to cite software in academic papers (APA vs. IEEE), and give me a short, practical rule-of-thumb."
 Plan (JSON):
 {
-  "mode": "plan",
   "plan": [
     {
       "thought": "Identify credible sources for software citation guidance.",
@@ -80,7 +77,7 @@ Plan (JSON):
       "thought": "Capture reusable notes for the user.",
       "tool": "notes_create",
       "args": {"title": "Software citation rules of thumb", "body": "APA example + IEEE example + checklist."},
-      "args_control": {"title": "locked", "body": "locked"}
+      "args_control": {"title": "locked", "body": "context"}
     },
     {
       "thought": "Share the guidance and note title.",
@@ -95,7 +92,6 @@ Plan (JSON):
 User request: "Search this repo for todos and make me a note listing each file and count of todos per file."
 Plan (JSON):
 {
-  "mode": "plan",
   "plan": [
     {
       "thought": "Scan the repo for TODO occurrences using the executor's helper command.",
@@ -104,16 +100,10 @@ Plan (JSON):
       "args_control": {"command": "locked", "args": "locked"}
     },
     {
-      "thought": "Format the counts for note storage.",
-      "tool": "terminal",
-      "args": {"command": "format-todo-counts", "args": []},
-      "args_control": {"command": "locked", "args": "locked"}
-    },
-    {
       "thought": "Persist the summary for reuse.",
       "tool": "notes_create",
       "args": {"title": "TODO inventory", "body": "Sorted list + totals."},
-      "args_control": {"title": "locked", "body": "locked"}
+      "args_control": {"title": "locked", "body": "context"}
     },
     {
       "thought": "Report results back to the user.",
@@ -128,7 +118,6 @@ Plan (JSON):
 User request: "List my upcoming calendar events that mention 'proposal' in the title."
 Plan (JSON):
 {
-  "mode": "plan",
   "plan": [
     {
       "thought": "Search events matching the keyword.",
