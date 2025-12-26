@@ -25,21 +25,21 @@ source "${TOOLS_QUERY_LIB_DIR}/../core/logging.sh"
 source "${TOOLS_QUERY_LIB_DIR}/../../tools/registry.sh"
 
 extract_tool_query() {
-        # Derives a human-readable query string for a tool invocation.
-        # Arguments:
-        #   $1 - tool name (string)
-        #   $2 - args JSON string (object or string)
-        local args_json text_key query
-        args_json="${2:-"{}"}"
-        text_key="$(canonical_text_arg_key)"
+	# Derives a human-readable query string for a tool invocation.
+	# Arguments:
+	#   $1 - tool name (string)
+	#   $2 - args JSON string (object or string)
+	local args_json text_key query
+	args_json="${2:-"{}"}"
+	text_key="$(canonical_text_arg_key)"
 
-        if [[ -z "${args_json}" ]]; then
-                args_json="{}"
-        fi
+	if [[ -z "${args_json}" ]]; then
+		args_json="{}"
+	fi
 
-        query="$(jq -r \
-                --arg key "${text_key}" \
-                'if type == "object" then
+	query="$(jq -r \
+		--arg key "${text_key}" \
+		'if type == "object" then
                         if (.[$key] // "" | type) == "string" then .[$key]
                         elif (.query // "" | type) == "string" then .query
                         elif (.input // "" | type) == "string" then .input
@@ -51,7 +51,7 @@ extract_tool_query() {
                         ""
                 end' <<<"${args_json}" 2>/dev/null || printf '')"
 
-        printf '%s' "${query}"
+	printf '%s' "${query}"
 }
 
 export -f extract_tool_query
