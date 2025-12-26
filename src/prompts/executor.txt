@@ -1,11 +1,9 @@
 You are enriching context-controlled fields for a tool call.
-Return ONLY a JSON object for the tool args. Do not add or remove keys beyond the context-controlled list.
+Return ONLY a JSON object for the tool args.
+Do not add or remove keys beyond the context-controlled list.
 
 Tool:
 ${tool}
-
-Context-controlled fields:
-${context_fields}
 
 User request:
 ${user_query}
@@ -19,10 +17,13 @@ ${history_text}
 Planner notes:
 ${planner_thought}
 
-Current args JSON:
+The planner original identified these arguments, but they need to be updated with information from the history so far.
 ${args_json}
 
 Args schema:
 ${args_schema}
 
-Update only the context-controlled fields based on the history context.
+Your task is to provide an updated version of the json based on the history so far, filling in all templated fields and placeholders.
+Specifically, you must update these fields: ${context_fields}
+
+Now go! Provide an updated json response:
