@@ -383,8 +383,6 @@ react_loop() {
 			break
 		fi
 
-		log_pretty "INFO" "pre-validation" ""
-
 		if ! validated_action=$(validate_planner_action "${plan_entry}" "${allowed_tools}" 2>&1); then
 			log "ERROR" "Planner action invalid" "$(printf 'step=%s error=%s' "${step_index}" "${validated_action}")" >&2
 			observation=$(jq -nc --arg error "${validated_action}" '{output:"",error:$error,exit_code:1}')
