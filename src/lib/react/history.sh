@@ -62,11 +62,6 @@ initialize_executor_state() {
                 }')"
 }
 
-initialize_react_state() {
-	# Compatibility shim for downstream callers still invoking the legacy name.
-	initialize_executor_state "$@"
-}
-
 record_history() {
 	# Appends a formatted history entry to the executor state.
 	# Arguments:
