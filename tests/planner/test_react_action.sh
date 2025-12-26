@@ -197,8 +197,8 @@ INNERSCRIPT
 }
 
 @test "fill_missing_args_with_llm renders executor template" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -231,8 +231,8 @@ grep -F 'stubbed executor prompt' "${prompt_capture}"
 grep -F 'executor:executor missing_token __MISSING__ tool demo_tool user_query user wants plan_outline a plan planner_thought planner note args_json {"input":"__MISSING__"} args_schema {"type":"object"}' "${prompt_log}"
 [[ "${output}" == '{"args":{"filled":true}}' ]]
 INNERSCRIPT
-        )
+	)
 
-        run bash -lc "${script}"
-        [ "$status" -eq 0 ]
+	run bash -lc "${script}"
+	[ "$status" -eq 0 ]
 }
