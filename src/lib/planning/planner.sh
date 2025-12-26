@@ -246,7 +246,7 @@ generate_planner_response() {
 		fallback="LLM unavailable. Request received: ${user_query}"
 		jq -nc \
 			--arg answer "${fallback}" \
-			'{mode:"plan", plan:[{tool:"final_answer", args:{input:$answer}, thought:"Provide the direct response."}]}'
+			'{plan:[{tool:"final_answer", args:{input:$answer}, thought:"Provide the direct response."}]}'
 		return 0
 	fi
 
@@ -386,11 +386,7 @@ generate_plan_json() {
 		return 1
 	fi
 
-	if jq -e '.mode == "plan"' <<<"${response_json}" >/dev/null 2>&1; then
-		jq -c '.plan' <<<"${response_json}"
-	else
-		jq -c '.' <<<"${response_json}"
-	fi
+	jq -c '.plan // .' <<<"${response_json}"
 }
 
 tool_query_deriver() {
@@ -522,6 +518,49 @@ plan_json_to_entries() {
 	fi
 
 	printf '%s' "${plan_json}" # | jq -cr '.[]'
+}
+
+# Emits the next planned action for deterministic execution when llama.cpp is disabled.
+# Arguments:
+#   $1 - state prefix (string)
+#   $2 - variable name to populate with the selected action JSON
+select_next_action() {
+	local state_prefix output_var plan_entries_raw plan_entries plan_array plan_index next_action plan_length plan_json
+	state_prefix="$1"
+	output_var="$2"
+
+	plan_entries_raw="$(state_get "${state_prefix}" "plan_entries" 2>/dev/null || printf '')"
+	plan_entries="$(printf '%s' "${plan_entries_raw}" | jq -r '.' 2>/dev/null || printf '%s' "${plan_entries_raw}")"
+
+	if jq -e 'type == "array"' <<<"${plan_entries}" >/dev/null 2>&1; then
+		plan_json="${plan_entries}"
+	elif jq -e 'type == "object"' <<<"${plan_entries}" >/dev/null 2>&1; then
+		plan_json="[${plan_entries}]"
+	else
+		plan_json="$(printf '%s\n' "${plan_entries}" | jq -cs 'map(select(length > 0) | (try fromjson catch .))' 2>/dev/null || printf '[]')"
+	fi
+
+	if ! plan_array="$(normalize_planner_plan <<<"${plan_json}")"; then
+		return 1
+	fi
+
+	plan_index="$(state_get "${state_prefix}" "plan_index" 2>/dev/null || printf '0')"
+	if [[ -z "${plan_index}" || ! "${plan_index}" =~ ^[0-9]+$ ]]; then
+		plan_index=0
+	fi
+
+	plan_length="$(jq -r 'length' <<<"${plan_array}" 2>/dev/null || printf '0')"
+	if ((plan_index >= plan_length)); then
+		return 1
+	fi
+
+	next_action="$(jq -c --argjson idx "${plan_index}" '.[ $idx ]' <<<"${plan_array}" 2>/dev/null || printf '')"
+	if [[ -z "${next_action}" ]]; then
+		return 1
+	fi
+
+	state_set "${state_prefix}" "plan_index" $((plan_index + 1)) || return 1
+	printf -v "${output_var}" '%s' "${next_action}"
 }
 
 REACT_ENTRYPOINT=${REACT_ENTRYPOINT:-"${PLANNING_LIB_DIR}/../react/react.sh"}
