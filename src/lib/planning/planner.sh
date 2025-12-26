@@ -460,19 +460,25 @@ emit_plan_json() {
 }
 
 derive_allowed_tools_from_plan() {
-	# Arguments:
-	#   $1 - planner response JSON (object or legacy plan array)
-	local plan_json tool seen status
-	plan_json="${1:-[]}"
+        # Arguments:
+        #   $1 - planner response JSON (object or legacy plan array)
+        local raw_payload plan_json tool seen status extract_err_file extract_err payload_snippet error_detail
+        raw_payload="${1:-[]}"
 
-	if plan_json="$(extract_plan_array "${plan_json}")"; then
-		status=0
-	else
-		status=$?
-	fi
-	if [[ ${status} -ne 0 ]]; then
-		return 1
-	fi
+        extract_err_file="$(mktemp)"
+        if plan_json="$(extract_plan_array "${raw_payload}" 2>"${extract_err_file}")"; then
+                status=0
+        else
+                status=$?
+        fi
+        extract_err="$(<"${extract_err_file}" || true)"
+        rm -f "${extract_err_file}" 2>/dev/null || true
+        if [[ ${status} -ne 0 ]]; then
+                payload_snippet="$(printf '%s' "${raw_payload}" | head -c 200)"
+                error_detail="$(jq -nc --arg snippet "${payload_snippet}" --arg error "${extract_err:-unable to normalize planner payload}" '{payload_snippet:$snippet,error:$error}')"
+                log "ERROR" "Failed to normalize planner tools" "${error_detail}" >&2
+                return ${status}
+        fi
 
 	seen=""
 	local -a required=()
@@ -509,17 +515,25 @@ derive_allowed_tools_from_plan() {
 }
 
 plan_json_to_entries() {
-	local plan_json status
-	plan_json="$1"
+        local plan_json raw_payload status
+        plan_json="$1"
+        raw_payload="${plan_json}"
 
-	if plan_json="$(extract_plan_array "${plan_json}")"; then
-		status=0
-	else
-		status=$?
-	fi
-	if [[ ${status} -ne 0 ]]; then
-		return 1
-	fi
+        local extract_err_file extract_err payload_snippet error_detail
+        extract_err_file="$(mktemp)"
+        if plan_json="$(extract_plan_array "${raw_payload}" 2>"${extract_err_file}")"; then
+                status=0
+        else
+                status=$?
+        fi
+        extract_err="$(<"${extract_err_file}" || true)"
+        rm -f "${extract_err_file}" 2>/dev/null || true
+        if [[ ${status} -ne 0 ]]; then
+                payload_snippet="$(printf '%s' "${raw_payload}" | head -c 200)"
+                error_detail="$(jq -nc --arg snippet "${payload_snippet}" --arg error "${extract_err:-unable to normalize planner payload}" '{payload_snippet:$snippet,error:$error}')"
+                log "ERROR" "Failed to normalize planner entries" "${error_detail}" >&2
+                return 1
+        fi
 
 	printf '%s' "${plan_json}" | jq -cr '.[]'
 }

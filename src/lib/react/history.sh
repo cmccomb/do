@@ -30,15 +30,15 @@ source "${REACT_LIB_DIR}/../formatting.sh"
 source "${REACT_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 
 initialize_react_state() {
-	# Initializes the ReAct state document with user query, tools, and plan.
-	# Arguments:
-	#   $1 - state prefix to populate (string)
-	#   $2 - user query (string)
-	#   $3 - allowed tools (string, newline delimited)
-	#   $4 - ranked plan entries (string)
-	#   $5 - plan outline text (string)
-	local state_prefix
-	state_prefix="$1"
+        # Initializes the ReAct state document with user query, tools, and plan.
+        # Arguments:
+        #   $1 - state prefix to populate (string)
+        #   $2 - user query (string)
+        #   $3 - allowed tools (string, newline delimited)
+        #   $4 - ranked plan entries (string)
+        #   $5 - plan outline text (string)
+        local state_prefix
+        state_prefix="$1"
 
 	state_set_json_document "${state_prefix}" "$(jq -c -n \
 		--arg user_query "$2" \
@@ -59,6 +59,44 @@ initialize_react_state() {
                         final_answer_action: "",
                         last_action: null
                 }')"
+}
+
+select_next_action() {
+        # Retrieves the next planned action from state and advances the cursor.
+        # Arguments:
+        #   $1 - state prefix (string)
+        #   $2 - variable name for emitting the action JSON (string)
+        local state_prefix action_var plan_entries plan_index max_steps next_index next_entry next_action
+        state_prefix="$1"
+        action_var="$2"
+
+        plan_entries="$(state_get "${state_prefix}" "plan_entries")"
+        plan_index="$(state_get "${state_prefix}" "plan_index")"
+        max_steps="$(state_get "${state_prefix}" "max_steps")"
+
+        if [[ -z "${plan_entries}" ]]; then
+                log "ERROR" "No planner actions available" "${state_prefix}" >&2
+                return 1
+        fi
+
+        [[ -z "${plan_index}" ]] && plan_index=0
+
+        if [[ -n "${max_steps}" && "${max_steps}" =~ ^[0-9]+$ && ${plan_index} -ge ${max_steps} ]]; then
+                log "ERROR" "Reached maximum planned steps" "$(printf 'plan_index=%s max_steps=%s' "${plan_index}" "${max_steps}")" >&2
+                return 1
+        fi
+
+        next_index=$((plan_index + 1))
+        next_entry="$(printf '%s\n' "${plan_entries}" | sed '/^[[:space:]]*$/d' | sed -n "${next_index}p")"
+
+        if [[ -z "${next_entry}" ]]; then
+                log "ERROR" "No remaining planner actions" "${state_prefix}" >&2
+                return 1
+        fi
+
+        next_action="$(jq -c '.thought = (.thought // "Following planned step")' <<<"${next_entry}" 2>/dev/null || printf '%s' "${next_entry}")"
+        printf -v "${action_var}" '%s' "${next_action}"
+        state_set "${state_prefix}" "plan_index" "${next_index}"
 }
 
 record_history() {

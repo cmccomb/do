@@ -85,8 +85,9 @@ SCRIPT
 }
 
 @test "append_final_answer_step adds missing summary step without duplication" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
+export VERBOSITY=0
 source ./src/lib/planning/planner.sh
 without_final=$(append_final_answer_step "[{\"tool\":\"terminal\",\"args\":{},\"thought\":\"list\"}]")
 with_final=$(append_final_answer_step "[{\"tool\":\"final_answer\",\"args\":{},\"thought\":\"done\"}]")
@@ -160,18 +161,32 @@ SCRIPT
 }
 
 @test "derive_allowed_tools_from_plan rejects non-plan payloads" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 invalid='{"mode":"quickdraw","quickdraw":{"final_answer":"done","rationale":"direct"}}'
 derive_allowed_tools_from_plan "${invalid}" >/dev/null
 SCRIPT
 
-	[ "$status" -ne 0 ]
+        [ "$status" -ne 0 ]
+}
+
+@test "derive_allowed_tools_from_plan logs normalization errors with payload snippet" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=2
+source ./src/lib/planning/planner.sh
+invalid_payload='{"mode":"plan","plan":"oops"}'
+derive_allowed_tools_from_plan "${invalid_payload}"
+SCRIPT
+
+        [ "$status" -ne 0 ]
+        [[ "${output}" == *"Failed to normalize planner tools"* ]]
+        [[ "${output}" == *"oops"* ]]
 }
 
 @test "derive_allowed_tools_from_plan de-duplicates web_search entries" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 export VERBOSITY=0
 source ./src/lib/planning/planner.sh
@@ -202,18 +217,33 @@ SCRIPT
 }
 
 @test "plan_json_to_entries errors on non-plan payloads" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 invalid='{"mode":"quickdraw","quickdraw":{"final_answer":"done","rationale":"direct"}}'
 plan_json_to_entries "${invalid}"
 SCRIPT
 
-	[ "$status" -ne 0 ]
+        [ "$status" -ne 0 ]
+}
+
+@test "plan_json_to_entries logs normalization errors with payload snippet" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+export VERBOSITY=2
+export PLANNER_SKIP_TOOL_LOAD=true
+source ./src/lib/planning/planner.sh
+invalid_payload='{"mode":"plan","plan":"oops"}'
+plan_json_to_entries "${invalid_payload}"
+SCRIPT
+
+        [ "$status" -ne 0 ]
+        [[ "${output}" == *"Failed to normalize planner entries"* ]]
+        [[ "${output}" == *"oops"* ]]
 }
 
 @test "select_next_action uses deterministic plan when llama disabled" {
-	run bash <<'SCRIPT'
+        run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/planning/planner.sh
 VERBOSITY=0
@@ -240,8 +270,24 @@ SCRIPT
 	arg0=$(printf '%s' "${action_json}" | jq -r '.args.args[0]')
 	thought=$(printf '%s' "${action_json}" | jq -r '.thought')
 
-	[ "${tool}" = "terminal" ]
-	[ "${command}" = "echo" ]
-	[ "${arg0}" = "hi" ]
-	[ "${thought}" = "Following planned step" ]
+        [ "${tool}" = "terminal" ]
+        [ "${command}" = "echo" ]
+        [ "${arg0}" = "hi" ]
+        [ "${thought}" = "Following planned step" ]
+}
+
+@test "okso exits early when planner response is invalid" {
+        run bash <<'SCRIPT'
+set -euo pipefail
+repo_root="$(git rev-parse --show-toplevel)"
+cd "${repo_root}"
+export PLANNER_SKIP_TOOL_LOAD=true
+export OKSO_PLANNER_RESPONSE='{"mode":"plan","plan":"oops"}'
+export VERBOSITY=1
+./src/bin/okso --plan-only -- "demo request"
+SCRIPT
+
+        [ "$status" -ne 0 ]
+        [[ "${output}" == *"Planner response was invalid; unable to determine required tools"* ]]
+        [[ "${output}" != *"Planner identified tools"* ]]
 }
