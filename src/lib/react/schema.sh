@@ -8,7 +8,6 @@
 #
 # Environment variables:
 #   CANONICAL_TEXT_ARG_KEY (string): default key for single-string tool args.
-#   MISSING_VALUE_TOKEN (string): sentinel used when the model lacks required details; defaults to "__MISSING__".
 #
 # Dependencies:
 #   - bash 3.2+
@@ -18,7 +17,6 @@
 #   Functions return non-zero on validation or schema construction failures.
 
 REACT_LIB_DIR=${REACT_LIB_DIR:-$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)}
-MISSING_VALUE_TOKEN=${MISSING_VALUE_TOKEN:-"__MISSING__"}
 
 # shellcheck source=../schema/schema.sh disable=SC1091
 source "${REACT_LIB_DIR}/../schema/schema.sh"
@@ -140,7 +138,7 @@ format_jsonschema_error() {
 }
 
 build_react_action_schema() {
-	# Constructs a JSON schema for allowed executor tools with optional missing-value sentinels.
+	# Constructs a JSON schema for allowed executor tools.
 	# Arguments:
 	#   $1 - newline-delimited allowed tools (optional)
 	local allowed_tools registry_json
@@ -156,16 +154,14 @@ build_react_action_schema() {
 		return 1
 	fi
 
-	python3 - "${allowed_tools}" "${registry_json}" "${CANONICAL_TEXT_ARG_KEY:-input}" "${MISSING_VALUE_TOKEN}" <<'PY'
+	python3 - "${allowed_tools}" "${registry_json}" "${CANONICAL_TEXT_ARG_KEY:-input}" <<'PY'
 import json
-import os
 import sys
 import tempfile
 
 allowed_raw = sys.argv[1]
 registry = json.loads(sys.argv[2] or "{}")
 text_key = sys.argv[3] if len(sys.argv) > 3 else "input"
-missing_token = sys.argv[4] if len(sys.argv) > 4 else "__MISSING__"
 
 fallback_schema = {
     "type": "object",
@@ -185,37 +181,6 @@ if not allowed:
     sys.stderr.write("No tools available for executor schema\n")
     sys.exit(1)
 
-def _inject_missing_for_required(schema_fragment):
-    """Allow missing sentinels only for required properties."""
-
-    if not isinstance(schema_fragment, dict):
-        return schema_fragment
-
-    updated = dict(schema_fragment)
-    properties = updated.get("properties", {})
-    required = updated.get("required", [])
-
-    if isinstance(properties, dict):
-        next_properties = {}
-        for key, value in properties.items():
-            normalized_value = _inject_missing_for_required(value)
-            if isinstance(required, list) and key in required:
-                next_properties[key] = {
-                    "anyOf": [normalized_value, {"const": missing_token}]
-                }
-            else:
-                next_properties[key] = normalized_value
-        updated["properties"] = next_properties
-
-    if "items" in updated:
-        updated["items"] = _inject_missing_for_required(updated["items"])
-    if "additionalProperties" in updated and updated["additionalProperties"] is not False:
-        updated["additionalProperties"] = _inject_missing_for_required(
-            updated["additionalProperties"]
-        )
-
-    return updated
-
 def normalize_args_schema(name):
     info = registry_map.get(name, {}) if isinstance(registry_map, dict) else {}
     schema = info.get("args_schema") if isinstance(info, dict) else None
@@ -233,7 +198,7 @@ def normalize_args_schema(name):
             {"type": "string"},
         )
 
-    return _inject_missing_for_required(normalized)
+    return normalized
 
 variants = []
 
@@ -248,30 +213,20 @@ for name in allowed:
                 "action": {
                     "type": "object",
                     "additionalProperties": False,
-                        "required": ["tool", "args"],
-                        "properties": {
-                        "tool": {"anyOf": [{"const": name}, {"const": missing_token}]},
-                        "args": {"anyOf": [args_schema, {"const": missing_token}]},
+                    "required": ["tool", "args"],
+                    "properties": {
+                        "tool": {"const": name},
+                        "args": args_schema,
                     },
                 }
             },
         }
     )
 
-variants.append(
-    {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["action"],
-        "properties": {"action": {"const": missing_token}},
-        "description": "Fallback when no tool can be selected.",
-    }
-)
-
 schema_doc = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "ExecutorAction",
-    "description": "Executor tool call constrained to the provided allowed tools. Missing fields may be explicitly marked with the configured sentinel.",
+    "description": "Executor tool call constrained to the provided allowed tools. All required arguments must be present in planner output; context-controlled fields may be enriched by the executor.",
     "oneOf": variants,
 }
 
@@ -289,11 +244,10 @@ validate_react_action() {
 	# Arguments:
 	#   $1 - raw action JSON string
 	#   $2 - schema path
-	local raw_action schema_path action_json schema_json err_log missing_token tool allowed_tools action_extras args_schema
+	local raw_action schema_path action_json schema_json err_log tool allowed_tools action_extras args_schema
 	local -a allowed_arg_keys=()
 	raw_action="$1"
 	schema_path="$2"
-	missing_token="${MISSING_VALUE_TOKEN}"
 
 	err_log=$(mktemp)
 
@@ -324,23 +278,23 @@ validate_react_action() {
 		return 1
 	fi
 
-	if jq -e --arg missing "${missing_token}" '.action == $missing' <<<"${action_json}" >/dev/null 2>&1; then
-		jq -c --arg missing "${missing_token}" '{action:$missing}' <<<"${action_json}"
-		return 0
+	tool="$(jq -r '.action.tool // empty' <<<"${action_json}" 2>/dev/null || printf '')"
+	allowed_tools=$(jq -cr '[.oneOf[]?.properties.action.properties.tool.const // empty]' <<<"${schema_json}" 2>/dev/null || printf '[]')
+
+	if [[ -z "${tool}" ]]; then
+		printf 'Missing tool name\n' >&2
+		return 1
 	fi
 
-	tool="$(jq -r '.action.tool // empty' <<<"${action_json}" 2>/dev/null || printf '')"
-	allowed_tools=$(jq -cr --arg missing "${missing_token}" '[.oneOf[]?.properties.action.properties.tool.anyOf[]?.const // empty] | map(select(. != $missing))' <<<"${schema_json}" 2>/dev/null || printf '[]')
-
-	if [[ -n "${tool}" && "${tool}" != "${missing_token}" ]]; then
+	if [[ -n "${tool}" ]]; then
 		if ! jq -e --arg tool "${tool}" --argjson allowed "${allowed_tools}" '$allowed | index($tool)' <<<"null" >/dev/null; then
 			printf 'Unsupported tool: %s\n' "${tool}" >&2
 			return 1
 		fi
 	fi
 
-	if [[ -n "${tool}" && "${tool}" != "${missing_token}" ]] && jq -e '.action.args | type == "object"' <<<"${action_json}" >/dev/null 2>&1; then
-		args_schema=$(jq -c --arg tool "${tool}" '.oneOf[]? | select(.properties.action.properties.tool.anyOf[]?.const == $tool) | .properties.action.properties.args.anyOf[]? | select(.type == "object")' <<<"${schema_json}" 2>/dev/null || printf '{}')
+	if [[ -n "${tool}" ]] && jq -e '.action.args | type == "object"' <<<"${action_json}" >/dev/null 2>&1; then
+		args_schema=$(jq -c --arg tool "${tool}" '.oneOf[]? | select(.properties.action.properties.tool.const == $tool) | .properties.action.properties.args' <<<"${schema_json}" 2>/dev/null || printf '{}')
 		mapfile -t allowed_arg_keys < <(jq -r '(.properties // {}) | keys[]?' <<<"${args_schema}" 2>/dev/null)
 		if [[ ${#allowed_arg_keys[@]} -gt 0 ]]; then
 			while IFS= read -r arg_key; do
