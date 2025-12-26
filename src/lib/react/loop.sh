@@ -311,13 +311,37 @@ react_loop() {
 		return 1
 	fi
 
+	log "INFO" "pre-loop" "${plan_entries}"
+	log_pretty "INFO" "pre-loop" "${plan_entries}"
+
 	step_index=0
-	while IFS= read -r plan_entry && [[ -n "${plan_entry}" ]]; do
-		((step_index++))
+	normalize_plan_json() {
+		local raw="$1" normalized
+
+		if printf '%s' "$raw" | jq -e . >/dev/null 2>&1; then
+			printf '%s' "$raw"
+			return 0
+		fi
+
+		normalized=$(printf '%s' "$raw" | sed 's/\\"/"/g; s/\\\\\\\\/\\\\/g')
+		printf '%s' "$normalized" | jq -e . >/dev/null 2>&1 || return 1
+		printf '%s' "$normalized"
+	}
+
+	plan_json=$(normalize_plan_json "${plan_entries}") || {
+		log "ERROR" "Plan JSON invalid/unparseable" "${plan_entries}" >&2
+		exit 1
+	}
+
+	while IFS= read -r plan_entry || [[ -n "$plan_entry" ]]; do
+		log_pretty "INFO" "first line in loop" "${plan_entry}"
+		((++step_index))
 		if ((step_index > max_steps)); then
-			log "WARN" "Exceeded max steps" "${max_steps}" || true
+			log "WARN" "Exceeded max steps" "${max_steps}"
 			break
 		fi
+
+		log_pretty "INFO" "pre-validation" ""
 
 		if ! validated_action=$(validate_planner_action "${plan_entry}" "${allowed_tools}" 2>&1); then
 			log "ERROR" "Planner action invalid" "$(printf 'step=%s error=%s' "${step_index}" "${validated_action}")" >&2
@@ -332,7 +356,7 @@ react_loop() {
 		if [[ -n "$(state_get "${state_prefix}" "final_answer")" ]]; then
 			break
 		fi
-	done <<<"${plan_entries}"
+	done < <(jq -c '.[]' <<<"$plan_json")
 
 	finalize_react_result "${state_prefix}"
 }

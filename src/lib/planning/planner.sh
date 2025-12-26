@@ -521,7 +521,7 @@ plan_json_to_entries() {
 		return 1
 	fi
 
-	printf '%s' "${plan_json}" | jq -cr '.[]'
+	printf '%s' "${plan_json}" # | jq -cr '.[]'
 }
 
 REACT_ENTRYPOINT=${REACT_ENTRYPOINT:-"${PLANNING_LIB_DIR}/../react/react.sh"}

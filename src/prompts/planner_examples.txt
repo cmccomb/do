@@ -20,7 +20,7 @@ Plan (JSON):
       "thought": "Confirm reminders and note status to the user.",
       "tool": "final_answer",
       "args": {"input": "Listed reminders created from LC-Guard action items; note left unchanged."},
-      "args_control": {"input": "locked"}
+      "args_control": {"input": "context"}
     }
   ]
 }
@@ -47,7 +47,7 @@ Plan (JSON):
       "thought": "Return a concise summary to the user.",
       "tool": "final_answer",
       "args": {"input": "Provide five bullets plus the top five driving messages (sender + subject)."},
-      "args_control": {"input": "locked"}
+      "args_control": {"input": "context"}
     }
   ]
 }
@@ -86,7 +86,7 @@ Plan (JSON):
       "thought": "Share the guidance and note title.",
       "tool": "final_answer",
       "args": {"input": "Provide the rule-of-thumb and mention the note title for reuse."},
-      "args_control": {"input": "locked"}
+      "args_control": {"input": "context"}
     }
   ]
 }
@@ -119,7 +119,7 @@ Plan (JSON):
       "thought": "Report results back to the user.",
       "tool": "final_answer",
       "args": {"input": "Top TODO offenders and note location."},
-      "args_control": {"input": "locked"}
+      "args_control": {"input": "context"}
     }
   ]
 }
@@ -140,7 +140,7 @@ Plan (JSON):
       "thought": "Return a concise list of matches.",
       "tool": "final_answer",
       "args": {"input": "List matches with date/time and location when present."},
-      "args_control": {"input": "locked"}
+      "args_control": {"input": "context"}
     }
   ]
 }
