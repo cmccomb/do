@@ -97,9 +97,8 @@ require_jsonschema_cli_available() {
 	# Ensures the sourcemeta JSON Schema CLI is available.
 	# Arguments:
 	#   $1 - feature name for logging context (string; optional)
-	local feature cli_status
+	local feature
 	feature=${1:-"JSON Schema validation"}
-	cli_status=127
 
 	hash -r 2>/dev/null || true
 
