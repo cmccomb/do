@@ -28,7 +28,7 @@ SCRIPT
 }
 
 @test "context args are completed via llama_infer" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 LLAMA_AVAILABLE=true
@@ -64,11 +64,11 @@ SCRIPT
 	[[ "${output}" == *"History snippet"* ]]
 	[[ "${output}" == *"Planner thought"* ]]
 	[[ "${output}" == *"Outline"* ]]
-        [[ "${output}" == *"planner seed"* ]]
+	[[ "${output}" == *"planner seed"* ]]
 }
 
 @test "resolve_action_args receives args_control from validated actions" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 LLAMA_AVAILABLE=true
@@ -103,13 +103,13 @@ printf 'resolved=%s\n' "${resolved}"
 printf 'context_fields=%s\n' "$(cat "${context_fields_log}")"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = 'resolved={"body":"llm-filled"}' ]
-        [ "${lines[1]}" = 'context_fields=["body"]' ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = 'resolved={"body":"llm-filled"}' ]
+	[ "${lines[1]}" = 'context_fields=["body"]' ]
 }
 
 @test "validate_planner_action rejects disallowed tools" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 allowed_tools=$'notes_create\nfinal_answer'
