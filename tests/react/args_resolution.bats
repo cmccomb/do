@@ -136,3 +136,40 @@ SCRIPT
 	[ "${lines[1]}" = '{"alpha":1,"beta":2}' ]
 	[ "${lines[2]}" = 'recent observation' ]
 }
+
+@test "resolve_action_args ignores malformed context metadata" {
+	run bash <<'SCRIPT'
+set -euo pipefail
+source ./src/lib/react/loop.sh
+
+log() { :; }
+
+fill_missing_args_with_llm() {
+        echo "llm_invoked" >>/tmp/llm_metadata_log
+        printf '{}'
+}
+
+apply_plan_arg_controls() {
+        printf '{"title":"seed","__context_controlled":"title","__context_seeds":["bad"]}'
+}
+
+normalize_args_json() {
+        printf '%s' "$1"
+}
+
+tool_args_schema() { printf '{}'; }
+
+resolved=$(resolve_action_args "notes_create" '{}' '{"args_control":{}}' "User" "" "Outline" "Thought")
+
+llm_calls=0
+if [[ -f /tmp/llm_metadata_log ]]; then
+        llm_calls=$(wc -l </tmp/llm_metadata_log)
+fi
+
+printf 'resolved=%s\nllm_calls=%s\n' "${resolved}" "${llm_calls}"
+SCRIPT
+
+	[ "$status" -eq 0 ]
+	[ "${lines[1]}" = "llm_calls=0" ]
+	[[ "${lines[0]}" == *'"title":"seed"'* ]]
+}

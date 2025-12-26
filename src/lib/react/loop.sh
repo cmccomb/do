@@ -304,6 +304,27 @@ fill_missing_args_with_llm() {
 	printf '%s' "${args_json}"
 }
 
+extract_context_controls() {
+	# Extracts context metadata and cleaned args from a resolved args JSON blob.
+	# Arguments:
+	#   $1 - resolved args JSON
+	# Returns:
+	#   JSON object with keys: args, context_fields, context_seed_lines
+	local resolved_json
+	resolved_json="$1"
+
+	jq -ce '
+                def ensure_array(x): if (x|type) == "array" then x else [] end;
+                def ensure_object(x): if (x|type) == "object" then x else {} end;
+
+                {
+                        args: (. | del(.__context_controlled) | del(.__context_seeds)),
+                        context_fields: ensure_array(.__context_controlled),
+                        context_seed_lines: (ensure_object(.__context_seeds) | to_entries | map("\(.key): \(.value)"))
+                }
+        ' <<<"${resolved_json}"
+}
+
 resolve_action_args() {
 	# Applies planner controls, validates required args, fills context fields, and normalizes the final JSON.
 	# Arguments:
@@ -326,9 +347,14 @@ resolve_action_args() {
 
 	resolved_args="$(apply_plan_arg_controls "${tool}" "${args_json}" "${plan_entry_json}" "${user_query}" "${history_text}")"
 
-	context_fields_json="$(jq -c '.__context_controlled // []' <<<"${resolved_args}" 2>/dev/null || printf '[]')"
-	context_seed_lines="$(jq -r '.__context_seeds // {} | to_entries[] | "\(.key): \(.value)"' <<<"${resolved_args}" 2>/dev/null || true)"
-	resolved_args="$(jq -c 'del(.__context_controlled,.__context_seeds)' <<<"${resolved_args}" 2>/dev/null || printf '%s' "${resolved_args}")"
+	if ! context_metadata="$(extract_context_controls "${resolved_args}")"; then
+		printf 'Invalid args JSON after planner controls\n' >&2
+		return 1
+	fi
+
+	context_fields_json="$(jq -c '.context_fields' <<<"${context_metadata}")"
+	context_seed_lines="$(jq -r '.context_seed_lines[]?' <<<"${context_metadata}")"
+	resolved_args="$(jq -c '.args' <<<"${context_metadata}")"
 
 	schema="$(tool_args_schema "${tool}")"
 	if [[ -n "${schema}" ]]; then

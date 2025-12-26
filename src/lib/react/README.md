@@ -24,6 +24,11 @@ latest context while leaving planner-provided required arguments untouched. Vali
 `args_control` map attached to each plan entry, ensuring `resolve_action_args` receives the
 context-marked keys and forwards them to the LLM prompt when enrichment is required.
 
+Context hints are sanitized before prompting: `resolve_action_args` strips planner annotations from
+the final argument payload, coerces `__context_controlled` into an array, ignores malformed seed
+maps, and preserves original values when llama.cpp is unavailable. This keeps the executor prompt
+stable even when upstream planners emit inconsistent metadata.
+
 ## Dependencies
 
 - bash 3.2+
