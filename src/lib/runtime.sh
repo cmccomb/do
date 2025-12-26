@@ -327,10 +327,5 @@ select_response_strategy() {
 
 	apply_settings_to_globals "${settings_prefix}"
 
-	if [[ -z "${required_tools}" ]]; then
-		log "ERROR" "Planner emitted an empty tool list" "${USER_QUERY}"
-		return 1
-	fi
-
 	react_loop "${USER_QUERY}" "${required_tools}" "${plan_entries}" "${plan_outline}"
 }
