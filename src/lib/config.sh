@@ -97,267 +97,52 @@ detect_config_file() {
 		esac
 	done
 }
-
 load_config() {
-	# Load file-backed configuration first so environment overrides and CLI flags
-	# can layer on top in a predictable order.
-	local preexisting_okso_google_cse_api_key preexisting_okso_google_cse_api_key_set
-	local preexisting_okso_google_cse_id preexisting_okso_google_cse_id_set
-	local preexisting_okso_cache_dir preexisting_okso_cache_dir_set
-	local preexisting_okso_planner_cache_file preexisting_okso_planner_cache_file_set
-	local preexisting_okso_executor_cache_file preexisting_okso_executor_cache_file_set
-	local preexisting_okso_react_cache_file preexisting_okso_react_cache_file_set
-	local preexisting_okso_rephraser_cache_file preexisting_okso_rephraser_cache_file_set
-	local preexisting_okso_run_id preexisting_okso_run_id_set
-	local preexisting_planner_model_spec preexisting_planner_model_spec_set
-	local preexisting_planner_model_branch preexisting_planner_model_branch_set
-	local preexisting_executor_model_spec preexisting_executor_model_spec_set
-	local preexisting_executor_model_branch preexisting_executor_model_branch_set
-	local preexisting_react_model_spec preexisting_react_model_spec_set
-	local preexisting_react_model_branch preexisting_react_model_branch_set
-	local preexisting_rephraser_model_spec preexisting_rephraser_model_spec_set
-	local preexisting_rephraser_model_branch preexisting_rephraser_model_branch_set
-	local preexisting_default_model_file preexisting_default_model_file_set
-	local preexisting_default_planner_model_file preexisting_default_planner_model_file_set
-	local preexisting_verbosity preexisting_verbosity_set
-	local preexisting_approve_all preexisting_approve_all_set
-	local preexisting_force_confirm preexisting_force_confirm_set
-
-	preexisting_okso_google_cse_api_key_set=false
-	preexisting_okso_google_cse_id_set=false
-	preexisting_okso_cache_dir_set=false
-	preexisting_okso_planner_cache_file_set=false
-	preexisting_okso_executor_cache_file_set=false
-	preexisting_okso_react_cache_file_set=false
-	preexisting_okso_rephraser_cache_file_set=false
-	preexisting_okso_run_id_set=false
-	preexisting_planner_model_spec_set=false
-	preexisting_planner_model_branch_set=false
-	preexisting_executor_model_spec_set=false
-	preexisting_executor_model_branch_set=false
-	preexisting_react_model_spec_set=false
-	preexisting_react_model_branch_set=false
-	preexisting_rephraser_model_spec_set=false
-	preexisting_rephraser_model_branch_set=false
-	preexisting_default_model_file_set=false
-	preexisting_default_planner_model_file_set=false
-	preexisting_verbosity_set=false
-	preexisting_approve_all_set=false
-	preexisting_force_confirm_set=false
-
-	if [[ -n "${OKSO_GOOGLE_CSE_API_KEY+x}" ]]; then
-		preexisting_okso_google_cse_api_key="${OKSO_GOOGLE_CSE_API_KEY}"
-		preexisting_okso_google_cse_api_key_set=true
-	fi
-	if [[ -n "${OKSO_GOOGLE_CSE_ID+x}" ]]; then
-		preexisting_okso_google_cse_id="${OKSO_GOOGLE_CSE_ID}"
-		preexisting_okso_google_cse_id_set=true
-	fi
-	if [[ -n "${OKSO_CACHE_DIR+x}" ]]; then
-		preexisting_okso_cache_dir="${OKSO_CACHE_DIR}"
-		preexisting_okso_cache_dir_set=true
-	fi
-	if [[ -n "${OKSO_PLANNER_CACHE_FILE+x}" ]]; then
-		preexisting_okso_planner_cache_file="${OKSO_PLANNER_CACHE_FILE}"
-		preexisting_okso_planner_cache_file_set=true
-	fi
-	if [[ -n "${OKSO_EXECUTOR_CACHE_FILE+x}" ]]; then
-		preexisting_okso_executor_cache_file="${OKSO_EXECUTOR_CACHE_FILE}"
-		preexisting_okso_executor_cache_file_set=true
-	fi
-	if [[ -n "${OKSO_REACT_CACHE_FILE+x}" ]]; then
-		preexisting_okso_react_cache_file="${OKSO_REACT_CACHE_FILE}"
-		preexisting_okso_react_cache_file_set=true
-	fi
-	if [[ -n "${OKSO_REPHRASER_CACHE_FILE+x}" ]]; then
-		preexisting_okso_rephraser_cache_file="${OKSO_REPHRASER_CACHE_FILE}"
-		preexisting_okso_rephraser_cache_file_set=true
-	fi
-	if [[ -n "${OKSO_RUN_ID+x}" ]]; then
-		preexisting_okso_run_id="${OKSO_RUN_ID}"
-		preexisting_okso_run_id_set=true
-	fi
-	if [[ -n "${PLANNER_MODEL_SPEC+x}" ]]; then
-		preexisting_planner_model_spec="${PLANNER_MODEL_SPEC}"
-		preexisting_planner_model_spec_set=true
-	fi
-	if [[ -n "${PLANNER_MODEL_BRANCH+x}" ]]; then
-		preexisting_planner_model_branch="${PLANNER_MODEL_BRANCH}"
-		preexisting_planner_model_branch_set=true
-	fi
-	if [[ -n "${EXECUTOR_MODEL_SPEC+x}" ]]; then
-		preexisting_executor_model_spec="${EXECUTOR_MODEL_SPEC}"
-		preexisting_executor_model_spec_set=true
-	fi
-	if [[ -n "${REACT_MODEL_SPEC+x}" ]]; then
-		preexisting_react_model_spec="${REACT_MODEL_SPEC}"
-		preexisting_react_model_spec_set=true
-	fi
-	if [[ -n "${EXECUTOR_MODEL_BRANCH+x}" ]]; then
-		preexisting_executor_model_branch="${EXECUTOR_MODEL_BRANCH}"
-		preexisting_executor_model_branch_set=true
-	fi
-	if [[ -n "${REACT_MODEL_BRANCH+x}" ]]; then
-		preexisting_react_model_branch="${REACT_MODEL_BRANCH}"
-		preexisting_react_model_branch_set=true
-	fi
-	if [[ -n "${SEARCH_REPHRASER_MODEL_SPEC+x}" ]]; then
-		preexisting_rephraser_model_spec="${SEARCH_REPHRASER_MODEL_SPEC}"
-		preexisting_rephraser_model_spec_set=true
-	fi
-	if [[ -n "${SEARCH_REPHRASER_MODEL_BRANCH+x}" ]]; then
-		preexisting_rephraser_model_branch="${SEARCH_REPHRASER_MODEL_BRANCH}"
-		preexisting_rephraser_model_branch_set=true
-	fi
-	if [[ -n "${DEFAULT_MODEL_FILE+x}" ]]; then
-		preexisting_default_model_file="${DEFAULT_MODEL_FILE}"
-		preexisting_default_model_file_set=true
-	fi
-	if [[ -n "${DEFAULT_PLANNER_MODEL_FILE+x}" ]]; then
-		preexisting_default_planner_model_file="${DEFAULT_PLANNER_MODEL_FILE}"
-		preexisting_default_planner_model_file_set=true
-	fi
-	if [[ -n "${VERBOSITY+x}" ]]; then
-		preexisting_verbosity="${VERBOSITY}"
-		preexisting_verbosity_set=true
-	fi
-	if [[ -n "${APPROVE_ALL+x}" ]]; then
-		preexisting_approve_all="${APPROVE_ALL}"
-		preexisting_approve_all_set=true
-	fi
-	if [[ -n "${FORCE_CONFIRM+x}" ]]; then
-		preexisting_force_confirm="${FORCE_CONFIRM}"
-		preexisting_force_confirm_set=true
-	fi
-
+	# 1) Source config file (if any). Whatever it sets wins over caller env.
 	if [[ -f "${CONFIG_FILE}" ]]; then
 		# shellcheck source=/dev/null
 		source "${CONFIG_FILE}"
 	fi
 
-	if [[ "${preexisting_okso_google_cse_api_key_set}" == true ]]; then
-		OKSO_GOOGLE_CSE_API_KEY="${preexisting_okso_google_cse_api_key}"
-	fi
-	if [[ "${preexisting_okso_google_cse_id_set}" == true ]]; then
-		OKSO_GOOGLE_CSE_ID="${preexisting_okso_google_cse_id}"
-	fi
-	if [[ "${preexisting_default_model_file_set}" == true ]]; then
-		DEFAULT_MODEL_FILE="${preexisting_default_model_file}"
-	else
-		DEFAULT_MODEL_FILE=${DEFAULT_MODEL_FILE:-${DEFAULT_MODEL_FILE_BASE}}
-	fi
-	if [[ "${preexisting_default_planner_model_file_set}" == true ]]; then
-		DEFAULT_PLANNER_MODEL_FILE="${preexisting_default_planner_model_file}"
-	else
-		DEFAULT_PLANNER_MODEL_FILE=${DEFAULT_PLANNER_MODEL_FILE:-${DEFAULT_PLANNER_MODEL_FILE_BASE}}
-	fi
-	if [[ "${preexisting_planner_model_spec_set}" == true ]]; then
-		PLANNER_MODEL_SPEC="${preexisting_planner_model_spec}"
-	else
-		PLANNER_MODEL_SPEC=${PLANNER_MODEL_SPEC:-"${DEFAULT_PLANNER_MODEL_SPEC_BASE}"}
-	fi
-	if [[ "${preexisting_planner_model_branch_set}" == true ]]; then
-		PLANNER_MODEL_BRANCH="${preexisting_planner_model_branch}"
-	else
-		PLANNER_MODEL_BRANCH=${PLANNER_MODEL_BRANCH:-${DEFAULT_PLANNER_MODEL_BRANCH_BASE}}
-	fi
-	if [[ "${preexisting_executor_model_spec_set}" == true ]]; then
-		EXECUTOR_MODEL_SPEC="${preexisting_executor_model_spec}"
-		REACT_MODEL_SPEC="${EXECUTOR_MODEL_SPEC}"
-	elif [[ "${preexisting_react_model_spec_set}" == true ]]; then
-		REACT_MODEL_SPEC="${preexisting_react_model_spec}"
-		EXECUTOR_MODEL_SPEC="${REACT_MODEL_SPEC}"
-	else
-		EXECUTOR_MODEL_SPEC=${EXECUTOR_MODEL_SPEC:-"${DEFAULT_EXECUTOR_MODEL_SPEC_BASE}"}
-		REACT_MODEL_SPEC="${EXECUTOR_MODEL_SPEC}"
-	fi
-	if [[ "${preexisting_executor_model_branch_set}" == true ]]; then
-		EXECUTOR_MODEL_BRANCH="${preexisting_executor_model_branch}"
-		REACT_MODEL_BRANCH="${EXECUTOR_MODEL_BRANCH}"
-	elif [[ "${preexisting_react_model_branch_set}" == true ]]; then
-		REACT_MODEL_BRANCH="${preexisting_react_model_branch}"
-		EXECUTOR_MODEL_BRANCH="${REACT_MODEL_BRANCH}"
-	else
-		EXECUTOR_MODEL_BRANCH=${EXECUTOR_MODEL_BRANCH:-${DEFAULT_EXECUTOR_MODEL_BRANCH_BASE}}
-		REACT_MODEL_BRANCH="${EXECUTOR_MODEL_BRANCH}"
-	fi
-	if [[ "${preexisting_rephraser_model_spec_set}" == true ]]; then
-		SEARCH_REPHRASER_MODEL_SPEC="${preexisting_rephraser_model_spec}"
-	else
-		SEARCH_REPHRASER_MODEL_SPEC=${SEARCH_REPHRASER_MODEL_SPEC:-"${DEFAULT_REPHRASER_MODEL_SPEC_BASE}"}
-	fi
-	if [[ "${preexisting_rephraser_model_branch_set}" == true ]]; then
-		SEARCH_REPHRASER_MODEL_BRANCH="${preexisting_rephraser_model_branch}"
-	else
-		SEARCH_REPHRASER_MODEL_BRANCH=${SEARCH_REPHRASER_MODEL_BRANCH:-${DEFAULT_REPHRASER_MODEL_BRANCH_BASE}}
-	fi
-	if [[ "${preexisting_verbosity_set}" == true ]]; then
-		VERBOSITY="${preexisting_verbosity}"
-	else
-		VERBOSITY=${VERBOSITY:-1}
-	fi
-	if [[ "${preexisting_approve_all_set}" == true ]]; then
-		APPROVE_ALL="${preexisting_approve_all}"
-	else
-		APPROVE_ALL=${APPROVE_ALL:-false}
-	fi
-	if [[ "${preexisting_force_confirm_set}" == true ]]; then
-		FORCE_CONFIRM="${preexisting_force_confirm}"
-	else
-		FORCE_CONFIRM=${FORCE_CONFIRM:-false}
-	fi
+	# 2) Defaults (only fill if still unset).
+	: "${PLANNER_MODEL_SPEC:=bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf}"
+	: "${PLANNER_MODEL_BRANCH:=main}"
 
-	OKSO_RUN_ID=${OKSO_RUN_ID:-$(default_run_id)}
+	# Back-compat: accept old REACT_* inputs if EXECUTOR_* not provided.
+	: "${EXECUTOR_MODEL_SPEC:=${REACT_MODEL_SPEC:-bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf}}"
+	: "${EXECUTOR_MODEL_BRANCH:=${REACT_MODEL_BRANCH:-main}}"
+
+	: "${SEARCH_REPHRASER_MODEL_SPEC:=bartowski/Qwen_Qwen3-1.7B-GGUF:Qwen_Qwen3-1.7B-Q4_K_M.gguf}"
+	: "${SEARCH_REPHRASER_MODEL_BRANCH:=main}"
+
+	: "${VERBOSITY:=1}"
+	: "${APPROVE_ALL:=false}"
+	: "${FORCE_CONFIRM:=false}"
+
+	: "${OKSO_RUN_ID:=$(default_run_id)}"
 
 	local default_cache_dir
 	default_cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/okso"
-
-	if [[ "${preexisting_okso_cache_dir_set}" == true ]]; then
-		OKSO_CACHE_DIR="${preexisting_okso_cache_dir}"
-	else
-		OKSO_CACHE_DIR=${OKSO_CACHE_DIR:-${default_cache_dir}}
-	fi
-
+	: "${OKSO_CACHE_DIR:=${default_cache_dir}}"
 	CACHE_DIR="${OKSO_CACHE_DIR}"
 
-	if [[ "${preexisting_okso_planner_cache_file_set}" == true ]]; then
-		OKSO_PLANNER_CACHE_FILE="${preexisting_okso_planner_cache_file}"
-	else
-		OKSO_PLANNER_CACHE_FILE=${OKSO_PLANNER_CACHE_FILE:-${CACHE_DIR}/planner.prompt-cache}
-	fi
-
+	: "${OKSO_PLANNER_CACHE_FILE:=${CACHE_DIR}/planner.prompt-cache}"
 	PLANNER_CACHE_FILE="${OKSO_PLANNER_CACHE_FILE}"
 
-	if [[ "${preexisting_okso_executor_cache_file_set}" == true ]]; then
-		OKSO_EXECUTOR_CACHE_FILE="${preexisting_okso_executor_cache_file}"
-	elif [[ "${preexisting_okso_react_cache_file_set}" == true ]]; then
-		OKSO_REACT_CACHE_FILE="${preexisting_okso_react_cache_file}"
-		OKSO_EXECUTOR_CACHE_FILE="${OKSO_REACT_CACHE_FILE}"
-	else
-		OKSO_EXECUTOR_CACHE_FILE=${OKSO_EXECUTOR_CACHE_FILE:-${CACHE_DIR}/runs/${OKSO_RUN_ID}/react.prompt-cache}
-	fi
-	OKSO_REACT_CACHE_FILE="${OKSO_EXECUTOR_CACHE_FILE:-${OKSO_REACT_CACHE_FILE:-}}"
+	: "${OKSO_EXECUTOR_CACHE_FILE:=${CACHE_DIR}/runs/${OKSO_RUN_ID}/react.prompt-cache}"
+	REACT_CACHE_FILE="${OKSO_EXECUTOR_CACHE_FILE}"
 
-	if [[ "${preexisting_okso_rephraser_cache_file_set}" == true ]]; then
-		OKSO_REPHRASER_CACHE_FILE="${preexisting_okso_rephraser_cache_file}"
-	else
-		OKSO_REPHRASER_CACHE_FILE=${OKSO_REPHRASER_CACHE_FILE:-${CACHE_DIR}/rephraser.prompt-cache}
-	fi
-
-	REACT_CACHE_FILE="${OKSO_EXECUTOR_CACHE_FILE:-${OKSO_REACT_CACHE_FILE}}"
-	# shellcheck disable=SC2034
-	EXECUTOR_CACHE_FILE="${REACT_CACHE_FILE}"
+	: "${OKSO_REPHRASER_CACHE_FILE:=${CACHE_DIR}/rephraser.prompt-cache}"
 	SEARCH_REPHRASER_CACHE_FILE="${OKSO_REPHRASER_CACHE_FILE}"
 
-	if [[ "${preexisting_okso_run_id_set}" == true ]]; then
-		OKSO_RUN_ID="${preexisting_okso_run_id}"
-	fi
+	# Optional: keep deprecated aliases as outputs only (so other code doesn't break).
+	OKSO_REACT_CACHE_FILE="${OKSO_EXECUTOR_CACHE_FILE}"
+	REACT_MODEL_SPEC="${EXECUTOR_MODEL_SPEC}"
+	REACT_MODEL_BRANCH="${EXECUTOR_MODEL_BRANCH}"
 
-	# shellcheck disable=SC2034
-	RUN_ID="${OKSO_RUN_ID}"
-
-	GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}
-	GOOGLE_SEARCH_CX=${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}
+	# Google search vars (keep simple)
+	GOOGLE_SEARCH_API_KEY="${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
+	GOOGLE_SEARCH_CX="${GOOGLE_SEARCH_CX:-${OKSO_GOOGLE_CSE_ID:-}}"
 }
 
 write_config_file() {

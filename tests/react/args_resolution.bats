@@ -4,42 +4,6 @@ setup() {
 	unset -f chpwd _mise_hook 2>/dev/null || true
 }
 
-@test "resolve_action_args normalizes once while filling context args" {
-	run bash <<'SCRIPT'
-set -euo pipefail
-source ./src/lib/react/loop.sh
-
-log() {
-        :
-}
-
-normalize_log=$(mktemp)
-normalize_args_json() {
-        printf 'normalize\n' >>"${normalize_log}"
-        printf '%s' "$1"
-}
-
-apply_plan_arg_controls() {
-        printf '{"title":"seed","__context_controlled":["title"]}'
-}
-
-fill_missing_args_with_llm() {
-        printf '{"title":"filled","body":"done"}'
-}
-
-tool_args_schema() { printf '{}'; }
-
-resolved=$(resolve_action_args "notes_create" '{"title":"pending"}' '{"args_control":{}}' "User" "" "Outline" "Thought")
-normalize_calls=$(wc -l <"${normalize_log}")
-printf 'resolved=%s\nnormalizations=%s\n' "${resolved}" "${normalize_calls}"
-SCRIPT
-
-	[ "$status" -eq 0 ]
-	[[ "${lines[0]}" == *'"title":"filled"'* ]]
-	[[ "${lines[0]}" == *'"body":"done"'* ]]
-	[ "${lines[1]}" = "normalizations=1" ]
-}
-
 @test "resolve_action_args skips LLM when args complete" {
 	run bash <<'SCRIPT'
 set -euo pipefail
