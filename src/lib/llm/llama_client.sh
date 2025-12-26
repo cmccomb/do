@@ -90,9 +90,9 @@ llama_infer() {
 	stop_string="${2:-}"
 	number_of_tokens="${3:-256}"
 	schema_json="${4:-}"
-        repo_override="${5:-${EXECUTOR_MODEL_REPO:-${REACT_MODEL_REPO:-}}}"
-        file_override="${6:-${EXECUTOR_MODEL_FILE:-${REACT_MODEL_FILE:-}}}"
-        cache_file="${7:-${EXECUTOR_CACHE_FILE:-${REACT_CACHE_FILE:-}}}"
+	repo_override="${5:-${EXECUTOR_MODEL_REPO:-${REACT_MODEL_REPO:-}}}"
+	file_override="${6:-${EXECUTOR_MODEL_FILE:-${REACT_MODEL_FILE:-}}}"
+	cache_file="${7:-${EXECUTOR_CACHE_FILE:-${REACT_CACHE_FILE:-}}}"
 	prompt_prefix="${8:-}"
 
 	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
