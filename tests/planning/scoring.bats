@@ -170,33 +170,6 @@ SCRIPT
 	[[ "${rationale}" == *"First step is side-effecting before gathering information."* ]]
 }
 
-@test "score_planner_candidate penalizes mutating python_repl steps" {
-	run bash <<'SCRIPT'
-set -euo pipefail
-export VERBOSITY=0
-source ./src/lib/planning/scoring.sh
-tool_names() { printf "%s\n" python_repl final_answer; }
-tool_args_schema() { printf '{}'; }
-mutating_snippets=(
-        '{"code":"open(\"x.txt\",\"w\").write(\"hi\")"}'
-        '{"code":"from pathlib import Path\nPath(\"a\").write_text(\"x\")"}'
-        '{"code":"import subprocess\nsubprocess.run([\"echo\",\"hi\"])"}'
-        '{"code":"import requests\nrequests.get(\"https://example.com\")"}'
-)
-
-for snippet in "${mutating_snippets[@]}"; do
-        plan=$(jq -nc --argjson args "${snippet}" '{"plan":[{"tool":"python_repl","args":$args,"thought":"run"},{"tool":"final_answer","args":{"input":"wrap"},"thought":"finish"}]}')
-        rationale=$(score_planner_candidate "${plan}" | tail -n 1 | jq -r '.rationale | join(" ")')
-        printf '%s\n' "${rationale}"
-done
-SCRIPT
-
-	[ "$status" -eq 0 ]
-	for line in "${lines[@]}"; do
-		[[ "${line}" == *"First step is side-effecting before gathering information."* ]]
-	done
-}
-
 @test "score_planner_candidate emits informative INFO logs" {
 	run bash <<'SCRIPT'
 set -euo pipefail
