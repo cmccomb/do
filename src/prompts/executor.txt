@@ -1,22 +1,20 @@
-You are the okso executor. Produce one structured tool call that matches the JSON schema below. Do not roleplay or add narration.
+You are completing missing fields for a tool call.
+Return ONLY a JSON object for the tool args with all "${missing_token}" tokens replaced.
 
-Schema:
-${react_schema}
-
-Guidance:
-- Emit exactly one JSON document that conforms to the schema.
-- Populate every field; when information is unavailable, use "__MISSING__" as the value for that field.
-- Choose only from the allowed tools and respect their argument shapes.
-- Never include analysis, multiple actions, or extra text.
+Tool:
+${tool}
 
 User request:
 ${user_query}
 
-Allowed tools:
-${allowed_tools}
-
 Plan outline:
 ${plan_outline}
 
-Current step guidance:
-${plan_step}
+Planner notes:
+${planner_thought}
+
+Current args JSON:
+${args_json}
+
+Args schema:
+${args_schema}

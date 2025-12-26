@@ -34,6 +34,8 @@ source "${REACT_LIB_DIR}/../core/logging.sh"
 source "${REACT_LIB_DIR}/../core/state.sh"
 # shellcheck source=../tools/query.sh disable=SC1091
 source "${REACT_LIB_DIR}/../tools/query.sh"
+# shellcheck source=../prompt/templates.sh disable=SC1091
+source "${REACT_LIB_DIR}/../prompt/templates.sh"
 # shellcheck source=./schema.sh disable=SC1091
 source "${REACT_LIB_DIR}/schema.sh"
 # shellcheck source=./history.sh disable=SC1091
@@ -212,43 +214,39 @@ missing_arg_keys() {
 }
 
 fill_missing_args_with_llm() {
-	# Fills missing arguments via a single LLM round-trip when possible.
-	# Arguments:
-	#   $1 - tool name
-	#   $2 - args JSON
-	#   $3 - user query
-	#   $4 - plan outline
-	#   $5 - planner thought
-	local tool args_json user_query plan_outline planner_thought schema prompt response
-	tool="$1"
-	args_json="$2"
-	user_query="$3"
-	plan_outline="$4"
-	planner_thought="$5"
+        # Fills missing arguments via a single LLM round-trip when possible.
+        # Arguments:
+        #   $1 - tool name
+        #   $2 - args JSON
+        #   $3 - user query
+        #   $4 - plan outline
+        #   $5 - planner thought
+        local tool args_json user_query plan_outline planner_thought schema prompt response
+        tool="$1"
+        args_json="$2"
+        user_query="$3"
+        plan_outline="$4"
+        planner_thought="$5"
 	schema="$(tool_args_schema "${tool}")"
 
 	if [[ "${LLAMA_AVAILABLE}" != true ]]; then
 		log "WARN" "LLM unavailable; missing args remain" "${tool}" || true
-		printf '%s' "${args_json}"
-		return 0
-	fi
+                printf '%s' "${args_json}"
+                return 0
+        fi
 
-	prompt=$(
-		cat <<'PROMPT'
-You are completing missing fields for a tool call.
-Return ONLY a JSON object for the tool args with all "__MISSING__" tokens replaced.
-PROMPT
-	)
-	prompt+=$'\nTool: '"${tool}"
-	prompt+=$'\nUser request: '"${user_query}"
-	if [[ -n "${plan_outline}" ]]; then
-		prompt+=$'\nPlan outline: '"${plan_outline}"
-	fi
-	prompt+=$'\nPlanner notes: '"${planner_thought}"
-	prompt+=$'\nCurrent args JSON: '"${args_json}"
-	if [[ -n "${schema}" ]]; then
-		prompt+=$'\nArgs schema: '"${schema}"
-	fi
+        if ! prompt="$(render_prompt_template "executor" \
+                missing_token "${MISSING_VALUE_TOKEN}" \
+                tool "${tool}" \
+                user_query "${user_query}" \
+                plan_outline "${plan_outline}" \
+                planner_thought "${planner_thought}" \
+                args_json "${args_json}" \
+                args_schema "${schema}")"; then
+                log "WARN" "Failed to render executor prompt" "${tool}" || true
+                printf '%s' "${args_json}"
+                return 0
+        fi
 
 	response="$(llama_infer "${prompt}" "" 256 "" "${REACT_MODEL_REPO:-}" "${REACT_MODEL_FILE:-}" "${REACT_CACHE_FILE:-}")"
 	if jq -e 'type == "object"' <<<"${response}" >/dev/null 2>&1; then

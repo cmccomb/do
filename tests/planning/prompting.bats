@@ -130,19 +130,15 @@ SCRIPT
 	[ "${output}" = "ok" ]
 }
 
-@test "react prompt segments recombine into full prompt" {
-	run bash <<'SCRIPT'
+@test "executor prompt template exposes infill placeholders" {
+        run bash <<'SCRIPT'
 set -euo pipefail
-source ./src/lib/prompt/build_react.sh
-prefix="$(build_react_prompt_static_prefix)"
-suffix="$(build_react_prompt_dynamic_suffix "query" "tool list" "outline" "{}" "step")"
-full="$(build_react_prompt "query" "tool list" "outline" "{}" "step")"
-if [[ "${full}" != "${prefix}${suffix}" ]]; then
-        exit 1
-fi
-printf 'ok\n'
+source ./src/lib/prompt/templates.sh
+template="$(load_prompt_template executor)"
+grep -F '${missing_token}' <<<"${template}"
+grep -F '${tool}' <<<"${template}"
+grep -F '${args_json}' <<<"${template}"
 SCRIPT
 
-	[ "$status" -eq 0 ]
-	[ "${output}" = "ok" ]
+        [ "$status" -eq 0 ]
 }
