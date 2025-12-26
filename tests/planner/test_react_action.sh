@@ -225,7 +225,7 @@ export -f llama_infer
 
 LLAMA_AVAILABLE=true
 
-output="$(fill_missing_args_with_llm "demo_tool" '{"input":"__MISSING__"}' "user wants" "a plan" "planner note")"
+output="$(fill_missing_args_with_llm "demo_tool" '{"input":"__MISSING__"}' "user wants" "a plan" "planner note" "")"
 
 grep -F 'stubbed executor prompt' "${prompt_capture}"
 grep -F 'executor:executor missing_token __MISSING__ tool demo_tool user_query user wants plan_outline a plan planner_thought planner note args_json {"input":"__MISSING__"} args_schema {"type":"object"}' "${prompt_log}"
