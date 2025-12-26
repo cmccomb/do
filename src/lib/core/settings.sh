@@ -10,8 +10,10 @@
 #   DEFAULT_MODEL_FILE_BASE (string): Default executor GGUF filename.
 #   DEFAULT_PLANNER_MODEL_FILE_BASE (string): Default planner GGUF filename.
 #   DEFAULT_PLANNER_MODEL_SPEC_BASE (string): Default planner repo[:file] spec.
+#   DEFAULT_EXECUTOR_MODEL_SPEC_BASE (string): Default executor repo[:file] spec.
 #   DEFAULT_REACT_MODEL_SPEC_BASE (string): Default executor repo[:file] spec (legacy name).
 #   DEFAULT_PLANNER_MODEL_BRANCH_BASE (string): Default planner branch/tag.
+#   DEFAULT_EXECUTOR_MODEL_BRANCH_BASE (string): Default executor branch/tag.
 #   DEFAULT_REACT_MODEL_BRANCH_BASE (string): Default executor branch/tag (legacy name).
 #   USE_REACT_LLAMA (bool string): Toggle executor llama usage ("true"/"false").
 #   LLAMA_BIN (string): Path to the llama.cpp binary.
@@ -105,8 +107,8 @@ create_default_settings() {
 	#   $1 - settings namespace prefix (string)
 	#   $2 - overrides JSON to merge with defaults (string, optional)
 	local settings_prefix overrides default_model_file default_planner_model_file config_dir config_file
-	local planner_model_spec react_model_spec rephraser_model_spec default_json override_json cache_dir run_id planner_cache_file react_cache_file
-	local rephraser_cache_file
+	local planner_model_spec executor_model_spec react_model_spec rephraser_model_spec default_json override_json cache_dir run_id
+	local planner_cache_file executor_cache_file react_cache_file rephraser_cache_file executor_model_branch react_model_branch
 	settings_prefix="$1"
 	overrides="${2:-}"
 
@@ -117,11 +119,15 @@ create_default_settings() {
 	default_planner_model_file="${DEFAULT_PLANNER_MODEL_FILE_BASE:-Qwen_Qwen3-8B-Q4_K_M.gguf}"
 	config_file="${config_dir}/config.env"
 	planner_model_spec="${DEFAULT_PLANNER_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-8B-GGUF:${default_planner_model_file}}"
-	react_model_spec="${DEFAULT_REACT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:${default_model_file}}"
+	executor_model_spec="${EXECUTOR_MODEL_SPEC:-${DEFAULT_EXECUTOR_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:${default_model_file}}}"
+	react_model_spec="${executor_model_spec}"
 	rephraser_model_spec="${DEFAULT_REPHRASER_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-1.7B-GGUF:${DEFAULT_REPHRASER_MODEL_FILE_BASE:-Qwen_Qwen3-1.7B-Q4_K_M.gguf}}"
 	planner_cache_file="${OKSO_PLANNER_CACHE_FILE:-${cache_dir}/planner.prompt-cache}"
-	react_cache_file="${OKSO_REACT_CACHE_FILE:-${cache_dir}/runs/${run_id}/react.prompt-cache}"
+	executor_cache_file="${OKSO_EXECUTOR_CACHE_FILE:-${OKSO_REACT_CACHE_FILE:-${cache_dir}/runs/${run_id}/react.prompt-cache}}"
+	react_cache_file="${executor_cache_file}"
 	rephraser_cache_file="${OKSO_REPHRASER_CACHE_FILE:-${cache_dir}/rephraser.prompt-cache}"
+	executor_model_branch="${EXECUTOR_MODEL_BRANCH:-${DEFAULT_EXECUTOR_MODEL_BRANCH_BASE:-main}}"
+	react_model_branch="${executor_model_branch}"
 
 	default_json=$(jq -c -n \
 		--arg version "0.1.0" \
@@ -139,7 +145,7 @@ create_default_settings() {
 		--arg react_model_spec "${react_model_spec}" \
 		--arg rephraser_model_spec "${rephraser_model_spec}" \
 		--arg planner_model_branch "${DEFAULT_PLANNER_MODEL_BRANCH_BASE:-main}" \
-		--arg react_model_branch "${DEFAULT_REACT_MODEL_BRANCH_BASE:-main}" \
+		--arg react_model_branch "${react_model_branch}" \
 		--arg rephraser_model_branch "${DEFAULT_REPHRASER_MODEL_BRANCH_BASE:-main}" \
 		--arg notes_dir "${HOME}/.okso" \
 		--arg use_react_llama "${USE_REACT_LLAMA:-true}" \
