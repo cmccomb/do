@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # shellcheck shell=bash
 #
-# Tests for run-scoped ReAct cache lifecycle management.
+# Tests for run-scoped executor cache lifecycle management.
 #
 # Usage:
 #   bats tests/lib/test_runtime_react_cache.sh
@@ -28,7 +28,7 @@ printf "%s\n%s" \
         "$(settings_get cache_scope react_cache_file)"
 SCRIPT
 	[ "$status" -eq 0 ]
-expected_path="${TMPDIR:-/tmp}/okso_cache_scope/runs/run-cache-scope/react.prompt-cache"
+	expected_path="${TMPDIR:-/tmp}/okso_cache_scope/runs/run-cache-scope/react.prompt-cache"
 	[ "${lines[0]}" = "${expected_path}" ]
 	[ "${lines[1]}" = "${expected_path}" ]
 }
