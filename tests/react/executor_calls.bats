@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 setup() {
-        unset -f chpwd _mise_hook 2>/dev/null || true
+	unset -f chpwd _mise_hook 2>/dev/null || true
 }
 
 @test "apply_plan_arg_controls marks context args and preserves planner seeds" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 
@@ -20,15 +20,15 @@ resolved=$(apply_plan_arg_controls "notes_create" "${executor_args}" "${plan_ent
 jq -r '.title,.body,."__context_controlled"[0],."__context_seeds".body' <<<"${resolved}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "Planner Title" ]
-        [ "${lines[1]}" = "Original body" ]
-        [ "${lines[2]}" = "body" ]
-        [ "${lines[3]}" = "Original body" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "Planner Title" ]
+	[ "${lines[1]}" = "Original body" ]
+	[ "${lines[2]}" = "body" ]
+	[ "${lines[3]}" = "Original body" ]
 }
 
 @test "context args are completed via llama_infer" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 LLAMA_AVAILABLE=true
@@ -59,16 +59,16 @@ jq -r '.body' <<<"${resolved}"
 printf '%s' "${prompt}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "Completed from llama" ]
-        [[ "${output}" == *"History snippet"* ]]
-        [[ "${output}" == *"Planner thought"* ]]
-        [[ "${output}" == *"Outline"* ]]
-        [[ "${output}" == *"planner seed"* ]]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "Completed from llama" ]
+	[[ "${output}" == *"History snippet"* ]]
+	[[ "${output}" == *"Planner thought"* ]]
+	[[ "${output}" == *"Outline"* ]]
+	[[ "${output}" == *"planner seed"* ]]
 }
 
 @test "validate_planner_action rejects disallowed tools" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 allowed_tools=$'notes_create\nfinal_answer'
@@ -78,12 +78,12 @@ fi
 cat /tmp/validation_err
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [[ "${output}" == *"not permitted"* ]]
+	[ "$status" -eq 0 ]
+	[[ "${output}" == *"not permitted"* ]]
 }
 
 @test "fill_missing_args_with_llm uses llama output for context args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 LLAMA_AVAILABLE=true
@@ -103,7 +103,7 @@ filled=$(fill_missing_args_with_llm "notes_create" '{"title":"User seed"}' "User
 jq -r '.title,.body' <<<"${filled}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[0]}" = "Filled title" ]
-        [ "${lines[1]}" = "Filled body" ]
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "Filled title" ]
+	[ "${lines[1]}" = "Filled body" ]
 }

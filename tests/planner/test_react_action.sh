@@ -10,8 +10,8 @@
 #   - bash 3.2+
 
 @test "react_action schema documents action wrapper" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -25,15 +25,15 @@ jq -e '
         and (.oneOf[0].properties.action.properties.args.required == ["input"])
 ' "${schema_path}"
 INNERSCRIPT
-        )
+	)
 
 	run bash -lc "${script}"
 	[ "$status" -eq 0 ]
 }
 
 @test "build_react_action_schema constrains allowed tools" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -55,15 +55,15 @@ jq -e '
 
 rm -f "${schema_path}"
 INNERSCRIPT
-        )
+	)
 
 	run bash -lc "${script}"
 	[ "$status" -eq 0 ]
 }
 
 @test "validate_react_action rejects unsupported tools" {
-        script=$(
-                cat <<'INNERSCRIPT'
+	script=$(
+		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -206,7 +206,7 @@ grep -F 'stubbed executor prompt' "${prompt_capture}"
 grep -F 'executor:executor tool demo_tool user_query user wants plan_outline a plan planner_thought planner note args_json {"input":"provided"} args_schema {"type":"object"} context_fields ["input"]' "${prompt_log}"
 [[ "${output}" == '{"args":{"filled":true}}' ]]
 INNERSCRIPT
-        )
+	)
 
 	run bash -lc "${script}"
 	[ "$status" -eq 0 ]

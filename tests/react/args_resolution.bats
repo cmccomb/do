@@ -5,7 +5,7 @@ setup() {
 }
 
 @test "resolve_action_args normalizes once while filling context args" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 
@@ -41,7 +41,7 @@ SCRIPT
 }
 
 @test "resolve_action_args skips LLM when args complete" {
-        run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/loop.sh
 
@@ -70,9 +70,9 @@ fi
 printf 'resolved=%s\nllm_calls=%s\n' "${resolved}" "${llm_calls}"
 SCRIPT
 
-        [ "$status" -eq 0 ]
-        [ "${lines[1]}" = "llm_calls=0" ]
-        [[ "${lines[0]}" == *'"title":"ready"'* ]]
+	[ "$status" -eq 0 ]
+	[ "${lines[1]}" = "llm_calls=0" ]
+	[[ "${lines[0]}" == *'"title":"ready"'* ]]
 }
 
 @test "execute_planned_action forwards resolved args and preserves output" {

@@ -5,7 +5,7 @@ setup() {
 }
 
 @test "react schema rejects missing required args" {
-run bash <<'SCRIPT'
+	run bash <<'SCRIPT'
 set -euo pipefail
 source ./src/lib/react/schema.sh
 
@@ -25,7 +25,7 @@ validate_react_action "${invalid_action}" "${schema_path}" 2>&1
 rm -f "${schema_path}"
 SCRIPT
 
-        [ "$status" -ne 0 ]
+	[ "$status" -ne 0 ]
 }
 
 @test "react schema accepts fully specified payloads" {
