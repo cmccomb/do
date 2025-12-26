@@ -99,7 +99,7 @@ if [[ "${PLANNER_SKIP_TOOL_LOAD:-false}" != true ]]; then
 fi
 
 initialize_planner_models() {
-    # Hydrates planner and executor model specs when callers did not pass
+	# Hydrates planner and executor model specs when callers did not pass
 	# explicit repositories or filenames via the environment. This keeps
 	# downstream llama.cpp calls predictable regardless of how the planner
 	# was sourced (CLI invocation vs. tests).
@@ -566,10 +566,10 @@ select_next_action() {
 REACT_ENTRYPOINT=${REACT_ENTRYPOINT:-"${PLANNING_LIB_DIR}/../react/react.sh"}
 
 if [[ "${PLANNER_SKIP_TOOL_LOAD:-false}" == true ]]; then
-    log "DEBUG" "Skipping executor entrypoint load" "planner_skip_tool_load=true" >&2
+	log "DEBUG" "Skipping executor entrypoint load" "planner_skip_tool_load=true" >&2
 else
 	if [[ ! -f "${REACT_ENTRYPOINT}" ]]; then
-            log "ERROR" "Executor entrypoint missing" "REACT_ENTRYPOINT=${REACT_ENTRYPOINT}" >&2
+		log "ERROR" "Executor entrypoint missing" "REACT_ENTRYPOINT=${REACT_ENTRYPOINT}" >&2
 		return 1 2>/dev/null
 	fi
 

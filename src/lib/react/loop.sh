@@ -251,7 +251,7 @@ PY
 }
 
 fill_missing_args_with_llm() {
-        # Fills planner-marked context arguments via a single LLM round-trip when possible.
+	# Fills planner-marked context arguments via a single LLM round-trip when possible.
 	# Arguments:
 	#   $1 - tool name
 	#   $2 - args JSON
@@ -393,7 +393,7 @@ execute_planned_action() {
 }
 
 executor_loop() {
-        # Executes planner actions deterministically.
+	# Executes planner actions deterministically.
 	# Arguments:
 	#   $1 - user query
 	#   $2 - allowed tools (newline delimited)
@@ -404,9 +404,9 @@ executor_loop() {
 	allowed_tools="$2"
 	plan_entries="$3"
 	plan_outline="$4"
-        state_prefix="executor_state"
+	state_prefix="executor_state"
 
-        initialize_executor_state "${state_prefix}" "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}"
+	initialize_executor_state "${state_prefix}" "${user_query}" "${allowed_tools}" "${plan_entries}" "${plan_outline}"
 	max_steps=${MAX_STEPS:-6}
 
 	if [[ -z "${plan_entries}" ]]; then
@@ -461,12 +461,12 @@ executor_loop() {
 		fi
 	done < <(jq -c '.[]' <<<"$plan_json")
 
-        finalize_executor_result "${state_prefix}"
+	finalize_executor_result "${state_prefix}"
 }
 
 react_loop() {
-        # Compatibility shim preserving the legacy ReAct entry point.
-        executor_loop "$@"
+	# Compatibility shim preserving the legacy ReAct entry point.
+	executor_loop "$@"
 }
 
 export -f executor_loop

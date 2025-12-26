@@ -28,7 +28,7 @@ printf "%s\n%s" \
         "$(settings_get cache_scope react_cache_file)"
 SCRIPT
 	[ "$status" -eq 0 ]
-expected_path="${TMPDIR:-/tmp}/okso_cache_scope/runs/run-cache-scope/react.prompt-cache"
+	expected_path="${TMPDIR:-/tmp}/okso_cache_scope/runs/run-cache-scope/react.prompt-cache"
 	[ "${lines[0]}" = "${expected_path}" ]
 	[ "${lines[1]}" = "${expected_path}" ]
 }

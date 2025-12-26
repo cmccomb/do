@@ -113,7 +113,7 @@ EOF
 }
 
 react_run_cache_dir() {
-        # Derives the directory that scopes the executor prompt cache for the current run.
+	# Derives the directory that scopes the executor prompt cache for the current run.
 	# Returns:
 	#   The directory path (string) or empty string when unset.
 	if [[ -z "${REACT_CACHE_FILE:-}" ]]; then
@@ -125,7 +125,7 @@ react_run_cache_dir() {
 }
 
 coerce_react_run_cache_path() {
-        # Ensures the executor prompt cache is scoped to the current run directory.
+	# Ensures the executor prompt cache is scoped to the current run directory.
 	# Arguments:
 	#   $1 - settings namespace prefix
 	local settings_prefix cache_dir run_id cache_basename run_cache_dir coerced_path
@@ -146,7 +146,7 @@ coerce_react_run_cache_path() {
 }
 
 ensure_react_run_cache_dir() {
-        # Ensures the run-scoped executor cache directory exists for llama.cpp caching.
+	# Ensures the run-scoped executor cache directory exists for llama.cpp caching.
 	local cache_dir
 	cache_dir="$(react_run_cache_dir)"
 
@@ -156,11 +156,11 @@ ensure_react_run_cache_dir() {
 
 	mkdir -p "${cache_dir}"
 	REACT_RUN_CACHE_DIR="${cache_dir}"
-        log "INFO" "Prepared executor run cache" "path=${cache_dir}"
+	log "INFO" "Prepared executor run cache" "path=${cache_dir}"
 }
 
 cleanup_react_run_cache_dir() {
-        # Cleans up the run-scoped executor cache directory on success and retains it on failure.
+	# Cleans up the run-scoped executor cache directory on success and retains it on failure.
 	# Arguments:
 	#   $1 - exit status to evaluate
 	local status cache_dir
@@ -173,11 +173,11 @@ cleanup_react_run_cache_dir() {
 
 	if [[ "${status}" -eq 0 ]]; then
 		rm -rf "${cache_dir}"
-                log "INFO" "Cleaned executor run cache" "path=${cache_dir}"
+		log "INFO" "Cleaned executor run cache" "path=${cache_dir}"
 		return
 	fi
 
-        log "INFO" "Retaining executor run cache for debugging" "path=${cache_dir} status=${status}"
+	log "INFO" "Retaining executor run cache for debugging" "path=${cache_dir} status=${status}"
 }
 
 apply_settings_to_globals() {

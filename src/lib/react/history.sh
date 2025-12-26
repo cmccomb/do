@@ -31,7 +31,7 @@ source "${EXECUTOR_LIB_DIR}/../formatting.sh"
 source "${EXECUTOR_LIB_DIR}/../dependency_guards/dependency_guards.sh"
 
 initialize_executor_state() {
-        # Initializes the executor state document with user query, tools, and plan.
+	# Initializes the executor state document with user query, tools, and plan.
 	# Arguments:
 	#   $1 - state prefix to populate (string)
 	#   $2 - user query (string)
@@ -41,7 +41,7 @@ initialize_executor_state() {
 	local state_prefix
 	state_prefix="$1"
 
-        state_set_json_document "${state_prefix}" "$(jq -c -n \
+	state_set_json_document "${state_prefix}" "$(jq -c -n \
 		--arg user_query "$2" \
 		--arg allowed_tools "$3" \
 		--arg plan_entries "$4" \
@@ -63,12 +63,12 @@ initialize_executor_state() {
 }
 
 initialize_react_state() {
-        # Compatibility shim for downstream callers still invoking the legacy name.
-        initialize_executor_state "$@"
+	# Compatibility shim for downstream callers still invoking the legacy name.
+	initialize_executor_state "$@"
 }
 
 record_history() {
-        # Appends a formatted history entry to the executor state.
+	# Appends a formatted history entry to the executor state.
 	# Arguments:
 	#   $1 - state prefix (string)
 	#   $2 - formatted history entry (string)
@@ -117,7 +117,7 @@ record_tool_execution() {
 	fi
 	args_json="$(jq -cS '.' <<<"${args_json}" 2>/dev/null || printf '{}')"
 
-        if ! require_python3_available "Executor history serialization"; then
+	if ! require_python3_available "Executor history serialization"; then
 		log "ERROR" "Failed to record tool execution; python3 missing" "${tool}" >&2
 		return 1
 	fi
@@ -156,7 +156,7 @@ PY
 }
 
 finalize_executor_result() {
-        # Finalizes and emits the executor run result.
+	# Finalizes and emits the executor run result.
 	# Arguments:
 	#   $1 - state prefix
 	local state_name history_formatted final_answer observation final_answer_action
@@ -197,6 +197,6 @@ finalize_executor_result() {
 }
 
 finalize_react_result() {
-        # Compatibility shim for the legacy ReAct naming.
-        finalize_executor_result "$@"
+	# Compatibility shim for the legacy ReAct naming.
+	finalize_executor_result "$@"
 }
