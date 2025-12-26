@@ -23,13 +23,14 @@ CLI_LIB_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${CLI_LIB_DIR}/../core/logging.sh"
 
 build_usage_text() {
-	local default_model_spec default_model_branch entrypoint_display default_planner_spec default_planner_branch default_react_spec default_react_branch
+	local default_model_spec default_model_branch entrypoint_display default_planner_spec default_planner_branch
+	local default_executor_spec default_executor_branch
 	default_model_spec="${DEFAULT_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf}"
 	default_model_branch="${DEFAULT_MODEL_BRANCH_BASE:-main}"
 	default_planner_spec="${DEFAULT_PLANNER_MODEL_SPEC_BASE:-bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf}"
 	default_planner_branch="${DEFAULT_PLANNER_MODEL_BRANCH_BASE:-main}"
-	default_react_spec="${DEFAULT_REACT_MODEL_SPEC_BASE:-${default_model_spec}}"
-	default_react_branch="${DEFAULT_REACT_MODEL_BRANCH_BASE:-${default_model_branch}}"
+	default_executor_spec="${DEFAULT_EXECUTOR_MODEL_SPEC_BASE:-${default_model_spec}}"
+	default_executor_branch="${DEFAULT_EXECUTOR_MODEL_BRANCH_BASE:-${default_model_branch}}"
 	entrypoint_display="${OKSO_ENTRYPOINT:-./src/bin/okso}"
 
 	cat <<USAGE
@@ -43,17 +44,17 @@ Options:
       --confirm         Always prompt before running tools.
       --dry-run         Print the planned tool calls without running them.
       --plan-only       Emit the planned calls as JSON and exit (implies --dry-run).
-  -m, --model VALUE     HF repo[:file] used for both planner and ReAct models when specific flags are not set (default: ${default_model_spec}).
+  -m, --model VALUE     HF repo[:file] used for both planner and executor models when specific flags are not set (default: ${default_model_spec}).
       --model-branch BRANCH
                         HF branch or tag for the shared model download (default: ${default_model_branch}).
       --planner-model VALUE
                         HF repo[:file] for planning llama.cpp calls (default: ${default_planner_spec}).
       --planner-model-branch BRANCH
                         HF branch or tag for the planning model download (default: ${default_planner_branch}).
-      --react-model VALUE
-                        HF repo[:file] for ReAct llama.cpp calls (default: ${default_react_spec}).
-      --react-model-branch BRANCH
-                        HF branch or tag for the ReAct model download (default: ${default_react_branch}).
+      --executor-model VALUE
+                        HF repo[:file] for executor llama.cpp calls (default: ${default_executor_spec}).
+      --executor-model-branch BRANCH
+                        HF branch or tag for the executor model download (default: ${default_executor_branch}).
       --config FILE     Config file to load or create (default: ${XDG_CONFIG_HOME:-$HOME/.config}/okso/config.env).
   -v, --verbose         Increase log verbosity (JSON logs are always structured).
   -q, --quiet           Silence informational logs.
@@ -94,11 +95,11 @@ show_version() {
 parse_args() {
 	local positional
 	positional=()
-	local planner_model_spec_set react_model_spec_set planner_model_branch_set react_model_branch_set
+	local planner_model_spec_set executor_model_spec_set planner_model_branch_set executor_model_branch_set
 	planner_model_spec_set=false
-	react_model_spec_set=false
+	executor_model_spec_set=false
 	planner_model_branch_set=false
-	react_model_branch_set=false
+	executor_model_branch_set=false
 
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
@@ -142,8 +143,8 @@ parse_args() {
 			if [[ "${planner_model_spec_set}" != true ]]; then
 				PLANNER_MODEL_SPEC="$2"
 			fi
-			if [[ "${react_model_spec_set}" != true ]]; then
-				REACT_MODEL_SPEC="$2"
+			if [[ "${executor_model_spec_set}" != true ]]; then
+				EXECUTOR_MODEL_SPEC="$2"
 			fi
 			shift 2
 			;;
@@ -154,8 +155,8 @@ parse_args() {
 			if [[ "${planner_model_branch_set}" != true ]]; then
 				PLANNER_MODEL_BRANCH="$2"
 			fi
-			if [[ "${react_model_branch_set}" != true ]]; then
-				REACT_MODEL_BRANCH="$2"
+			if [[ "${executor_model_branch_set}" != true ]]; then
+				EXECUTOR_MODEL_BRANCH="$2"
 			fi
 			shift 2
 			;;
@@ -175,20 +176,20 @@ parse_args() {
 			planner_model_branch_set=true
 			shift 2
 			;;
-		--react-model)
+		--executor-model)
 			if [[ $# -lt 2 ]]; then
-				die "cli" "usage" "--react-model requires an HF repo[:file] value"
+				die "cli" "usage" "--executor-model requires an HF repo[:file] value"
 			fi
-			REACT_MODEL_SPEC="$2"
-			react_model_spec_set=true
+			EXECUTOR_MODEL_SPEC="$2"
+			executor_model_spec_set=true
 			shift 2
 			;;
-		--react-model-branch)
+		--executor-model-branch)
 			if [[ $# -lt 2 ]]; then
-				die "cli" "usage" "--react-model-branch requires a branch or tag"
+				die "cli" "usage" "--executor-model-branch requires a branch or tag"
 			fi
-			REACT_MODEL_BRANCH="$2"
-			react_model_branch_set=true
+			EXECUTOR_MODEL_BRANCH="$2"
+			executor_model_branch_set=true
 			shift 2
 			;;
 		--config)

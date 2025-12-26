@@ -50,7 +50,9 @@ DEFAULT_MODEL_FILE="demo.gguf"
 APPROVE_ALL=false
 FORCE_CONFIRM=false
 NOTES_DIR="$(mktemp -d)"
+CONFIG_FILE=""
 source ./src/lib/config.sh
+load_config
 init_environment
 printf "%s\n" "${LLAMA_AVAILABLE}"
 SCRIPT
@@ -147,26 +149,27 @@ set -euo pipefail
 config_file="$(mktemp)"
 PLANNER_MODEL_SPEC="planner/model:planner.gguf"
 PLANNER_MODEL_BRANCH="planner-branch"
-REACT_MODEL_SPEC="react/model:react.gguf"
-REACT_MODEL_BRANCH="react-branch"
+EXECUTOR_MODEL_SPEC="executor/model:executor.gguf"
+EXECUTOR_MODEL_BRANCH="executor-branch"
 VERBOSITY=2
 APPROVE_ALL=true
 FORCE_CONFIRM=false
 CONFIG_FILE="${config_file}"
 source ./src/lib/config.sh
+load_config
 write_config_file >/dev/null
 bash -n "${config_file}"
 PLANNER_MODEL_SPEC="placeholder"
 PLANNER_MODEL_BRANCH="placeholder"
-REACT_MODEL_SPEC="placeholder"
-REACT_MODEL_BRANCH="placeholder"
+EXECUTOR_MODEL_SPEC="placeholder"
+EXECUTOR_MODEL_BRANCH="placeholder"
 VERBOSITY=0
 APPROVE_ALL=false
 FORCE_CONFIRM=true
 source "${config_file}"
 printf '%s\n' \
         "${PLANNER_MODEL_SPEC}" "${PLANNER_MODEL_BRANCH}" \
-        "${REACT_MODEL_SPEC}" "${REACT_MODEL_BRANCH}" \
+        "${EXECUTOR_MODEL_SPEC}" "${EXECUTOR_MODEL_BRANCH}" \
         "${VERBOSITY}" "${APPROVE_ALL}" "${FORCE_CONFIRM}" \
         "$(wc -l < "${config_file}" | tr -d ' ')"
 rm -f "${config_file}"
@@ -175,12 +178,12 @@ SCRIPT
 	[ "$status" -eq 0 ]
 	[ "${lines[0]}" = "planner/model:planner.gguf" ]
 	[ "${lines[1]}" = "planner-branch" ]
-	[ "${lines[2]}" = "react/model:react.gguf" ]
-	[ "${lines[3]}" = "react-branch" ]
+	[ "${lines[2]}" = "executor/model:executor.gguf" ]
+	[ "${lines[3]}" = "executor-branch" ]
 	[ "${lines[4]}" = "2" ]
 	[ "${lines[5]}" = "true" ]
 	[ "${lines[6]}" = "false" ]
-	[ "${lines[7]}" = "7" ]
+	[ "${lines[7]}" = "12" ]
 }
 
 @test "okso init writes clean config without stray characters" {
@@ -213,8 +216,8 @@ SCRIPT
 	[ "${lines[4]}" = "1" ]
 	[ "${lines[5]}" = "true" ]
 	[ "${lines[6]}" = "false" ]
-	[ "${lines[7]}" = "7" ]
-	[ "${lines[8]}" = "7" ]
+	[ "${lines[7]}" = "11" ]
+	[ "${lines[8]}" = "11" ]
 }
 
 @test "planner and react specs hydrate defaults and shared overrides" {
@@ -222,6 +225,14 @@ SCRIPT
 set -euo pipefail
 CONFIG_FILE="$(mktemp)"
 NOTES_DIR="$(mktemp -d)"
+export DEFAULT_MODEL_REPO_BASE="custom/react-repo"
+export DEFAULT_MODEL_FILE_BASE="react-base.gguf"
+export DEFAULT_MODEL_BRANCH_BASE="release"
+export DEFAULT_PLANNER_MODEL_REPO_BASE="custom/planner-repo"
+export DEFAULT_PLANNER_MODEL_FILE_BASE="planner-base.gguf"
+export DEFAULT_PLANNER_MODEL_BRANCH_BASE="release"
+export DEFAULT_REACT_MODEL_SPEC_BASE="${DEFAULT_MODEL_REPO_BASE}:${DEFAULT_MODEL_FILE_BASE}"
+export DEFAULT_REACT_MODEL_BRANCH_BASE="${DEFAULT_MODEL_BRANCH_BASE}"
 source ./src/lib/config.sh
 load_config
 hydrate_model_specs
@@ -247,16 +258,16 @@ rm -f "${CONFIG_FILE}"
 SCRIPT
 
 	[ "$status" -eq 0 ]
-	[ "${lines[0]}" = "bartowski/Qwen_Qwen3-8B-GGUF" ]
-	[ "${lines[1]}" = "Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-	[ "${lines[2]}" = "bartowski/Qwen_Qwen3-4B-GGUF" ]
-	[ "${lines[3]}" = "Qwen_Qwen3-4B-Q4_K_M.gguf" ]
-	[ "${lines[4]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-	[ "${lines[5]}" = "bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf" ]
-	[ "${lines[6]}" = "bartowski/Qwen_Qwen3-8B-GGUF:Qwen_Qwen3-8B-Q4_K_M.gguf" ]
-	[ "${lines[7]}" = "bartowski/Qwen_Qwen3-4B-GGUF:Qwen_Qwen3-4B-Q4_K_M.gguf" ]
-	[ "${lines[8]}" = "main" ]
-	[ "${lines[9]}" = "main" ]
+	[ "${lines[0]}" = "custom/planner-repo" ]
+	[ "${lines[1]}" = "planner-base.gguf" ]
+	[ "${lines[2]}" = "custom/react-repo" ]
+	[ "${lines[3]}" = "react-base.gguf" ]
+	[ "${lines[4]}" = "custom/planner-repo:planner-base.gguf" ]
+	[ "${lines[5]}" = "custom/react-repo:react-base.gguf" ]
+	[ "${lines[6]}" = "custom/planner-repo:planner-base.gguf" ]
+	[ "${lines[7]}" = "custom/react-repo:react-base.gguf" ]
+	[ "${lines[8]}" = "release" ]
+	[ "${lines[9]}" = "release" ]
 	[ "${lines[10]}" = "planner/model:plan.gguf" ]
 	[ "${lines[11]}" = "react/model:react.gguf" ]
 	[ "${lines[12]}" = "stable" ]
