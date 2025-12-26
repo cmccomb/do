@@ -39,7 +39,6 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
 source ./src/lib/react/schema.sh
-source ./src/lib/prompt/build_react.sh
 
 tool_registry_json() {
         printf "%s" '{"names":["alpha"],"registry":{"alpha":{"args_schema":{"type":"object","required":["input"],"properties":{"input":{"type":"string","minLength":1}},"additionalProperties":false}}}}'
@@ -197,32 +196,40 @@ INNERSCRIPT
 	[ "$status" -eq 0 ]
 }
 
-@test "build_react_prompt reflects executor contract" {
+@test "fill_missing_args_with_llm renders executor template" {
 	script=$(
 		cat <<'INNERSCRIPT'
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
-source ./src/lib/react/schema.sh
-source ./src/lib/prompt/build_react.sh
+prompt_log="$(mktemp)"
+prompt_capture="${prompt_log}.prompt"
+trap 'rm -f "${prompt_log}" "${prompt_capture}"' EXIT
 
-allowed_tools=$'terminal\nfinal_answer'
-allowed_tool_descriptions=$'Available tools:\n- terminal: Run shell commands.\n- final_answer: Return a response.'
-react_schema_path="$(build_react_action_schema "${allowed_tools}")"
-react_schema_text="$(cat "${react_schema_path}")"
+source ./src/lib/react/loop.sh
 
-prompt="$(build_react_prompt "demo request" "${allowed_tool_descriptions}" "demo plan" "${react_schema_text}" "step 1")"
-rm -f "${react_schema_path}"
+render_prompt_template() {
+        printf 'executor:%s' "$*" >"${prompt_log}"
+        printf 'stubbed executor prompt'
+}
+export -f render_prompt_template
 
-grep -qi "executor" <<<"${prompt}"
-grep -F "demo request" <<<"${prompt}"
-forbidden_terms=(history "Thought:" "Observation:" "Action:")
-for term in "${forbidden_terms[@]}"; do
-        if grep -F "${term}" <<<"${prompt}"; then
-                printf 'prompt unexpectedly referenced %s\n' "${term}"
-                exit 1
-        fi
-done
+tool_args_schema() { printf '{"type":"object"}'; }
+export -f tool_args_schema
+
+llama_infer() {
+        cat >"${prompt_capture}" <<<"$1"
+        printf '{"args":{"filled":true}}'
+}
+export -f llama_infer
+
+LLAMA_AVAILABLE=true
+
+output="$(fill_missing_args_with_llm "demo_tool" '{"input":"__MISSING__"}' "user wants" "a plan" "planner note")"
+
+grep -F 'stubbed executor prompt' "${prompt_capture}"
+grep -F 'executor:executor missing_token __MISSING__ tool demo_tool user_query user wants plan_outline a plan planner_thought planner note args_json {"input":"__MISSING__"} args_schema {"type":"object"}' "${prompt_log}"
+[[ "${output}" == '{"args":{"filled":true}}' ]]
 INNERSCRIPT
 	)
 

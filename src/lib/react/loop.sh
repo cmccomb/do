@@ -34,6 +34,8 @@ source "${REACT_LIB_DIR}/../core/logging.sh"
 source "${REACT_LIB_DIR}/../core/state.sh"
 # shellcheck source=../tools/query.sh disable=SC1091
 source "${REACT_LIB_DIR}/../tools/query.sh"
+# shellcheck source=../prompt/templates.sh disable=SC1091
+source "${REACT_LIB_DIR}/../prompt/templates.sh"
 # shellcheck source=./schema.sh disable=SC1091
 source "${REACT_LIB_DIR}/schema.sh"
 # shellcheck source=./history.sh disable=SC1091
@@ -233,21 +235,17 @@ fill_missing_args_with_llm() {
 		return 0
 	fi
 
-	prompt=$(
-		cat <<'PROMPT'
-You are completing missing fields for a tool call.
-Return ONLY a JSON object for the tool args with all "__MISSING__" tokens replaced.
-PROMPT
-	)
-	prompt+=$'\nTool: '"${tool}"
-	prompt+=$'\nUser request: '"${user_query}"
-	if [[ -n "${plan_outline}" ]]; then
-		prompt+=$'\nPlan outline: '"${plan_outline}"
-	fi
-	prompt+=$'\nPlanner notes: '"${planner_thought}"
-	prompt+=$'\nCurrent args JSON: '"${args_json}"
-	if [[ -n "${schema}" ]]; then
-		prompt+=$'\nArgs schema: '"${schema}"
+	if ! prompt="$(render_prompt_template "executor" \
+		missing_token "${MISSING_VALUE_TOKEN}" \
+		tool "${tool}" \
+		user_query "${user_query}" \
+		plan_outline "${plan_outline}" \
+		planner_thought "${planner_thought}" \
+		args_json "${args_json}" \
+		args_schema "${schema}")"; then
+		log "WARN" "Failed to render executor prompt" "${tool}" || true
+		printf '%s' "${args_json}"
+		return 0
 	fi
 
 	response="$(llama_infer "${prompt}" "" 256 "" "${REACT_MODEL_REPO:-}" "${REACT_MODEL_FILE:-}" "${REACT_CACHE_FILE:-}")"
