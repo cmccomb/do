@@ -228,7 +228,6 @@ load_runtime_settings() {
 	parse_args "$@"
 	normalize_approval_flags
 	hydrate_model_specs
-	coerce_react_run_cache_path "${settings_prefix}"
 
 	capture_globals_into_settings "${settings_prefix}"
 }

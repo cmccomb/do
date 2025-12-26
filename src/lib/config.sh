@@ -27,7 +27,6 @@
 #   OKSO_PLANNER_CACHE_FILE (string): prompt cache file used for planning llama.cpp calls.
 #   OKSO_REPHRASER_CACHE_FILE (string): prompt cache file used for search rephrasing llama.cpp calls.
 #   OKSO_EXECUTOR_CACHE_FILE (string): run-scoped prompt cache file for executor llama.cpp calls.
-#   OKSO_REACT_CACHE_FILE (string): Deprecated alias for OKSO_EXECUTOR_CACHE_FILE.
 #   OKSO_RUN_ID (string): unique identifier for the current run used to scope caches.
 #
 # Dependencies:
@@ -134,11 +133,6 @@ load_config() {
 
 	: "${OKSO_REPHRASER_CACHE_FILE:=${CACHE_DIR}/rephraser.prompt-cache}"
 	SEARCH_REPHRASER_CACHE_FILE="${OKSO_REPHRASER_CACHE_FILE}"
-
-	# Optional: keep deprecated aliases as outputs only (so other code doesn't break).
-	OKSO_REACT_CACHE_FILE="${OKSO_EXECUTOR_CACHE_FILE}"
-	REACT_MODEL_SPEC="${EXECUTOR_MODEL_SPEC}"
-	REACT_MODEL_BRANCH="${EXECUTOR_MODEL_BRANCH}"
 
 	# Google search vars (keep simple)
 	GOOGLE_SEARCH_API_KEY="${GOOGLE_SEARCH_API_KEY:-${OKSO_GOOGLE_CSE_API_KEY:-}}"
